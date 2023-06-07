@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "kitchensink-fuzzer",
+    "kusama-fuzzer",
+    "node-template-fuzzer",
+    "statemine-fuzzer",
+]
