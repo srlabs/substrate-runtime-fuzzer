@@ -12,6 +12,7 @@ Here are the steps to launch `substrate-runtime-fuzzer` against the [node templa
 
 ```
 cargo install ziggy afl honggfuzz grcov
+rustup target add wasm32-unknown-unknown
 git clone https://github.com/srlabs/substrate-runtime-fuzzer
 cd substrate-runtime-fuzzer/node-template-fuzzer/
 cargo ziggy fuzz -t 20
