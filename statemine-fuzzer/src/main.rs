@@ -28,8 +28,9 @@ const MAX_EXTRINSIC_COUNT: usize = 32;
 /// Max number of seconds a block should run for.
 const MAX_TIME_FOR_BLOCK: u64 = 6;
 
-// Number of blocks in two months
-const MAX_BLOCK_LAPSE: u32 = 864_000;
+// We do not skip more than DEFAULT_STORAGE_PERIOD to avoid pallet_transaction_storage from
+// panicking on finalize.
+const MAX_BLOCK_LAPSE: u32 = sp_transaction_storage_proof::DEFAULT_STORAGE_PERIOD;
 
 // Decode depth limit
 const MAX_DECODE_LIMIT: u32 = 52;
