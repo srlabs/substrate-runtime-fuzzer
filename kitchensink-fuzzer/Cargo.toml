@@ -29,6 +29,8 @@ pallet-im-online = { git = "https://github.com/paritytech/substrate.git", branch
 pallet-referenda = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.42", default-features = false }
 pallet-contracts = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.42", default-features = false }
 pallet-society = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.42", default-features = false }
+pallet-lottery = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.42", default-features = false }
+pallet-utility = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.42", default-features = false }
 
 [features]
 default = ["std", "try-runtime"]

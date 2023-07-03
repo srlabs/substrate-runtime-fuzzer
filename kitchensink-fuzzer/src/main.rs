@@ -318,6 +318,29 @@ fn main() {
                 continue;
             }
 
+            fn recursively_find_referenda_call(call: RuntimeCall) -> bool {
+                if let RuntimeCall::Utility(pallet_utility::Call::batch { calls }) = call {
+                    for call in calls {
+                        if recursively_find_referenda_call(call.clone())
+                            || matches!(
+                                call,
+                                RuntimeCall::Referenda(pallet_referenda::Call::submit { .. })
+                            )
+                        {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+
+            // We disallow batches of referenda
+            // See https://github.com/paritytech/srlabs_findings/issues/296
+            if recursively_find_referenda_call(extrinsic.clone()) {
+                continue;
+            }
+
+            /*
             // We filter out contracts call that will take too long because of fuzzer instrumentation
             if matches!(extrinsic.clone(), RuntimeCall::Contracts(pallet_contracts::Call::instantiate_with_code {
                 gas_limit: limit,
@@ -326,6 +349,7 @@ fn main() {
             {
                 continue;
             }
+            */
 
             // We filter out a Society::bid call that will cause an overflow
             // See https://github.com/paritytech/srlabs_findings/issues/292
@@ -333,7 +357,10 @@ fn main() {
                 extrinsic.clone(),
                 RuntimeCall::Society(pallet_society::Call::bid { .. })
                     | RuntimeCall::Society(pallet_society::Call::vouch { .. })
-            ) {
+            ) || matches!(extrinsic.clone(),
+                RuntimeCall::Lottery(pallet_lottery::Call::buy_ticket { call }) if matches!(*call,
+                    RuntimeCall::Society(..)))
+            {
                 continue;
             }
 
