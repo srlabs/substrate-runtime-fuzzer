@@ -305,60 +305,73 @@ fn main() {
         externalities.execute_with(|| start_block(current_block, current_timestamp));
 
         for (lapse, origin, extrinsic) in extrinsics {
+            fn recursively_find_call(
+                call: RuntimeCall,
+                matches_on: fn(RuntimeCall) -> bool,
+            ) -> bool {
+                if let RuntimeCall::Utility(pallet_utility::Call::batch { calls })
+                | RuntimeCall::Utility(pallet_utility::Call::batch_all { calls }) = call
+                {
+                    for call in calls {
+                        if recursively_find_call(call.clone(), matches_on) {
+                            return true;
+                        }
+                    }
+                } else if let RuntimeCall::Lottery(pallet_lottery::Call::buy_ticket { call }) = call
+                {
+                    return recursively_find_call(*call.clone(), matches_on);
+                } else if matches_on(call) {
+                    return true;
+                }
+                return false;
+            }
+
             // We disallow referenda calls with root origin
             use frame_support::traits::OriginTrait;
-            if matches!(extrinsic.clone(), RuntimeCall::Referenda(pallet_referenda::Call::submit {
+            if recursively_find_call(extrinsic.clone(), |call| {
+                matches!(
+                    call,
+                    RuntimeCall::Referenda(pallet_referenda::Call::submit {
                 proposal_origin: matching_origin,
                 ..
             }) | RuntimeCall::RankedPolls(pallet_referenda::Call::submit {
                 proposal_origin: matching_origin,
                 ..
             }) if RuntimeOrigin::from(*matching_origin.clone()).caller() == RuntimeOrigin::root().caller())
-            {
+            }) {
                 continue;
-            }
-
-            fn recursively_find_referenda_call(call: RuntimeCall) -> bool {
-                if let RuntimeCall::Utility(pallet_utility::Call::batch { calls }) = call {
-                    for call in calls {
-                        if recursively_find_referenda_call(call.clone())
-                            || matches!(
-                                call,
-                                RuntimeCall::Referenda(pallet_referenda::Call::submit { .. })
-                            )
-                        {
-                            return true;
-                        }
-                    }
-                }
-                return false;
             }
 
             // We disallow batches of referenda
             // See https://github.com/paritytech/srlabs_findings/issues/296
-            if recursively_find_referenda_call(extrinsic.clone()) {
+            if recursively_find_call(extrinsic.clone(), |call| {
+                matches!(
+                    call,
+                    RuntimeCall::Referenda(pallet_referenda::Call::submit { .. })
+                )
+            }) {
                 continue;
             }
 
             // We filter out contracts call that will take too long because of fuzzer instrumentation
-            if matches!(extrinsic.clone(), RuntimeCall::Contracts(pallet_contracts::Call::instantiate_with_code {
+            if recursively_find_call(extrinsic.clone(), |call| {
+                matches!(call, RuntimeCall::Contracts(pallet_contracts::Call::instantiate_with_code {
                 gas_limit: limit,
                 ..
             }) if limit.ref_time() > 10_000_000_000)
-            {
+            }) {
                 continue;
             }
 
             // We filter out a Society::bid call that will cause an overflow
             // See https://github.com/paritytech/srlabs_findings/issues/292
-            if matches!(
-                extrinsic.clone(),
-                RuntimeCall::Society(pallet_society::Call::bid { .. })
-                    | RuntimeCall::Society(pallet_society::Call::vouch { .. })
-            ) || matches!(extrinsic.clone(),
-                RuntimeCall::Lottery(pallet_lottery::Call::buy_ticket { call }) if matches!(*call,
-                    RuntimeCall::Society(..)))
-            {
+            if recursively_find_call(extrinsic.clone(), |call| {
+                matches!(
+                    call,
+                    RuntimeCall::Society(pallet_society::Call::bid { .. })
+                        | RuntimeCall::Society(pallet_society::Call::vouch { .. })
+                )
+            }) {
                 continue;
             }
 
@@ -434,9 +447,9 @@ fn main() {
         // After execution of all blocks.
         externalities.execute_with(|| {
             // We keep track of the total free balance of accounts
-            let mut total_free = 0;
-            let mut total_reserved = 0;
-            let mut _total_frozen = 0;
+            let mut total_free: Balance = 0;
+            let mut total_reserved: Balance = 0;
+            // let mut _total_frozen: Balance = 0;
             for acc in frame_system::Account::<Runtime>::iter() {
                 // Check that the consumer/provider state is valid.
                 let acc_consumers = acc.1.consumers;
@@ -444,10 +457,15 @@ fn main() {
                 if acc_consumers > 0 && acc_providers == 0 {
                     panic!("Invalid state");
                 }
+                #[cfg(not(fuzzing))]
+                {
+                    println!("   account: {:?}", acc);
+                    println!("      data: {:?}", acc.1.data);
+                }
                 // Increment our balance counts
                 total_free += acc.1.data.free;
                 total_reserved += acc.1.data.reserved;
-                _total_frozen += acc.1.data.frozen;
+                // _total_frozen += acc.1.data.frozen;
             }
             let total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
             let total_counted = total_free + total_reserved;
