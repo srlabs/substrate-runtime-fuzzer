@@ -74,9 +74,9 @@ fn main() {
     let genesis_storage: Storage = {
         use kitchensink_runtime::{
             AssetsConfig, AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, CouncilConfig,
-            DemocracyConfig, ElectionsConfig, GenesisConfig, GrandpaConfig, ImOnlineConfig,
-            IndicesConfig, NominationPoolsConfig, SessionConfig, SessionKeys, SocietyConfig,
-            StakingConfig, SudoConfig, TechnicalCommitteeConfig,
+            DemocracyConfig, ElectionsConfig, GenesisConfig, GluttonConfig, GrandpaConfig,
+            ImOnlineConfig, IndicesConfig, NominationPoolsConfig, SessionConfig, SessionKeys,
+            SocietyConfig, StakingConfig, SudoConfig, TechnicalCommitteeConfig,
         };
         use pallet_grandpa::AuthorityId as GrandpaId;
         use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
@@ -201,6 +201,11 @@ fn main() {
                 min_create_bond: 10 * DOLLARS,
                 min_join_bond: DOLLARS,
                 ..Default::default()
+            },
+            glutton: GluttonConfig {
+                compute: Default::default(),
+                storage: Default::default(),
+                trash_data_count: Default::default(),
             },
         }
         .build_storage()
