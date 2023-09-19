@@ -5,9 +5,6 @@ use frame_support::{
     traits::{IntegrityTest, TryState, TryStateSelect},
     weights::constants::WEIGHT_REF_TIME_PER_SECOND,
 };
-use kusama_runtime::{
-    AllPalletsWithSystem, Executive, Runtime, RuntimeCall, RuntimeOrigin, UncheckedExtrinsic,
-};
 use kusama_runtime_constants::{currency::UNITS, time::SLOT_DURATION};
 use polkadot_primitives::{AccountId, Balance, BlockNumber};
 use sp_consensus_babe::{
@@ -17,6 +14,9 @@ use sp_consensus_babe::{
 use sp_runtime::{
     traits::{Dispatchable, Header},
     Digest, DigestItem, Storage,
+};
+use staging_kusama_runtime::{
+    AllPalletsWithSystem, Executive, Runtime, RuntimeCall, RuntimeOrigin, UncheckedExtrinsic,
 };
 use std::time::{Duration, Instant};
 
@@ -76,12 +76,14 @@ use pallet_staking::StakerStatus;
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use sp_consensus_babe::AuthorityId as BabeId;
 use sp_runtime::{app_crypto::ByteArray, BuildStorage, Perbill};
+type BeefyId = sp_consensus_beefy::ecdsa_crypto::AuthorityId;
 
 struct Authority {
     account: AccountId,
     _nominator: AccountId,
     grandpa: GrandpaId,
     babe: BabeId,
+    beefy: BeefyId,
     im_online: ImOnlineId,
     validator: ValidatorId,
     assignment: AssignmentId,
@@ -92,13 +94,14 @@ fn main() {
     let endowed_accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
 
     let genesis_storage: Storage = {
-        use kusama_runtime as kusama;
+        use staging_kusama_runtime as kusama;
 
         let initial_authorities: Vec<Authority> = vec![Authority {
             account: [0; 32].into(),
             _nominator: [0; 32].into(),
             grandpa: GrandpaId::from_slice(&[0; 32]).unwrap(),
             babe: BabeId::from_slice(&[0; 32]).unwrap(),
+            beefy: sp_application_crypto::ecdsa::Public::from_raw([0u8; 33]).into(),
             im_online: ImOnlineId::from_slice(&[0; 32]).unwrap(),
             validator: ValidatorId::from_slice(&[0; 32]).unwrap(),
             assignment: AssignmentId::from_slice(&[0; 32]).unwrap(),
@@ -117,7 +120,7 @@ fn main() {
         const ENDOWMENT: Balance = 10_000_000 * UNITS;
         const STASH: Balance = ENDOWMENT / 1000;
 
-        kusama::GenesisConfig {
+        kusama::RuntimeGenesisConfig {
             system: Default::default(),
             balances: kusama::BalancesConfig {
                 // Configure endowed accounts with initial balance of 1 << 60.
@@ -138,6 +141,7 @@ fn main() {
                             kusama::SessionKeys {
                                 grandpa: x.grandpa.clone(),
                                 babe: x.babe.clone(),
+                                beefy: x.beefy.clone(),
                                 im_online: x.im_online.clone(),
                                 para_validator: x.validator.clone(),
                                 para_assignment: x.assignment.clone(),
@@ -147,6 +151,7 @@ fn main() {
                     })
                     .collect::<Vec<_>>(),
             },
+            beefy: Default::default(),
             staking: kusama::StakingConfig {
                 validator_count: initial_authorities.len() as u32,
                 minimum_validator_count: initial_authorities.len() as u32,
@@ -158,10 +163,11 @@ fn main() {
             babe: kusama::BabeConfig {
                 authorities: Default::default(),
                 epoch_config: Some(kusama::BABE_GENESIS_EPOCH_CONFIG),
+                ..Default::default()
             },
             grandpa: Default::default(),
             im_online: Default::default(),
-            authority_discovery: kusama::AuthorityDiscoveryConfig { keys: vec![] },
+            authority_discovery: Default::default(),
             claims: kusama::ClaimsConfig {
                 claims: vec![],
                 vesting: vec![],
@@ -323,9 +329,9 @@ fn main() {
             if let RuntimeCall::XcmPallet(pallet_xcm::Call::execute { message, .. }) =
                 extrinsic.clone()
             {
-                if let xcm::VersionedXcm::V2(xcm::v2::Xcm(msg)) = *message {
+                if let staging_xcm::VersionedXcm::V2(staging_xcm::v2::Xcm(msg)) = *message {
                     for m in msg {
-                        if matches!(m, xcm::opaque::v2::prelude::BuyExecution { fees: xcm::v2::MultiAsset { fun, .. }, .. } if fun == xcm::v2::Fungibility::Fungible(0))
+                        if matches!(m, staging_xcm::opaque::v2::prelude::BuyExecution { fees: staging_xcm::v2::MultiAsset { fun, .. }, .. } if fun == staging_xcm::v2::Fungibility::Fungible(0))
                         {
                             continue 'extrinsics_loop;
                         }

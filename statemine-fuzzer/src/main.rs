@@ -1,3 +1,6 @@
+use asset_hub_kusama_runtime::{
+    AllPalletsWithSystem, Executive, Runtime, RuntimeCall, RuntimeOrigin, UncheckedExtrinsic,
+};
 use codec::{DecodeLimit, Encode};
 use frame_support::{
     dispatch::GetDispatchInfo,
@@ -10,9 +13,6 @@ use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_runtime::{
     traits::{Dispatchable, Header},
     Digest, DigestItem, Storage,
-};
-use statemine_runtime::{
-    AllPalletsWithSystem, Executive, Runtime, RuntimeCall, RuntimeOrigin, UncheckedExtrinsic,
 };
 use std::time::{Duration, Instant};
 
@@ -69,17 +69,18 @@ fn main() {
     let endowed_accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
 
     let genesis_storage: Storage = {
+        use asset_hub_kusama_runtime::{
+            BalancesConfig, CollatorSelectionConfig, RuntimeGenesisConfig, SessionConfig,
+            SessionKeys,
+        };
         use sp_consensus_aura::sr25519::AuthorityId as AuraId;
         use sp_runtime::app_crypto::ByteArray;
         use sp_runtime::BuildStorage;
-        use statemine_runtime::{
-            BalancesConfig, CollatorSelectionConfig, GenesisConfig, SessionConfig, SessionKeys,
-        };
 
         let initial_authorities: Vec<(AccountId, AuraId)> =
             vec![([0; 32].into(), AuraId::from_slice(&[0; 32]).unwrap())];
 
-        GenesisConfig {
+        RuntimeGenesisConfig {
             system: Default::default(),
             balances: BalancesConfig {
                 // Configure endowed accounts with initial balance of 1 << 60.
@@ -168,13 +169,15 @@ fn main() {
                 },
             };
 
-            Executive::initialize_block(&Header::new(
+            let parent_header = &Header::new(
                 block,
                 Default::default(),
                 Default::default(),
+                // <frame_system::Pallet<Runtime>>::parent_hash(),
                 Default::default(),
                 pre_digest,
-            ));
+            );
+            Executive::initialize_block(parent_header);
 
             #[cfg(not(fuzzing))]
             println!("  setting timestamp");
@@ -187,17 +190,49 @@ fn main() {
             .unwrap()
             .unwrap();
 
+            #[cfg(not(fuzzing))]
+            println!("  setting validation data");
             let parachain_validation_data = {
+                use cumulus_primitives_core::relay_chain::HeadData;
+                use cumulus_primitives_core::PersistedValidationData;
+                use cumulus_primitives_parachain_inherent::ParachainInherentData;
                 use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 
-                let (relay_storage_root, proof) =
-                    RelayStateSproofBuilder::default().into_state_root_and_proof();
+                let parent_head = HeadData(parent_header.encode());
+                let sproof_builder = RelayStateSproofBuilder {
+                    para_id: 100.into(),
+                    current_slot: Slot::from(2 * current_timestamp / SLOT_DURATION),
+                    included_para_head: Some(parent_head.clone()),
+                    ..Default::default()
+                };
+                let (relay_parent_storage_root, relay_chain_state) =
+                    sproof_builder.into_state_root_and_proof();
+                let data = ParachainInherentData {
+                    validation_data: PersistedValidationData {
+                        parent_head,
+                        relay_parent_number: block,
+                        relay_parent_storage_root,
+                        max_pov_size: 10000,
+                    },
+                    relay_chain_state,
+                    downward_messages: Default::default(),
+                    horizontal_messages: Default::default(),
+                };
+                cumulus_pallet_parachain_system::Call::set_validation_data { data }
+
+                /*
+                use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
+                use cumulus_primitives_core::relay_chain::HeadData;
+
+                let mut sproof_builder = RelayStateSproofBuilder::default();
+                sproof_builder.included_para_head = Some(HeadData(parent_head.encode()));
+                let (relay_storage_root, proof) = sproof_builder.into_state_root_and_proof();
 
                 cumulus_pallet_parachain_system::Call::set_validation_data {
                     data: cumulus_primitives_parachain_inherent::ParachainInherentData {
                         validation_data: cumulus_primitives_core::PersistedValidationData {
                             parent_head: Default::default(),
-                            relay_parent_number: block,
+                            relay_parent_number: 1,
                             relay_parent_storage_root: relay_storage_root,
                             max_pov_size: Default::default(),
                         },
@@ -205,7 +240,7 @@ fn main() {
                         downward_messages: Default::default(),
                         horizontal_messages: Default::default(),
                     },
-                }
+                }*/
             };
 
             Executive::apply_extrinsic(UncheckedExtrinsic::new_unsigned(
