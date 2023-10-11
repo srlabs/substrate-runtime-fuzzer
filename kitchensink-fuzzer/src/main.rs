@@ -10,6 +10,7 @@ use kitchensink_runtime::{
     AccountId, AllPalletsWithSystem, Executive, Runtime, RuntimeCall, RuntimeOrigin,
     UncheckedExtrinsic,
 };
+use node_primitives::BlockNumber;
 use sp_consensus_babe::{
     digests::{PreDigest, SecondaryPlainPreDigest},
     Slot, BABE_ENGINE_ID,
@@ -22,7 +23,6 @@ use std::time::{Duration, Instant};
 
 /// Types from the fuzzed runtime.
 type Balance = <Runtime as pallet_balances::Config>::Balance;
-type BlockNumber = <Runtime as frame_system::Config>::BlockNumber;
 type Externalities = sp_state_machine::TestExternalities<sp_core::Blake2Hasher>;
 
 // The initial timestamp at the start of an input run.
@@ -73,10 +73,10 @@ fn main() {
 
     let genesis_storage: Storage = {
         use kitchensink_runtime::{
-            AssetsConfig, AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, CouncilConfig,
-            DemocracyConfig, ElectionsConfig, GenesisConfig, GluttonConfig, GrandpaConfig,
-            ImOnlineConfig, IndicesConfig, NominationPoolsConfig, SessionConfig, SessionKeys,
-            SocietyConfig, StakingConfig, SudoConfig, TechnicalCommitteeConfig,
+            AssetsConfig, BabeConfig, BalancesConfig, CouncilConfig, DemocracyConfig,
+            ElectionsConfig, GluttonConfig, GrandpaConfig, ImOnlineConfig, IndicesConfig,
+            NominationPoolsConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys, SocietyConfig,
+            StakingConfig, SudoConfig, TechnicalCommitteeConfig,
         };
         use pallet_grandpa::AuthorityId as GrandpaId;
         use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
@@ -113,7 +113,7 @@ fn main() {
         const ENDOWMENT: Balance = 10_000_000 * DOLLARS;
         const STASH: Balance = ENDOWMENT / 1000;
 
-        GenesisConfig {
+        RuntimeGenesisConfig {
             system: Default::default(),
             balances: BalancesConfig {
                 balances: endowed_accounts
@@ -170,23 +170,17 @@ fn main() {
             babe: BabeConfig {
                 authorities: vec![],
                 epoch_config: Some(kitchensink_runtime::BABE_GENESIS_EPOCH_CONFIG),
+                ..Default::default()
             },
             im_online: ImOnlineConfig { keys: vec![] },
-            authority_discovery: AuthorityDiscoveryConfig { keys: vec![] },
+            authority_discovery: Default::default(),
             grandpa: GrandpaConfig {
                 authorities: vec![],
+                ..Default::default()
             },
             technical_membership: Default::default(),
             treasury: Default::default(),
-            society: SocietyConfig {
-                members: endowed_accounts
-                    .iter()
-                    .take((num_endowed_accounts + 1) / 2)
-                    .cloned()
-                    .collect(),
-                pot: 0,
-                max_members: 999,
-            },
+            society: SocietyConfig { pot: 0 },
             vesting: Default::default(),
             assets: AssetsConfig {
                 // This asset is used by the NIS pallet as counterpart currency.
@@ -206,7 +200,11 @@ fn main() {
                 compute: Default::default(),
                 storage: Default::default(),
                 trash_data_count: Default::default(),
+                ..Default::default()
             },
+            pool_assets: Default::default(),
+            safe_mode: Default::default(),
+            tx_pause: Default::default(),
         }
         .build_storage()
         .unwrap()
@@ -315,6 +313,7 @@ fn main() {
                 matches_on: fn(RuntimeCall) -> bool,
             ) -> bool {
                 if let RuntimeCall::Utility(pallet_utility::Call::batch { calls })
+                | RuntimeCall::Utility(pallet_utility::Call::force_batch { calls })
                 | RuntimeCall::Utility(pallet_utility::Call::batch_all { calls }) = call
                 {
                     for call in calls {
@@ -322,13 +321,21 @@ fn main() {
                             return true;
                         }
                     }
-                } else if let RuntimeCall::Lottery(pallet_lottery::Call::buy_ticket { call }) = call
+                } else if let RuntimeCall::Lottery(pallet_lottery::Call::buy_ticket { call })
+                | RuntimeCall::Multisig(pallet_multisig::Call::as_multi_threshold_1 {
+                    call,
+                    ..
+                })
+                | RuntimeCall::Utility(pallet_utility::Call::as_derivative {
+                    call,
+                    ..
+                }) = call
                 {
                     return recursively_find_call(*call.clone(), matches_on);
                 } else if matches_on(call) {
                     return true;
                 }
-                return false;
+                false
             }
 
             // We disallow referenda calls with root origin
@@ -360,10 +367,26 @@ fn main() {
 
             // We filter out contracts call that will take too long because of fuzzer instrumentation
             if recursively_find_call(extrinsic.clone(), |call| {
-                matches!(call, RuntimeCall::Contracts(pallet_contracts::Call::instantiate_with_code {
-                gas_limit: limit,
-                ..
-            }) if limit.ref_time() > 10_000_000_000)
+                matches!(
+                    call,
+                    RuntimeCall::Contracts(pallet_contracts::Call::instantiate_with_code {
+                        gas_limit: _limit,
+                        ..
+                    })
+                )
+                // }) if limit.ref_time() > 10_000_000_000)
+            }) {
+                continue;
+            }
+
+            // We filter out contracts call that will take too long because of fuzzer instrumentation
+            if recursively_find_call(extrinsic.clone(), |call| {
+                matches!(
+                    call,
+                    RuntimeCall::Contracts(
+                        pallet_contracts::Call::instantiate_with_code_old_weight { .. }
+                    )
+                )
             }) {
                 continue;
             }
@@ -376,6 +399,13 @@ fn main() {
                     RuntimeCall::Society(pallet_society::Call::bid { .. })
                         | RuntimeCall::Society(pallet_society::Call::vouch { .. })
                 )
+            }) {
+                continue;
+            }
+
+            // We filter out safe_mode calls, as they block timestamps from being set.
+            if recursively_find_call(extrinsic.clone(), |call| {
+                matches!(call, RuntimeCall::SafeMode(..))
             }) {
                 continue;
             }

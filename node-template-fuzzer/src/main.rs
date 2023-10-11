@@ -80,7 +80,7 @@ fn main() {
 
     let genesis_storage: Storage = {
         use node_template_runtime::{
-            AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig, SudoConfig,
+            AuraConfig, BalancesConfig, GrandpaConfig, RuntimeGenesisConfig, SudoConfig,
         };
         use pallet_grandpa::AuthorityId as GrandpaId;
         use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -92,7 +92,7 @@ fn main() {
             GrandpaId::from_slice(&[0; 32]).unwrap(),
         )];
 
-        GenesisConfig {
+        RuntimeGenesisConfig {
             system: Default::default(),
             balances: BalancesConfig {
                 // Configure endowed accounts with initial balance of 1 << 60.
@@ -110,6 +110,7 @@ fn main() {
                     .iter()
                     .map(|x| (x.1.clone(), 1))
                     .collect(),
+                ..Default::default()
             },
             sudo: SudoConfig {
                 // Assign no network admin rights.
