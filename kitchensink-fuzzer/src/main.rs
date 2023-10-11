@@ -411,6 +411,17 @@ fn main() {
                 continue;
             }
 
+            // We filter out store extrinsics because BasicExternalities does not support them.
+            if recursively_find_call(extrinsic.clone(), |call| {
+                matches!(
+                    call,
+                    RuntimeCall::TransactionStorage(pallet_transaction_storage::Call::store { .. })
+                        | RuntimeCall::Remark(pallet_remark::Call::store { .. })
+                )
+            }) {
+                continue;
+            }
+
             // If the lapse is in the range [0, MAX_BLOCK_LAPSE] we finalize the block and initialize
             // a new one.
             if lapse > 0 && lapse < MAX_BLOCK_LAPSE {
