@@ -313,6 +313,7 @@ fn main() {
                 matches_on: fn(RuntimeCall) -> bool,
             ) -> bool {
                 if let RuntimeCall::Utility(pallet_utility::Call::batch { calls })
+                | RuntimeCall::Utility(pallet_utility::Call::force_batch { calls })
                 | RuntimeCall::Utility(pallet_utility::Call::batch_all { calls }) = call
                 {
                     for call in calls {
@@ -320,7 +321,15 @@ fn main() {
                             return true;
                         }
                     }
-                } else if let RuntimeCall::Lottery(pallet_lottery::Call::buy_ticket { call }) = call
+                } else if let RuntimeCall::Lottery(pallet_lottery::Call::buy_ticket { call })
+                | RuntimeCall::Multisig(pallet_multisig::Call::as_multi_threshold_1 {
+                    call,
+                    ..
+                })
+                | RuntimeCall::Utility(pallet_utility::Call::as_derivative {
+                    call,
+                    ..
+                }) = call
                 {
                     return recursively_find_call(*call.clone(), matches_on);
                 } else if matches_on(call) {
