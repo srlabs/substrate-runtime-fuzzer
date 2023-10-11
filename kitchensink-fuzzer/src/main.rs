@@ -23,7 +23,8 @@ use std::time::{Duration, Instant};
 
 /// Types from the fuzzed runtime.
 type Balance = <Runtime as pallet_balances::Config>::Balance;
-type Externalities = sp_state_machine::TestExternalities<sp_core::Blake2Hasher>;
+// We use a simple Map-based Externalities implementation
+type Externalities = sp_state_machine::BasicExternalities;
 
 // The initial timestamp at the start of an input run.
 const INITIAL_TIMESTAMP: u64 = 0;
@@ -406,6 +407,17 @@ fn main() {
             // We filter out safe_mode calls, as they block timestamps from being set.
             if recursively_find_call(extrinsic.clone(), |call| {
                 matches!(call, RuntimeCall::SafeMode(..))
+            }) {
+                continue;
+            }
+
+            // We filter out store extrinsics because BasicExternalities does not support them.
+            if recursively_find_call(extrinsic.clone(), |call| {
+                matches!(
+                    call,
+                    RuntimeCall::TransactionStorage(pallet_transaction_storage::Call::store { .. })
+                        | RuntimeCall::Remark(pallet_remark::Call::store { .. })
+                )
             }) {
                 continue;
             }
