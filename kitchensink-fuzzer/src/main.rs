@@ -2,7 +2,7 @@ use codec::{DecodeLimit, Encode};
 use frame_support::{
     dispatch::GetDispatchInfo,
     pallet_prelude::Weight,
-    traits::{IntegrityTest, TryState, TryStateSelect},
+    traits::{IntegrityTest, OriginTrait, TryState, TryStateSelect},
     weights::constants::WEIGHT_REF_TIME_PER_SECOND,
 };
 use kitchensink_runtime::{
@@ -67,6 +67,29 @@ impl<'a> Iterator for Data<'a> {
         self.size += 1;
         res
     }
+}
+
+fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool) -> bool {
+    if let RuntimeCall::Utility(pallet_utility::Call::batch { calls })
+    | RuntimeCall::Utility(pallet_utility::Call::force_batch { calls })
+    | RuntimeCall::Utility(pallet_utility::Call::batch_all { calls }) = call
+    {
+        for call in calls {
+            if recursively_find_call(call.clone(), matches_on) {
+                return true;
+            }
+        }
+    } else if let RuntimeCall::Lottery(pallet_lottery::Call::buy_ticket { call })
+    | RuntimeCall::Multisig(pallet_multisig::Call::as_multi_threshold_1 {
+        call, ..
+    })
+    | RuntimeCall::Utility(pallet_utility::Call::as_derivative { call, .. }) = call
+    {
+        return recursively_find_call(*call.clone(), matches_on);
+    } else if matches_on(call) {
+        return true;
+    }
+    false
 }
 
 fn main() {
@@ -309,116 +332,58 @@ fn main() {
         externalities.execute_with(|| start_block(current_block, current_timestamp));
 
         for (lapse, origin, extrinsic) in extrinsics {
-            fn recursively_find_call(
-                call: RuntimeCall,
-                matches_on: fn(RuntimeCall) -> bool,
-            ) -> bool {
-                if let RuntimeCall::Utility(pallet_utility::Call::batch { calls })
-                | RuntimeCall::Utility(pallet_utility::Call::force_batch { calls })
-                | RuntimeCall::Utility(pallet_utility::Call::batch_all { calls }) = call
-                {
-                    for call in calls {
-                        if recursively_find_call(call.clone(), matches_on) {
-                            return true;
-                        }
-                    }
-                } else if let RuntimeCall::Lottery(pallet_lottery::Call::buy_ticket { call })
-                | RuntimeCall::Multisig(pallet_multisig::Call::as_multi_threshold_1 {
-                    call,
-                    ..
-                })
-                | RuntimeCall::Utility(pallet_utility::Call::as_derivative {
-                    call,
-                    ..
-                }) = call
-                {
-                    return recursively_find_call(*call.clone(), matches_on);
-                } else if matches_on(call) {
-                    return true;
-                }
-                false
-            }
-
-            // We disallow referenda calls with root origin
-            use frame_support::traits::OriginTrait;
             if recursively_find_call(extrinsic.clone(), |call| {
+                // We disallow referenda calls with root origin
                 matches!(
-                    call,
+                    &call,
                     RuntimeCall::Referenda(pallet_referenda::Call::submit {
-                proposal_origin: matching_origin,
-                ..
-            }) | RuntimeCall::RankedPolls(pallet_referenda::Call::submit {
-                proposal_origin: matching_origin,
-                ..
-            }) if RuntimeOrigin::from(*matching_origin.clone()).caller() == RuntimeOrigin::root().caller())
-            }) {
-                continue;
-            }
-
-            // We disallow batches of referenda
-            // See https://github.com/paritytech/srlabs_findings/issues/296
-            if recursively_find_call(extrinsic.clone(), |call| {
-                matches!(
-                    call,
-                    RuntimeCall::Referenda(pallet_referenda::Call::submit { .. })
-                )
-            }) {
-                continue;
-            }
-
-            // We filter out contracts call that will take too long because of fuzzer instrumentation
-            if recursively_find_call(extrinsic.clone(), |call| {
-                matches!(
-                    call,
-                    RuntimeCall::Contracts(pallet_contracts::Call::instantiate_with_code {
-                        gas_limit: _limit,
+                        proposal_origin: matching_origin,
                         ..
-                    })
+                    }) | RuntimeCall::RankedPolls(pallet_referenda::Call::submit {
+                        proposal_origin: matching_origin,
+                        ..
+                    }) if RuntimeOrigin::from(*matching_origin.clone()).caller() == RuntimeOrigin::root().caller()
                 )
-                // }) if limit.ref_time() > 10_000_000_000)
-            }) {
-                continue;
-            }
-
-            // We filter out contracts call that will take too long because of fuzzer instrumentation
-            if recursively_find_call(extrinsic.clone(), |call| {
-                matches!(
-                    call,
-                    RuntimeCall::Contracts(
-                        pallet_contracts::Call::instantiate_with_code_old_weight { .. }
+                // We disallow batches of referenda
+                // See https://github.com/paritytech/srlabs_findings/issues/296
+                || matches!(
+                        &call,
+                        RuntimeCall::Referenda(pallet_referenda::Call::submit { .. })
                     )
-                )
+                // We filter out contracts call that will take too long because of fuzzer instrumentation
+                || matches!(
+                        &call,
+                        RuntimeCall::Contracts(pallet_contracts::Call::instantiate_with_code {
+                            gas_limit: _limit,
+                            ..
+                        })
+                        // }) if limit.ref_time() > 10_000_000_000)
+                    )
+                // We filter out contracts call that will take too long because of fuzzer instrumentation
+                || matches!(
+                        &call,
+                        RuntimeCall::Contracts(
+                            pallet_contracts::Call::instantiate_with_code_old_weight { .. }
+                        )
+                    )
+                // We filter out a Society::bid call that will cause an overflow
+                // See https://github.com/paritytech/srlabs_findings/issues/292
+                || matches!(
+                        &call,
+                        RuntimeCall::Society(pallet_society::Call::bid { .. })
+                            | RuntimeCall::Society(pallet_society::Call::vouch { .. })
+                    )
+                // We filter out safe_mode calls, as they block timestamps from being set.
+                || matches!(&call, RuntimeCall::SafeMode(..))
+                // We filter out store extrinsics because BasicExternalities does not support them.
+                || matches!(
+                        &call,
+                        RuntimeCall::TransactionStorage(pallet_transaction_storage::Call::store { .. })
+                            | RuntimeCall::Remark(pallet_remark::Call::store { .. })
+                    )
             }) {
-                continue;
-            }
-
-            // We filter out a Society::bid call that will cause an overflow
-            // See https://github.com/paritytech/srlabs_findings/issues/292
-            if recursively_find_call(extrinsic.clone(), |call| {
-                matches!(
-                    call,
-                    RuntimeCall::Society(pallet_society::Call::bid { .. })
-                        | RuntimeCall::Society(pallet_society::Call::vouch { .. })
-                )
-            }) {
-                continue;
-            }
-
-            // We filter out safe_mode calls, as they block timestamps from being set.
-            if recursively_find_call(extrinsic.clone(), |call| {
-                matches!(call, RuntimeCall::SafeMode(..))
-            }) {
-                continue;
-            }
-
-            // We filter out store extrinsics because BasicExternalities does not support them.
-            if recursively_find_call(extrinsic.clone(), |call| {
-                matches!(
-                    call,
-                    RuntimeCall::TransactionStorage(pallet_transaction_storage::Call::store { .. })
-                        | RuntimeCall::Remark(pallet_remark::Call::store { .. })
-                )
-            }) {
+                #[cfg(not(fuzzing))]
+                println!("    Skipping because of custom filter");
                 continue;
             }
 
