@@ -16,10 +16,8 @@ use sp_runtime::{
 };
 use std::time::{Duration, Instant};
 
-// type RuntimeHelper = parachains_runtimes_test_utils::RuntimeHelper<Runtime, AllPalletsWithoutSystem>;
-
-/// Types from the fuzzed runtime.
-type Externalities = sp_state_machine::TestExternalities<sp_core::Blake2Hasher>;
+// We use a simple Map-based Externalities implementation
+type Externalities = sp_state_machine::BasicExternalities;
 
 // The initial timestamp at the start of an input run.
 const INITIAL_TIMESTAMP: u64 = 0;

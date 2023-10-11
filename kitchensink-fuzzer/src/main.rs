@@ -23,7 +23,8 @@ use std::time::{Duration, Instant};
 
 /// Types from the fuzzed runtime.
 type Balance = <Runtime as pallet_balances::Config>::Balance;
-type Externalities = sp_state_machine::TestExternalities<sp_core::Blake2Hasher>;
+// We use a simple Map-based Externalities implementation
+type Externalities = sp_state_machine::BasicExternalities;
 
 // The initial timestamp at the start of an input run.
 const INITIAL_TIMESTAMP: u64 = 0;
