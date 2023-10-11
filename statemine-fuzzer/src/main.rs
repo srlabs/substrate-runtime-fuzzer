@@ -32,7 +32,8 @@ const MAX_TIME_FOR_BLOCK: u64 = 6;
 
 // We do not skip more than DEFAULT_STORAGE_PERIOD to avoid pallet_transaction_storage from
 // panicking on finalize.
-const MAX_BLOCK_LAPSE: u32 = sp_transaction_storage_proof::DEFAULT_STORAGE_PERIOD;
+// The 800 is to avoid timeouts.
+const MAX_BLOCK_LAPSE: u32 = sp_transaction_storage_proof::DEFAULT_STORAGE_PERIOD / 800;
 
 // Decode depth limit
 const MAX_DECODE_LIMIT: u32 = 52;
