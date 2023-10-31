@@ -165,8 +165,10 @@ fn main() {
                     .collect::<Vec<_>>(),
             },
             staking: StakingConfig {
-                validator_count: initial_authorities.len() as u32,
-                minimum_validator_count: initial_authorities.len() as u32,
+                validator_count: 0u32,
+                // validator_count: initial_authorities.len() as u32,
+                minimum_validator_count: 0u32,
+                // minimum_validator_count: initial_authorities.len() as u32,
                 invulnerables: vec![[0; 32].into()],
                 slash_reward_fraction: Perbill::from_percent(10),
                 stakers,
@@ -274,6 +276,11 @@ fn main() {
         let mut current_weight: Weight = Weight::zero();
         // let mut already_seen = 0; // This must be uncommented if you want to print events
         let mut elapsed: Duration = Duration::ZERO;
+        let mut initial_total_issuance = 0;
+
+        externalities.execute_with(|| {
+            initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get()
+        });
 
         let start_block = |block: u32, current_timestamp: u64| {
             #[cfg(not(fuzzing))]
@@ -331,6 +338,25 @@ fn main() {
 
         externalities.execute_with(|| start_block(current_block, current_timestamp));
 
+        /*
+        // WIP: found the society before each extrinsic
+        externalities.execute_with(|| {
+            RuntimeCall::Sudo(pallet_sudo::Call::sudo {
+                call: RuntimeCall::Society(pallet_society::Call::found_society {
+                    founder: AccountId::from([0; 32]).into(),
+                    max_members: 2,
+                    max_intake: 2,
+                    max_strikes: 2,
+                    candidate_deposit: 1_000,
+                    rules: vec![0],
+                })
+                .into(),
+            })
+            .dispatch(RuntimeOrigin::root())
+            .unwrap();
+        });
+        */
+
         for (lapse, origin, extrinsic) in extrinsics {
             if recursively_find_call(extrinsic.clone(), |call| {
                 // We disallow referenda calls with root origin
@@ -359,6 +385,15 @@ fn main() {
                         })
                         // }) if limit.ref_time() > 10_000_000_000)
                     )
+
+                // We filter out contracts call that will take too long because of fuzzer instrumentation
+                || matches!(
+                        &call,
+                        RuntimeCall::Contracts(pallet_contracts::Call::upload_code {
+                            ..
+                        })
+                    )
+
                 // We filter out contracts call that will take too long because of fuzzer instrumentation
                 || matches!(
                         &call,
@@ -484,6 +519,10 @@ fn main() {
 
             if total_issuance != total_counted {
                 panic!("Inconsistent total issuance: {total_issuance} but counted {total_counted}");
+            }
+
+            if total_issuance > initial_total_issuance {
+                panic!("Total issuance too high: {total_issuance} but initial was {initial_total_issuance}");
             }
 
             #[cfg(not(fuzzing))]
