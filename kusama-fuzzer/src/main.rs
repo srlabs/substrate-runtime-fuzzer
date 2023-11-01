@@ -180,7 +180,11 @@ fn main() {
             },
             paras: Default::default(),
             xcm_pallet: Default::default(),
-            nomination_pools: Default::default(),
+            nomination_pools: kusama::NominationPoolsConfig {
+                min_create_bond: 1 << 43,
+                min_join_bond: 1 << 42,
+                ..Default::default()
+            },
             nis_counterpart_balances: Default::default(),
         }
         .build_storage()
@@ -229,6 +233,11 @@ fn main() {
         let mut current_timestamp: u64 = INITIAL_TIMESTAMP;
         let mut current_weight: Weight = Weight::zero();
         let mut elapsed: Duration = Duration::ZERO;
+
+        let mut initial_total_issuance = 0;
+        externalities.execute_with(|| {
+            initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
+        });
 
         let start_block = |block: u32, current_timestamp: u64| {
             #[cfg(not(fuzzing))]
@@ -402,7 +411,7 @@ fn main() {
             // We keep track of the total free balance of accounts
             let mut counted_free = 0;
             let mut counted_reserved = 0;
-            let mut _counted_frozen = 0;
+            // let mut _counted_frozen = 0;
 
             for acc in frame_system::Account::<Runtime>::iter() {
                 // Check that the consumer/provider state is valid.
@@ -411,11 +420,12 @@ fn main() {
                 if acc_consumers > 0 && acc_providers == 0 {
                     panic!("Invalid state");
                 }
+                // println!("{:?}", acc);
 
                 // Increment our balance counts
                 counted_free += acc.1.data.free;
                 counted_reserved += acc.1.data.reserved;
-                _counted_frozen += acc.1.data.frozen;
+                // _counted_frozen += acc.1.data.frozen;
             }
             let total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
             let counted_issuance = counted_free + counted_reserved;
@@ -424,6 +434,11 @@ fn main() {
                     "Inconsistent total issuance: {total_issuance} but counted {counted_issuance}"
                 );
             }
+            if total_issuance > initial_total_issuance {
+                panic!(
+                    "Total issuance too high: {total_issuance} but initial was {initial_total_issuance}"
+                );
+            };
 
             #[cfg(not(fuzzing))]
             println!("\nrunning integrity tests\n");
