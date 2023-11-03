@@ -257,7 +257,7 @@ fn main() {
                 let origin: usize = u16::from_ne_bytes(data[4..6].try_into().unwrap()) as usize;
                 let mut encoded_extrinsic: &[u8] = &data[6..];
 
-                match DecodeLimit::decode_all_with_depth_limit(64, &mut encoded_extrinsic) {
+                match DecodeLimit::decode_with_depth_limit(64, &mut encoded_extrinsic) {
                     Ok(decoded_extrinsic) => Some((lapse, origin, decoded_extrinsic)),
                     Err(_) => None,
                 }

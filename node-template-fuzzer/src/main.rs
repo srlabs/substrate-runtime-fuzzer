@@ -164,7 +164,7 @@ fn main() {
                     return None;
                 }
 
-                match DecodeLimit::decode_all_with_depth_limit(64, &mut encoded_extrinsic) {
+                match DecodeLimit::decode_with_depth_limit(64, &mut encoded_extrinsic) {
                     Ok(decoded_extrinsic) => {
                         if maybe_lapse.is_some() {
                             block_count += 1;
