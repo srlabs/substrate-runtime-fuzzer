@@ -208,10 +208,8 @@ fn main() {
                 let origin: usize = u16::from_ne_bytes(data[4..6].try_into().unwrap()) as usize;
                 let mut encoded_extrinsic: &[u8] = &data[6..];
 
-                match DecodeLimit::decode_all_with_depth_limit(
-                    MAX_DECODE_LIMIT,
-                    &mut encoded_extrinsic,
-                ) {
+                match DecodeLimit::decode_with_depth_limit(MAX_DECODE_LIMIT, &mut encoded_extrinsic)
+                {
                     Ok(decoded_extrinsic) => Some((lapse, origin, decoded_extrinsic)),
                     Err(_) => None,
                 }
@@ -402,7 +400,6 @@ fn main() {
             // We keep track of the total free balance of accounts
             let mut counted_free = 0;
             let mut counted_reserved = 0;
-            let mut _counted_frozen = 0;
 
             for acc in frame_system::Account::<Runtime>::iter() {
                 // Check that the consumer/provider state is valid.
@@ -415,7 +412,6 @@ fn main() {
                 // Increment our balance counts
                 counted_free += acc.1.data.free;
                 counted_reserved += acc.1.data.reserved;
-                _counted_frozen += acc.1.data.frozen;
             }
             let total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
             let counted_issuance = counted_free + counted_reserved;

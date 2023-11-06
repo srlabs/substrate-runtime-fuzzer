@@ -164,7 +164,7 @@ fn main() {
                     return None;
                 }
 
-                match DecodeLimit::decode_all_with_depth_limit(64, &mut encoded_extrinsic) {
+                match DecodeLimit::decode_with_depth_limit(64, &mut encoded_extrinsic) {
                     Ok(decoded_extrinsic) => {
                         if maybe_lapse.is_some() {
                             block_count += 1;
@@ -263,6 +263,13 @@ fn main() {
 
                 // We start the next block
                 externalities.execute_with(|| start_block(current_block, current_timestamp));
+            }
+
+            if matches!(
+                extrinsic,
+                RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death { .. })
+            ) {
+                continue;
             }
 
             // We get the current time for timing purposes.
