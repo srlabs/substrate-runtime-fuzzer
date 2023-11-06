@@ -70,9 +70,11 @@ impl<'a> Iterator for Data<'a> {
 }
 
 fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool) -> bool {
-    if let RuntimeCall::Utility(pallet_utility::Call::batch { calls })
-    | RuntimeCall::Utility(pallet_utility::Call::force_batch { calls })
-    | RuntimeCall::Utility(pallet_utility::Call::batch_all { calls }) = call
+    if let RuntimeCall::Utility(
+        pallet_utility::Call::batch { calls }
+        | pallet_utility::Call::force_batch { calls }
+        | pallet_utility::Call::batch_all { calls },
+    ) = call
     {
         for call in calls {
             if recursively_find_call(call.clone(), matches_on) {
@@ -279,7 +281,7 @@ fn main() {
         let mut initial_total_issuance = 0;
 
         externalities.execute_with(|| {
-            initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get()
+            initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
         });
 
         let start_block = |block: u32, current_timestamp: u64| {
@@ -405,8 +407,8 @@ fn main() {
                 // See https://github.com/paritytech/srlabs_findings/issues/292
                 || matches!(
                         &call,
-                        RuntimeCall::Society(pallet_society::Call::bid { .. })
-                            | RuntimeCall::Society(pallet_society::Call::vouch { .. })
+                        RuntimeCall::Society(pallet_society::Call::bid { .. } |
+pallet_society::Call::vouch { .. })
                     )
                 // We filter out safe_mode calls, as they block timestamps from being set.
                 || matches!(&call, RuntimeCall::SafeMode(..))
@@ -430,7 +432,7 @@ fn main() {
 
                 // We update our state variables
                 current_block += lapse;
-                current_timestamp += lapse as u64 * SLOT_DURATION;
+                current_timestamp += u64::from(lapse) * SLOT_DURATION;
                 current_weight = Weight::zero();
                 elapsed = Duration::ZERO;
 
@@ -450,7 +452,7 @@ fn main() {
             current_weight = current_weight.saturating_add(call_weight);
             if current_weight.ref_time() >= max_weight.ref_time() {
                 #[cfg(not(fuzzing))]
-                println!("Skipping because of max weight {}", max_weight);
+                println!("Skipping because of max weight {max_weight}");
                 continue;
             }
 
@@ -458,14 +460,14 @@ fn main() {
                 let origin_account = endowed_accounts[origin % endowed_accounts.len()].clone();
                 #[cfg(not(fuzzing))]
                 {
-                    println!("\n    origin:     {:?}", origin_account);
-                    println!("    call:       {:?}", extrinsic);
+                    println!("\n    origin:     {origin_account:?}");
+                    println!("    call:       {extrinsic:?}");
                 }
                 let _res = extrinsic
                     .clone()
                     .dispatch(RuntimeOrigin::signed(origin_account));
                 #[cfg(not(fuzzing))]
-                println!("    result:     {:?}", _res);
+                println!("    result:     {_res:?}");
 
                 // Uncomment to print events for debugging purposes
                 /*
@@ -483,10 +485,11 @@ fn main() {
         }
 
         #[cfg(not(fuzzing))]
-        println!("\n  time spent: {:?}", elapsed);
-        if elapsed.as_secs() > MAX_TIME_FOR_BLOCK {
-            panic!("block execution took too much time")
-        }
+        println!("\n  time spent: {elapsed:?}");
+        assert!(
+            elapsed.as_secs() <= MAX_TIME_FOR_BLOCK,
+            "block execution took too much time"
+        );
 
         // We end the final block
         externalities.execute_with(|| end_block(current_block, current_timestamp));
@@ -501,12 +504,10 @@ fn main() {
                 // Check that the consumer/provider state is valid.
                 let acc_consumers = acc.1.consumers;
                 let acc_providers = acc.1.providers;
-                if acc_consumers > 0 && acc_providers == 0 {
-                    panic!("Invalid state");
-                }
+                assert!(!(acc_consumers > 0 && acc_providers == 0), "Invalid state");
                 #[cfg(not(fuzzing))]
                 {
-                    println!("   account: {:?}", acc);
+                    println!("   account: {acc:?}");
                     println!("      data: {:?}", acc.1.data);
                 }
                 // Increment our balance counts
@@ -517,13 +518,9 @@ fn main() {
             let total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
             let total_counted = total_free + total_reserved;
 
-            if total_issuance != total_counted {
-                panic!("Inconsistent total issuance: {total_issuance} but counted {total_counted}");
-            }
+            assert!(total_issuance == total_counted, "Inconsistent total issuance: {total_issuance} but counted {total_counted}");
 
-            if total_issuance > initial_total_issuance {
-                panic!("Total issuance too high: {total_issuance} but initial was {initial_total_issuance}");
-            }
+            assert!(total_issuance <= initial_total_issuance, "Total issuance too high: {total_issuance} but initial was {initial_total_issuance}");
 
             #[cfg(not(fuzzing))]
             println!("\nrunning integrity tests\n");

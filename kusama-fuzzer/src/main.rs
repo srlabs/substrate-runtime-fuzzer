@@ -345,7 +345,7 @@ fn main() {
 
                 // We update our state variables
                 current_block += lapse;
-                current_timestamp += lapse as u64 * SLOT_DURATION;
+                current_timestamp += u64::from(lapse) * SLOT_DURATION;
                 current_weight = Weight::zero();
                 elapsed = Duration::ZERO;
 
@@ -365,7 +365,7 @@ fn main() {
             current_weight = current_weight.saturating_add(call_weight);
             if current_weight.ref_time() >= max_weight.ref_time() {
                 #[cfg(not(fuzzing))]
-                println!("Skipping because of max weight {}", max_weight);
+                println!("Skipping because of max weight {max_weight}");
                 continue;
             }
 
@@ -373,24 +373,25 @@ fn main() {
                 let origin_account = endowed_accounts[origin % endowed_accounts.len()].clone();
                 #[cfg(not(fuzzing))]
                 {
-                    println!("\n    origin:     {:?}", origin_account);
-                    println!("    call:       {:?}", extrinsic);
+                    println!("\n    origin:     {origin_account:?}");
+                    println!("    call:       {extrinsic:?}");
                 }
                 let _res = extrinsic
                     .clone()
                     .dispatch(RuntimeOrigin::signed(origin_account));
                 #[cfg(not(fuzzing))]
-                println!("    result:     {:?}", _res);
+                println!("    result:     {_res:?}");
             });
 
             elapsed += now.elapsed();
         }
 
         #[cfg(not(fuzzing))]
-        println!("\n  time spent: {:?}", elapsed);
-        if elapsed.as_secs() > MAX_TIME_FOR_BLOCK {
-            panic!("block execution took too much time")
-        }
+        println!("\n  time spent: {elapsed:?}");
+        assert!(
+            elapsed.as_secs() <= MAX_TIME_FOR_BLOCK,
+            "block execution took too much time"
+        );
 
         // We end the final block
         externalities.execute_with(|| end_block(current_block, current_timestamp));
@@ -405,9 +406,7 @@ fn main() {
                 // Check that the consumer/provider state is valid.
                 let acc_consumers = acc.1.consumers;
                 let acc_providers = acc.1.providers;
-                if acc_consumers > 0 && acc_providers == 0 {
-                    panic!("Invalid state");
-                }
+                assert!(!(acc_consumers > 0 && acc_providers == 0), "Invalid state");
 
                 // Increment our balance counts
                 counted_free += acc.1.data.free;
@@ -415,11 +414,10 @@ fn main() {
             }
             let total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
             let counted_issuance = counted_free + counted_reserved;
-            if total_issuance != counted_issuance {
-                panic!(
-                    "Inconsistent total issuance: {total_issuance} but counted {counted_issuance}"
-                );
-            }
+            assert!(
+                total_issuance == counted_issuance,
+                "Inconsistent total issuance: {total_issuance} but counted {counted_issuance}"
+            );
 
             #[cfg(not(fuzzing))]
             println!("\nrunning integrity tests\n");
