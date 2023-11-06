@@ -180,7 +180,11 @@ fn main() {
             },
             paras: Default::default(),
             xcm_pallet: Default::default(),
-            nomination_pools: Default::default(),
+            nomination_pools: kusama::NominationPoolsConfig {
+                min_create_bond: 1 << 43,
+                min_join_bond: 1 << 42,
+                ..Default::default()
+            },
             nis_counterpart_balances: Default::default(),
         }
         .build_storage()
@@ -227,6 +231,11 @@ fn main() {
         let mut current_timestamp: u64 = INITIAL_TIMESTAMP;
         let mut current_weight: Weight = Weight::zero();
         let mut elapsed: Duration = Duration::ZERO;
+
+        let mut initial_total_issuance = 0;
+        externalities.execute_with(|| {
+            initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
+        });
 
         let start_block = |block: u32, current_timestamp: u64| {
             #[cfg(not(fuzzing))]
@@ -407,7 +416,6 @@ fn main() {
                 let acc_consumers = acc.1.consumers;
                 let acc_providers = acc.1.providers;
                 assert!(!(acc_consumers > 0 && acc_providers == 0), "Invalid state");
-
                 // Increment our balance counts
                 counted_free += acc.1.data.free;
                 counted_reserved += acc.1.data.reserved;

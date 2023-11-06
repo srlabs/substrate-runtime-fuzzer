@@ -319,7 +319,6 @@ fn main() {
             // We keep track of the sum of balance of accounts
             let mut counted_free = 0;
             let mut counted_reserved = 0;
-            let mut _counted_frozen = 0;
 
             for acc in frame_system::Account::<Runtime>::iter() {
                 // Check that the consumer/provider state is valid.
@@ -330,7 +329,6 @@ fn main() {
                 // Increment our balance counts
                 counted_free += acc.1.data.free;
                 counted_reserved += acc.1.data.reserved;
-                _counted_frozen += acc.1.data.frozen;
             }
 
             let total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
