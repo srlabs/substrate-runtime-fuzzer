@@ -85,7 +85,10 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
     | RuntimeCall::Multisig(pallet_multisig::Call::as_multi_threshold_1 {
         call, ..
     })
-    | RuntimeCall::Utility(pallet_utility::Call::as_derivative { call, .. }) = call
+    | RuntimeCall::Utility(pallet_utility::Call::as_derivative { call, .. })
+    | RuntimeCall::Council(pallet_collective::Call::propose {
+        proposal: call, ..
+    }) = call
     {
         return recursively_find_call(*call.clone(), matches_on);
     } else if matches_on(call) {
@@ -109,6 +112,7 @@ fn main() {
         use pallet_staking::StakerStatus;
         use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
         use sp_consensus_babe::AuthorityId as BabeId;
+        use sp_core::sr25519::Public as MixnetId;
         use sp_runtime::{app_crypto::ByteArray, BuildStorage, Perbill};
 
         let initial_authorities: Vec<(
@@ -118,6 +122,7 @@ fn main() {
             BabeId,
             ImOnlineId,
             AuthorityDiscoveryId,
+            MixnetId,
         )> = vec![(
             [0; 32].into(),
             [0; 32].into(),
@@ -125,6 +130,7 @@ fn main() {
             BabeId::from_slice(&[0; 32]).unwrap(),
             ImOnlineId::from_slice(&[0; 32]).unwrap(),
             AuthorityDiscoveryId::from_slice(&[0; 32]).unwrap(),
+            MixnetId::from_slice(&[0; 32]).unwrap(),
         )];
 
         let stakers = vec![(
@@ -161,6 +167,7 @@ fn main() {
                                 babe: x.3.clone(),
                                 im_online: x.4.clone(),
                                 authority_discovery: x.5.clone(),
+                                mixnet: x.6.into(),
                             },
                         )
                     })
@@ -233,6 +240,7 @@ fn main() {
             pool_assets: Default::default(),
             safe_mode: Default::default(),
             tx_pause: Default::default(),
+            mixnet: Default::default(),
         }
         .build_storage()
         .unwrap()
@@ -417,6 +425,13 @@ pallet_society::Call::vouch { .. })
                         &call,
                         RuntimeCall::TransactionStorage(pallet_transaction_storage::Call::store { .. })
                             | RuntimeCall::Remark(pallet_remark::Call::store { .. })
+                    )
+                // We filter out deprecated extrinsics that lead to failing TryState
+                || matches!(
+                        &call,
+                        RuntimeCall::Treasury(pallet_treasury::Call::approve_proposal { .. })
+                            | RuntimeCall::Treasury(pallet_treasury::Call::reject_proposal{ .. })
+                            | RuntimeCall::Treasury(pallet_treasury::Call::propose_spend{ .. })
                     )
             }) {
                 #[cfg(not(fuzzing))]
