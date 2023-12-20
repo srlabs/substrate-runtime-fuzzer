@@ -16,6 +16,8 @@ use sp_runtime::{
 };
 use std::time::{Duration, Instant};
 
+/// Types from the fuzzed runtime.
+type Balance = <Runtime as pallet_balances::Config>::Balance;
 // We use a simple Map-based Externalities implementation
 type Externalities = sp_state_machine::BasicExternalities;
 
@@ -342,7 +344,6 @@ fn main() {
             // We keep track of the sum of balance of accounts
             let mut counted_free = 0;
             let mut counted_reserved = 0;
-            let mut _counted_frozen = 0;
 
             for acc in frame_system::Account::<Runtime>::iter() {
                 // Check that the consumer/provider state is valid.
@@ -353,7 +354,15 @@ fn main() {
                 // Increment our balance counts
                 counted_free += acc.1.data.free;
                 counted_reserved += acc.1.data.reserved;
-                _counted_frozen += acc.1.data.frozen;
+                // Check that locks and holds are valid.
+                let max_lock: Balance = node_template_runtime::Balances::locks(&acc.0).iter().map(|l| l.amount).max().unwrap_or_default();
+                assert_eq!(max_lock, acc.1.data.frozen, "Max lock should be equal to frozen balance");
+                let sum_holds: Balance = pallet_balances::Holds::<Runtime>::get(&acc.0).iter().map(|l| l.amount).sum();
+                assert!(
+                    sum_holds <= acc.1.data.reserved,
+                    "Sum of all holds ({sum_holds}) should be less than or equal to reserved balance {}",
+                    acc.1.data.reserved
+                );
             }
 
             let total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
