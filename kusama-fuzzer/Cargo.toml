@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-ziggy = { version = "0.7", default-features = false }
+ziggy = { version = "0.8", default-features = false }
 
 staging-kusama-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.2.0", default-features = false }
 kusama-runtime-constants = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.2.0", default-features = false }

@@ -86,6 +86,7 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
         call, ..
     })
     | RuntimeCall::Utility(pallet_utility::Call::as_derivative { call, .. })
+    | RuntimeCall::Proxy(pallet_proxy::Call::proxy { call, .. })
     | RuntimeCall::Council(pallet_collective::Call::propose {
         proposal: call, ..
     }) = call
@@ -433,6 +434,10 @@ pallet_society::Call::vouch { .. })
                             | RuntimeCall::Treasury(pallet_treasury::Call::reject_proposal{ .. })
                             | RuntimeCall::Treasury(pallet_treasury::Call::propose_spend{ .. })
                     )
+                || matches!(
+                        &call,
+                        RuntimeCall::NominationPools(..)
+                )
             }) {
                 #[cfg(not(fuzzing))]
                 println!("    Skipping because of custom filter");
@@ -473,6 +478,17 @@ pallet_society::Call::vouch { .. })
 
             externalities.execute_with(|| {
                 let origin_account = endowed_accounts[origin % endowed_accounts.len()].clone();
+
+                // We do not continue if the origin account does not have a free balance
+                let acc = frame_system::Account::<Runtime>::get(&origin_account);
+                if acc.data.free == 0 {
+                    #[cfg(not(fuzzing))]
+                    println!(
+                        "\n    origin {origin_account:?} does not have free balance, skipping"
+                    );
+                    return;
+                }
+
                 #[cfg(not(fuzzing))]
                 {
                     println!("\n    origin:     {origin_account:?}");
@@ -514,7 +530,6 @@ pallet_society::Call::vouch { .. })
             // We keep track of the total free balance of accounts
             let mut total_free: Balance = 0;
             let mut total_reserved: Balance = 0;
-            // let mut _total_frozen: Balance = 0;
             for acc in frame_system::Account::<Runtime>::iter() {
                 // Check that the consumer/provider state is valid.
                 let acc_consumers = acc.1.consumers;
@@ -528,7 +543,15 @@ pallet_society::Call::vouch { .. })
                 // Increment our balance counts
                 total_free += acc.1.data.free;
                 total_reserved += acc.1.data.reserved;
-                // _total_frozen += acc.1.data.frozen;
+                // Check that locks and holds are valid.
+                let max_lock: Balance = kitchensink_runtime::Balances::locks(&acc.0).iter().map(|l| l.amount).max().unwrap_or_default();
+                assert_eq!(max_lock, acc.1.data.frozen, "Max lock should be equal to frozen balance");
+                let sum_holds: Balance = pallet_balances::Holds::<Runtime>::get(&acc.0).iter().map(|l| l.amount).sum();
+                assert!(
+                    sum_holds <= acc.1.data.reserved,
+                    "Sum of all holds ({sum_holds}) should be less than or equal to reserved balance {}",
+                    acc.1.data.reserved
+                );
             }
             let total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
             let total_counted = total_free + total_reserved;
