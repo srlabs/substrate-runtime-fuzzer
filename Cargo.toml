@@ -1,10 +1,10 @@
 [workspace]
 resolver = "2"
 members = [
-    "kitchensink-fuzzer",
+#    "kitchensink-fuzzer",
 #    "kusama-fuzzer",
-    "node-template-fuzzer",
-#    "statemine-fuzzer",
+#    "node-template-fuzzer",
+    "statemine-fuzzer",
 ]
 
 # The list of dependencies below (which can be both direct and indirect dependencies) are crates

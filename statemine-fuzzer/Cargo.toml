@@ -1,36 +1,35 @@
 [package]
-name = "statemine-fuzzer"
+name = "asset-hub-kusama-fuzzer"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 ziggy = { version = "0.8", default-features = false }
 
-asset-hub-kusama-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.5.0", default-features = false }
+asset-hub-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v1.1.0", default-features = false }
 
-parachains-common = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.5.0", default-features = false }
+parachains-common = { default-features = false , version = "4.0.0" }
 
-codec = { version = "3.6.5", features = ["derive", "max-encoded-len"], default-features = false, package = "parity-scale-codec" }
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"] }
 
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.5.0", default-features = false }
-frame-system = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.5.0", default-features = false }
-frame-try-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.5.0", default-features = false }
+frame-support = { default-features = false, version = "25.0.0" }
+frame-system = { default-features = false, version = "25.0.0" }
+frame-try-runtime = { default-features = false, optional = true, version = "0.31.0" }
 
-sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.5.0", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.5.0", default-features = false }
-sp-state-machine = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.5.0", default-features = false }
-sp-keyring = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.5.0", default-features = false }
-sp-consensus-aura = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.5.0", default-features = false }
-sp-transaction-storage-proof = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.5.0", default-features = false }
+sp-core = { default-features = false, version = "25.0.0" }
+sp-runtime = { default-features = false, version = "28.0.0" }
+sp-state-machine = { default-features = false, version = "0.32.0" }
+sp-keyring = { default-features = false, version = "28.0.0" }
+sp-consensus-aura = { default-features = false, version = "0.29.0" }
+sp-transaction-storage-proof = { default-features = false, version = "23.0.0" }
 
-pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.5.0", default-features = false }
-pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.5.0", default-features = false }
-pallet-grandpa = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.5.0", default-features = false }
+pallet-timestamp = { default-features = false, version = "24.0.0" }
+pallet-balances = { default-features = false, version = "25.0.0" }
 
-cumulus-primitives-core = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.5.0", default-features = false }
-cumulus-primitives-parachain-inherent = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.5.0", default-features = false }
-cumulus-pallet-parachain-system= { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.5.0", default-features = false }
-cumulus-test-relay-sproof-builder = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.5.0", default-features = false }
+cumulus-primitives-core = { default-features = false , version = "0.4.0" }
+cumulus-primitives-parachain-inherent = { default-features = false , version = "0.4.0" }
+cumulus-pallet-parachain-system = { default-features = false, features = ["parameterized-consensus-hook",] , version = "0.4.0" }
+cumulus-test-relay-sproof-builder = { default-features = false , version = "0.4.0" }
 
 [features]
 default = ["std", "try-runtime"]
@@ -41,7 +40,6 @@ std = [
 	"frame-support/std",
 	"frame-try-runtime/std",
 	"pallet-timestamp/std",
-	"pallet-grandpa/std",
 	"sp-state-machine/std",
 	"sp-consensus-aura/std",
 ]
