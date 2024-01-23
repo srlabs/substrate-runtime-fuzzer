@@ -1,6 +1,6 @@
 # Substrate Runtime Fuzzer
 
-`substrate-runtime-fuzzer` is a [substrate](https://github.com/paritytech/substrate) runtime fuzzing harness continuously developed at [SRLabs](https://srlabs.de) since 2020. 
+`substrate-runtime-fuzzer` is a [substrate](https://github.com/paritytech/polkadot-sdk/tree/master/substrate) runtime fuzzing harness continuously developed at [SRLabs](https://srlabs.de) since 2020. 
 
 It has been used as a part of our continuous audit process for [Parity](https://parity.io) as well as many parachains in the Polkadot and Kusama ecosystem.
 
@@ -8,7 +8,7 @@ As a part of the [Substrate Builders Program](https://substrate.io/ecosystem/sub
 
 ## How do I use it?
 
-Here are the steps to launch `substrate-runtime-fuzzer` against the [node template runtime](https://github.com/paritytech/substrate/tree/master/bin/node-template/runtime):
+Here are the steps to launch `substrate-runtime-fuzzer` against the [node template runtime](https://github.com/paritytech/polkadot-sdk/tree/master/substrate/bin/node-template):
 
 ```
 cargo install ziggy cargo-afl honggfuzz grcov
