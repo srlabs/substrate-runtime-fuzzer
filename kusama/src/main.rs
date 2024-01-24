@@ -32,12 +32,11 @@ const MAX_EXTRINSIC_COUNT: usize = 32;
 /// Max number of seconds a block should run for.
 const MAX_TIME_FOR_BLOCK: u64 = 6;
 
-// We do not skip more than DEFAULT_STORAGE_PERIOD to avoid pallet_transaction_storage from
-// panicking on finalize.
-const MAX_BLOCK_LAPSE: u32 = sp_transaction_storage_proof::DEFAULT_STORAGE_PERIOD;
-
 // Decode depth limit
 const MAX_DECODE_LIMIT: u32 = 52;
+
+// TODO Change lapse
+const MAX_BLOCK_LAPSE: u32 = 100_000;
 
 // Extrinsic delimiter: `********`
 const DELIMITER: [u8; 8] = [42; 8];
@@ -69,10 +68,10 @@ impl<'a> Iterator for Data<'a> {
     }
 }
 
-use cumulus_primitives_core::relay_chain::{AssignmentId, ValidatorId};
 use pallet_grandpa::AuthorityId as GrandpaId;
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 use pallet_staking::StakerStatus;
+use polkadot_primitives::{AssignmentId, ValidatorId};
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use sp_consensus_babe::AuthorityId as BabeId;
 use sp_runtime::{app_crypto::ByteArray, BuildStorage, Perbill};

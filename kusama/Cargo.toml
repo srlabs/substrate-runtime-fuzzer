@@ -1,0 +1,59 @@
+[package]
+name = "kusama-fuzzer"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+ziggy = { version = "0.8", default-features = false }
+
+staging-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v1.1.0", default-features = false }
+kusama-runtime-constants = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v1.1.0", default-features = false }
+polkadot-primitives = { version = "4.0.0", default-features = false }
+polkadot-runtime-parachains = { version = "4.0.0", default-features = false }
+
+codec = { version = "3.6.1", features = ["derive", "max-encoded-len"], default-features = false, package = "parity-scale-codec" }
+
+sp-application-crypto = { default-features = false , version = "27.0.0" }
+sp-runtime = { default-features = false , version = "28.0.0" }
+sp-state-machine = { default-features = false , version = "0.32.0" }
+sp-consensus-babe = { default-features = false , version = "0.29.0" }
+sp-consensus-beefy = { default-features = false , version = "10.0.0" }
+sp-authority-discovery = { default-features = false , version = "23.0.0" }
+
+staging-xcm = { default-features = false , version = "4.0.0" }
+
+pallet-balances = { default-features = false , version = "25.0.0" }
+pallet-grandpa = { default-features = false , version = "25.0.0" }
+pallet-im-online = { default-features = false , version = "24.0.0" }
+pallet-society = { default-features = false, version = "25.0.0" }
+frame-support = { default-features = false , version = "25.0.0" }
+pallet-staking = { default-features = false , version = "25.0.0" }
+frame-system = { default-features = false , version = "25.0.0" }
+pallet-timestamp = { default-features = false , version = "24.0.0" }
+pallet-xcm = { default-features = false , version = "4.0.0" }
+
+[features]
+default = ["std", "try-runtime"]
+std = [
+    "staging-kusama-runtime/std",
+	"codec/std",
+	"sp-runtime/std",
+	"sp-runtime/std",
+	"frame-support/std",
+	"frame-system/std",
+	"pallet-timestamp/std",
+	"pallet-grandpa/std",
+	"pallet-balances/std",
+	"pallet-im-online/std",
+	"pallet-staking/std",
+	"sp-state-machine/std",
+	"sp-consensus-babe/std",
+]
+try-runtime = [
+    "staging-kusama-runtime/try-runtime",
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+	"sp-runtime/try-runtime",
+	"pallet-timestamp/try-runtime",
+]

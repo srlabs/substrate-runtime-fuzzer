@@ -2,6 +2,7 @@
 name = "asset-hub-kusama-fuzzer"
 version = "0.1.0"
 edition = "2021"
+publish = false
 
 [dependencies]
 ziggy = { version = "0.8", default-features = false }
@@ -14,12 +15,9 @@ codec = { package = "parity-scale-codec", version = "3.0.0", default-features = 
 
 frame-support = { default-features = false, version = "25.0.0" }
 frame-system = { default-features = false, version = "25.0.0" }
-frame-try-runtime = { default-features = false, optional = true, version = "0.31.0" }
 
-sp-core = { default-features = false, version = "25.0.0" }
 sp-runtime = { default-features = false, version = "28.0.0" }
 sp-state-machine = { default-features = false, version = "0.32.0" }
-sp-keyring = { default-features = false, version = "28.0.0" }
 sp-consensus-aura = { default-features = false, version = "0.29.0" }
 sp-transaction-storage-proof = { default-features = false, version = "23.0.0" }
 
@@ -38,7 +36,6 @@ std = [
 	"codec/std",
 	"sp-runtime/std",
 	"frame-support/std",
-	"frame-try-runtime/std",
 	"pallet-timestamp/std",
 	"sp-state-machine/std",
 	"sp-consensus-aura/std",
@@ -48,6 +45,5 @@ try-runtime = [
 	"frame-support/try-runtime",
 	"frame-system/try-runtime",
 	"sp-runtime/try-runtime",
-	"frame-try-runtime/try-runtime",
 	"pallet-timestamp/try-runtime",
 ]
