@@ -1,3 +1,19 @@
+[package]
+name = "substrate-runtime-fuzzer"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+codec = { version = "3.6.5", features = ["derive", "max-encoded-len"], default-features = false, package = "parity-scale-codec" }
+sp-state-machine = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.5.0", default-features = false }
+
+[features]
+default = ["std"]
+std = [
+    "sp-state-machine/std",
+]
+
 [workspace]
 resolver = "2"
 members = [

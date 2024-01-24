@@ -1,4 +1,4 @@
-use codec::{DecodeLimit, Encode};
+use codec::Encode;
 use frame_support::{
     dispatch::GetDispatchInfo,
     pallet_prelude::Weight,
@@ -15,68 +15,10 @@ use sp_runtime::{
     Digest, DigestItem, Storage,
 };
 use std::time::{Duration, Instant};
+use substrate_runtime_fuzzer::*;
 
 /// Types from the fuzzed runtime.
 type Balance = <Runtime as pallet_balances::Config>::Balance;
-// We use a simple Map-based Externalities implementation
-type Externalities = sp_state_machine::BasicExternalities;
-
-// The initial timestamp at the start of an input run.
-const INITIAL_TIMESTAMP: u64 = 0;
-
-/// The maximum number of blocks per fuzzer input.
-/// If set to 0, then there is no limit at all.
-/// Feel free to set this to a low number (e.g. 4) when you begin your fuzzing campaign and then set it back to 32 once you have good coverage.
-const MAX_BLOCKS_PER_INPUT: usize = 4;
-
-/// The maximum number of extrinsics per block.
-/// If set to 0, then there is no limit at all.
-/// Feel free to set this to a low number (e.g. 4) when you begin your fuzzing campaign and then set it back to 0 once you have good coverage.
-const MAX_EXTRINSICS_PER_BLOCK: usize = 4;
-
-/// Max number of seconds a block should run for.
-const MAX_TIME_FOR_BLOCK: u64 = 6;
-
-// We do not skip more than DEFAULT_STORAGE_PERIOD to avoid pallet_transaction_storage from
-// panicking on finalize.
-const MAX_BLOCK_LAPSE: u32 = sp_transaction_storage_proof::DEFAULT_STORAGE_PERIOD;
-
-// Extrinsic delimiter: `********`
-const DELIMITER: [u8; 8] = [42; 8];
-
-struct Data<'a> {
-    data: &'a [u8],
-    pointer: usize,
-    size: usize,
-}
-
-impl<'a> Data<'a> {
-    fn size_limit_reached(&self) -> bool {
-        !(MAX_BLOCKS_PER_INPUT == 0 || MAX_EXTRINSICS_PER_BLOCK == 0)
-            && self.size >= MAX_BLOCKS_PER_INPUT * MAX_EXTRINSICS_PER_BLOCK
-    }
-}
-
-impl<'a> Iterator for Data<'a> {
-    type Item = &'a [u8];
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.data.len() <= self.pointer || self.size_limit_reached() {
-            return None;
-        }
-        let next_delimiter = self.data[self.pointer..]
-            .windows(DELIMITER.len())
-            .position(|window| window == DELIMITER);
-        let next_pointer = match next_delimiter {
-            Some(delimiter) => self.pointer + delimiter,
-            None => self.data.len(),
-        };
-        let res = Some(&self.data[self.pointer..next_pointer]);
-        self.pointer = next_pointer + DELIMITER.len();
-        self.size += 1;
-        res
-    }
-}
 
 fn main() {
     let endowed_accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
@@ -126,64 +68,13 @@ fn main() {
     };
 
     ziggy::fuzz!(|data: &[u8]| {
-        let iteratable = Data {
-            data,
-            pointer: 0,
-            size: 0,
-        };
+        let mut iteratable = Data::from_data(data);
 
         // Max weight for a block.
         let max_weight: Weight = Weight::from_parts(WEIGHT_REF_TIME_PER_SECOND * 2, 0);
 
-        let mut block_count = 0;
-        let mut extrinsics_in_block = 0;
-
-        let extrinsics: Vec<(Option<u32>, usize, RuntimeCall)> = iteratable
-            .filter_map(|data| {
-                // We have reached the limit of block we want to decode
-                if MAX_BLOCKS_PER_INPUT != 0 && block_count >= MAX_BLOCKS_PER_INPUT {
-                    return None;
-                }
-                // lapse is u32 (4 bytes), origin is u16 (2 bytes) -> 6 bytes minimum
-                let min_data_len = 4 + 2;
-                if data.len() <= min_data_len {
-                    return None;
-                }
-                let lapse: u32 = u32::from_ne_bytes(data[0..4].try_into().unwrap());
-                let origin: usize = u16::from_ne_bytes(data[4..6].try_into().unwrap()) as usize;
-                let mut encoded_extrinsic: &[u8] = &data[6..];
-
-                // If the lapse is in the range [1, MAX_BLOCK_LAPSE] it is valid.
-                let maybe_lapse = match lapse {
-                    1..=MAX_BLOCK_LAPSE => Some(lapse),
-                    _ => None,
-                };
-                // We have reached the limit of extrinsics for this block
-                if maybe_lapse.is_none()
-                    && MAX_EXTRINSICS_PER_BLOCK != 0
-                    && extrinsics_in_block >= MAX_EXTRINSICS_PER_BLOCK
-                {
-                    return None;
-                }
-
-                match DecodeLimit::decode_with_depth_limit(64, &mut encoded_extrinsic) {
-                    Ok(decoded_extrinsic) => {
-                        if maybe_lapse.is_some() {
-                            block_count += 1;
-                            extrinsics_in_block = 1;
-                        } else {
-                            extrinsics_in_block += 1;
-                        }
-                        // We have reached the limit of block we want to decode
-                        if MAX_BLOCKS_PER_INPUT != 0 && block_count >= MAX_BLOCKS_PER_INPUT {
-                            return None;
-                        }
-                        Some((maybe_lapse, origin, decoded_extrinsic))
-                    }
-                    Err(_) => None,
-                }
-            })
-            .collect();
+        let extrinsics: Vec<(Option<u32>, usize, RuntimeCall)> =
+            iteratable.extract_extrinsics::<RuntimeCall>();
 
         if extrinsics.is_empty() {
             return;

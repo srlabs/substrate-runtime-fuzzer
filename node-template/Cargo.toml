@@ -6,6 +6,7 @@ publish = false
 
 [dependencies]
 ziggy = { version = "0.8", default-features = false }
+substrate-runtime-fuzzer = { path = ".." }
 
 node-template-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.5.0", default-features = false }
 
@@ -15,7 +16,6 @@ frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = 
 frame-system = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.5.0", default-features = false }
 
 sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.5.0", default-features = false }
-sp-state-machine = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.5.0", default-features = false }
 sp-consensus-aura = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.5.0", default-features = false }
 sp-transaction-storage-proof = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.5.0", default-features = false }
 
@@ -27,11 +27,9 @@ pallet-grandpa = { git = "https://github.com/paritytech/polkadot-sdk.git", tag =
 default = ["std", "try-runtime"]
 std = [
     "node-template-runtime/std",
-	"codec/std",
 	"sp-runtime/std",
 	"frame-support/std",
 	"pallet-timestamp/std",
-	"sp-state-machine/std",
 	"sp-consensus-aura/std",
 ]
 try-runtime = [
