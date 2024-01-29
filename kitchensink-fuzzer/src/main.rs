@@ -17,7 +17,7 @@ use sp_consensus_babe::{
 };
 use sp_runtime::{
     traits::{Dispatchable, Header},
-    Digest, DigestItem, Storage,
+    Digest, DigestItem, Perbill, Storage,
 };
 use std::time::{Duration, Instant};
 
@@ -103,7 +103,7 @@ fn main() {
 
     let genesis_storage: Storage = {
         use kitchensink_runtime::{
-            AssetsConfig, BabeConfig, BalancesConfig, CouncilConfig, DemocracyConfig,
+            AssetsConfig, BabeConfig, BalancesConfig, BeefyConfig, CouncilConfig, DemocracyConfig,
             ElectionsConfig, GluttonConfig, GrandpaConfig, ImOnlineConfig, IndicesConfig,
             NominationPoolsConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys, SocietyConfig,
             StakingConfig, SudoConfig, TechnicalCommitteeConfig,
@@ -113,26 +113,10 @@ fn main() {
         use pallet_staking::StakerStatus;
         use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
         use sp_consensus_babe::AuthorityId as BabeId;
-        use sp_core::sr25519::Public as MixnetId;
-        use sp_runtime::{app_crypto::ByteArray, BuildStorage, Perbill};
+        use sp_core::{sr25519::Public as MixnetId, Pair};
+        use sp_runtime::{app_crypto::ByteArray, BuildStorage};
 
-        let initial_authorities: Vec<(
-            AccountId,
-            AccountId,
-            GrandpaId,
-            BabeId,
-            ImOnlineId,
-            AuthorityDiscoveryId,
-            MixnetId,
-        )> = vec![(
-            [0; 32].into(),
-            [0; 32].into(),
-            GrandpaId::from_slice(&[0; 32]).unwrap(),
-            BabeId::from_slice(&[0; 32]).unwrap(),
-            ImOnlineId::from_slice(&[0; 32]).unwrap(),
-            AuthorityDiscoveryId::from_slice(&[0; 32]).unwrap(),
-            MixnetId::from_slice(&[0; 32]).unwrap(),
-        )];
+        let beefy_pair = sp_consensus_beefy::ecdsa_crypto::Pair::generate().0;
 
         let stakers = vec![(
             [0; 32].into(),
@@ -157,23 +141,20 @@ fn main() {
             },
             indices: IndicesConfig { indices: vec![] },
             session: SessionConfig {
-                keys: initial_authorities
-                    .iter()
-                    .map(|x| {
-                        (
-                            x.0.clone(),
-                            x.0.clone(),
-                            SessionKeys {
-                                grandpa: x.2.clone(),
-                                babe: x.3.clone(),
-                                im_online: x.4.clone(),
-                                authority_discovery: x.5.clone(),
-                                mixnet: x.6.into(),
-                            },
-                        )
-                    })
-                    .collect::<Vec<_>>(),
+                keys: vec![(
+                    [0; 32].into(),
+                    [0; 32].into(),
+                    SessionKeys {
+                        grandpa: GrandpaId::from_slice(&[0; 32]).unwrap(),
+                        babe: BabeId::from_slice(&[0; 32]).unwrap(),
+                        beefy: beefy_pair.public(),
+                        im_online: ImOnlineId::from_slice(&[0; 32]).unwrap(),
+                        authority_discovery: AuthorityDiscoveryId::from_slice(&[0; 32]).unwrap(),
+                        mixnet: MixnetId::from_slice(&[0; 32]).unwrap().into(),
+                    },
+                )],
             },
+            beefy: BeefyConfig::default(),
             staking: StakingConfig {
                 validator_count: 0u32,
                 // validator_count: initial_authorities.len() as u32,
@@ -291,6 +272,25 @@ fn main() {
 
         externalities.execute_with(|| {
             initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
+        });
+
+        // We set the configuration for the broker pallet
+        let broker_config = pallet_broker::ConfigRecord {
+            advance_notice: 2,
+            interlude_length: 1,
+            leadin_length: 1,
+            ideal_bulk_proportion: Default::default(),
+            limit_cores_offered: None,
+            region_length: 3,
+            renewal_bump: Perbill::from_percent(10),
+            contribution_timeout: 5,
+        };
+        externalities.execute_with(|| {
+            RuntimeCall::Broker(pallet_broker::Call::configure {
+                config: broker_config,
+            })
+            .dispatch(RuntimeOrigin::root())
+            .unwrap();
         });
 
         let start_block = |block: u32, current_timestamp: u64| {
