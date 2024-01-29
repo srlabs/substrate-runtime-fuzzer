@@ -6,6 +6,7 @@ publish = false
 
 [dependencies]
 ziggy = { version = "0.8", default-features = false }
+substrate-runtime-fuzzer = { path = ".." }
 
 kitchensink-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.6.0", default-features = false }
 
@@ -51,7 +52,6 @@ std = [
 	"sp-runtime/std",
 	"frame-support/std",
 	"pallet-timestamp/std",
-	"sp-state-machine/std",
 ]
 try-runtime = [
     "kitchensink-runtime/try-runtime",

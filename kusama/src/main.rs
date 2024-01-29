@@ -1,4 +1,4 @@
-use codec::{DecodeLimit, Encode};
+use codec::Encode;
 use frame_support::{
     dispatch::GetDispatchInfo,
     pallet_prelude::Weight,
@@ -19,54 +19,10 @@ use staging_kusama_runtime::{
     AllPalletsWithSystem, Executive, Runtime, RuntimeCall, RuntimeOrigin, UncheckedExtrinsic,
 };
 use std::time::{Duration, Instant};
+use substrate_runtime_fuzzer::*;
 
 // We use a simple Map-based Externalities implementation
 type Externalities = sp_state_machine::BasicExternalities;
-
-// The initial timestamp at the start of an input run.
-const INITIAL_TIMESTAMP: u64 = 0;
-
-/// The maximum number of extrinsics per fuzzer input.
-const MAX_EXTRINSIC_COUNT: usize = 32;
-
-/// Max number of seconds a block should run for.
-const MAX_TIME_FOR_BLOCK: u64 = 6;
-
-// Decode depth limit
-const MAX_DECODE_LIMIT: u32 = 52;
-
-// TODO Change lapse
-const MAX_BLOCK_LAPSE: u32 = 100_000;
-
-// Extrinsic delimiter: `********`
-const DELIMITER: [u8; 8] = [42; 8];
-
-struct Data<'a> {
-    data: &'a [u8],
-    pointer: usize,
-    size: usize,
-}
-
-impl<'a> Iterator for Data<'a> {
-    type Item = &'a [u8];
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.data.len() <= self.pointer || self.size >= MAX_EXTRINSIC_COUNT {
-            return None;
-        }
-        let next_delimiter = self.data[self.pointer..]
-            .windows(DELIMITER.len())
-            .position(|window| window == DELIMITER);
-        let next_pointer = match next_delimiter {
-            Some(delimiter) => self.pointer + delimiter,
-            None => self.data.len(),
-        };
-        let res = Some(&self.data[self.pointer..next_pointer]);
-        self.pointer = next_pointer + DELIMITER.len();
-        self.size += 1;
-        res
-    }
-}
 
 use pallet_grandpa::AuthorityId as GrandpaId;
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
@@ -79,7 +35,6 @@ type BeefyId = sp_consensus_beefy::ecdsa_crypto::AuthorityId;
 
 struct Authority {
     account: AccountId,
-    _nominator: AccountId,
     grandpa: GrandpaId,
     babe: BabeId,
     beefy: BeefyId,
@@ -97,7 +52,6 @@ fn main() {
 
         let initial_authorities: Vec<Authority> = vec![Authority {
             account: [0; 32].into(),
-            _nominator: [0; 32].into(),
             grandpa: GrandpaId::from_slice(&[0; 32]).unwrap(),
             babe: BabeId::from_slice(&[0; 32]).unwrap(),
             beefy: sp_application_crypto::ecdsa::Public::from_raw([0u8; 33]).into(),
@@ -191,33 +145,13 @@ fn main() {
     };
 
     ziggy::fuzz!(|data: &[u8]| {
-        let iteratable = Data {
-            data,
-            pointer: 0,
-            size: 0,
-        };
+        let mut iteratable = Data::from_data(data);
 
         // Max weight for a block.
         let max_weight: Weight = Weight::from_parts(WEIGHT_REF_TIME_PER_SECOND * 2, 0);
 
-        let extrinsics: Vec<(u32, usize, RuntimeCall)> = iteratable
-            .filter_map(|data| {
-                // lapse is u32 (4 bytes), origin is u16 (2 bytes) -> 6 bytes minimum
-                let min_data_len = 4 + 2;
-                if data.len() <= min_data_len {
-                    return None;
-                }
-                let lapse: u32 = u32::from_ne_bytes(data[0..4].try_into().unwrap());
-                let origin: usize = u16::from_ne_bytes(data[4..6].try_into().unwrap()) as usize;
-                let mut encoded_extrinsic: &[u8] = &data[6..];
-
-                match DecodeLimit::decode_with_depth_limit(MAX_DECODE_LIMIT, &mut encoded_extrinsic)
-                {
-                    Ok(decoded_extrinsic) => Some((lapse, origin, decoded_extrinsic)),
-                    Err(_) => None,
-                }
-            })
-            .collect();
+        let extrinsics: Vec<(Option<u32>, usize, RuntimeCall)> =
+            iteratable.extract_extrinsics::<RuntimeCall>();
 
         if extrinsics.is_empty() {
             return;
@@ -321,7 +255,7 @@ fn main() {
 
         externalities.execute_with(|| start_block(current_block, current_timestamp));
 
-        'extrinsics_loop: for (lapse, origin, extrinsic) in extrinsics {
+        for (maybe_lapse, origin, extrinsic) in extrinsics {
             // We filter out a Society::bid call that will cause an overflow
             // See https://github.com/paritytech/srlabs_findings/issues/292
             if matches!(
@@ -336,18 +270,15 @@ fn main() {
                 extrinsic.clone()
             {
                 if let staging_xcm::VersionedXcm::V2(staging_xcm::v2::Xcm(msg)) = *message {
-                    for m in msg {
-                        if matches!(m, staging_xcm::opaque::v2::prelude::BuyExecution { fees: staging_xcm::v2::MultiAsset { fun, .. }, .. } if fun == staging_xcm::v2::Fungibility::Fungible(0))
-                        {
-                            continue 'extrinsics_loop;
-                        }
+                    if msg.iter().any(|m| matches!(m, staging_xcm::opaque::v2::prelude::BuyExecution { fees: staging_xcm::v2::MultiAsset { fun, .. }, .. } if fun == &staging_xcm::v2::Fungibility::Fungible(0))) {
+                        continue
                     }
                 }
             }
 
             // If the lapse is in the range [0, MAX_BLOCK_LAPSE] we finalize the block and initialize
             // a new one.
-            if lapse > 0 && lapse < MAX_BLOCK_LAPSE {
+            if let Some(lapse) = maybe_lapse {
                 // We end the current block
                 externalities.execute_with(|| end_block(current_block, current_timestamp));
 

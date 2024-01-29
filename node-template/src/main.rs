@@ -17,6 +17,9 @@ use sp_runtime::{
 use std::time::{Duration, Instant};
 use substrate_runtime_fuzzer::*;
 
+// We use a simple Map-based Externalities implementation
+pub type Externalities = sp_state_machine::BasicExternalities;
+
 /// Types from the fuzzed runtime.
 type Balance = <Runtime as pallet_balances::Config>::Balance;
 

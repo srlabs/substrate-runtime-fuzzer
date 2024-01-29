@@ -6,6 +6,7 @@ publish = false
 
 [dependencies]
 ziggy = { version = "0.8", default-features = false }
+substrate-runtime-fuzzer = { path = ".." }
 
 staging-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v1.1.0", default-features = false }
 kusama-runtime-constants = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v1.1.0", default-features = false }
@@ -47,7 +48,6 @@ std = [
 	"pallet-balances/std",
 	"pallet-im-online/std",
 	"pallet-staking/std",
-	"sp-state-machine/std",
 	"sp-consensus-babe/std",
 ]
 try-runtime = [

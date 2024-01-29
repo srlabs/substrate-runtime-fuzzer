@@ -1,7 +1,7 @@
 use asset_hub_kusama_runtime::{
     AllPalletsWithSystem, Executive, Runtime, RuntimeCall, RuntimeOrigin, UncheckedExtrinsic,
 };
-use codec::{DecodeLimit, Encode};
+use codec::Encode;
 use frame_support::{
     dispatch::GetDispatchInfo,
     pallet_prelude::Weight,
@@ -15,55 +15,10 @@ use sp_runtime::{
     Digest, DigestItem, Storage,
 };
 use std::time::{Duration, Instant};
+use substrate_runtime_fuzzer::*;
 
 // We use a simple Map-based Externalities implementation
-type Externalities = sp_state_machine::BasicExternalities;
-
-// The initial timestamp at the start of an input run.
-const INITIAL_TIMESTAMP: u64 = 0;
-
-/// The maximum number of extrinsics per fuzzer input.
-const MAX_EXTRINSIC_COUNT: usize = 32;
-
-/// Max number of seconds a block should run for.
-const MAX_TIME_FOR_BLOCK: u64 = 6;
-
-/// The max number of blocks we want the fuzzer to run to between extrinsics.
-/// Considering 1 block every 6 seconds, 100_800 blocks correspond to 1 week.
-const MAX_BLOCK_LAPSE: u32 = 100_800;
-
-// Decode depth limit
-const MAX_DECODE_LIMIT: u32 = 52;
-
-// Extrinsic delimiter: `********`
-const DELIMITER: [u8; 8] = [42; 8];
-
-struct Data<'a> {
-    data: &'a [u8],
-    pointer: usize,
-    size: usize,
-}
-
-impl<'a> Iterator for Data<'a> {
-    type Item = &'a [u8];
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.data.len() <= self.pointer || self.size >= MAX_EXTRINSIC_COUNT {
-            return None;
-        }
-        let next_delimiter = self.data[self.pointer..]
-            .windows(DELIMITER.len())
-            .position(|window| window == DELIMITER);
-        let next_pointer = match next_delimiter {
-            Some(delimiter) => self.pointer + delimiter,
-            None => self.data.len(),
-        };
-        let res = Some(&self.data[self.pointer..next_pointer]);
-        self.pointer = next_pointer + DELIMITER.len();
-        self.size += 1;
-        res
-    }
-}
+pub type Externalities = sp_state_machine::BasicExternalities;
 
 fn main() {
     let endowed_accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
@@ -112,33 +67,13 @@ fn main() {
     };
 
     ziggy::fuzz!(|data: &[u8]| {
-        let iteratable = Data {
-            data,
-            pointer: 0,
-            size: 0,
-        };
+        let mut iteratable = Data::from_data(data);
 
         // Max weight for a block.
         let max_weight: Weight = Weight::from_parts(WEIGHT_REF_TIME_PER_SECOND * 2, 0);
 
-        let extrinsics: Vec<(u32, usize, RuntimeCall)> = iteratable
-            .filter_map(|data| {
-                // lapse is u32 (4 bytes), origin is u16 (2 bytes) -> 6 bytes minimum
-                let min_data_len = 4 + 2;
-                if data.len() <= min_data_len {
-                    return None;
-                }
-                let lapse: u32 = u32::from_ne_bytes(data[0..4].try_into().unwrap());
-                let origin: usize = u16::from_ne_bytes(data[4..6].try_into().unwrap()) as usize;
-                let mut encoded_extrinsic: &[u8] = &data[6..];
-
-                match DecodeLimit::decode_with_depth_limit(MAX_DECODE_LIMIT, &mut encoded_extrinsic)
-                {
-                    Ok(decoded_extrinsic) => Some((lapse, origin, decoded_extrinsic)),
-                    Err(_) => None,
-                }
-            })
-            .collect();
+        let extrinsics: Vec<(Option<u32>, usize, RuntimeCall)> =
+            iteratable.extract_extrinsics::<RuntimeCall>();
 
         if extrinsics.is_empty() {
             return;
@@ -237,10 +172,10 @@ fn main() {
 
         externalities.execute_with(|| start_block(current_block, 0));
 
-        for (lapse, origin, extrinsic) in extrinsics {
+        for (maybe_lapse, origin, extrinsic) in extrinsics {
             // If the lapse is in the range [0, MAX_BLOCK_LAPSE] we finalize the block and initialize
             // a new one.
-            if lapse > 0 && lapse < MAX_BLOCK_LAPSE {
+            if let Some(lapse) = maybe_lapse {
                 // We update our state variables
                 current_weight = Weight::zero();
                 elapsed = Duration::ZERO;

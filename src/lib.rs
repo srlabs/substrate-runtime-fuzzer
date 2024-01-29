@@ -1,8 +1,5 @@
 use codec::{Decode, DecodeLimit};
 
-// We use a simple Map-based Externalities implementation
-pub type Externalities = sp_state_machine::BasicExternalities;
-
 // The initial timestamp at the start of an input run.
 pub const INITIAL_TIMESTAMP: u64 = 0;
 

@@ -6,6 +6,7 @@ publish = false
 
 [dependencies]
 ziggy = { version = "0.8", default-features = false }
+substrate-runtime-fuzzer = { path = ".." }
 
 asset-hub-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v1.1.0", default-features = false }
 
@@ -36,7 +37,6 @@ std = [
 	"sp-runtime/std",
 	"frame-support/std",
 	"pallet-timestamp/std",
-	"sp-state-machine/std",
 	"sp-consensus-aura/std",
 ]
 try-runtime = [
