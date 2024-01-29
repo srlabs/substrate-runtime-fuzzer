@@ -28,10 +28,9 @@ const MAX_EXTRINSIC_COUNT: usize = 32;
 /// Max number of seconds a block should run for.
 const MAX_TIME_FOR_BLOCK: u64 = 6;
 
-// We do not skip more than DEFAULT_STORAGE_PERIOD to avoid pallet_transaction_storage from
-// panicking on finalize.
-// The 800 is to avoid timeouts.
-const MAX_BLOCK_LAPSE: u32 = sp_transaction_storage_proof::DEFAULT_STORAGE_PERIOD / 800;
+/// The max number of blocks we want the fuzzer to run to between extrinsics.
+/// Considering 1 block every 6 seconds, 100_800 blocks correspond to 1 week.
+const MAX_BLOCK_LAPSE: u32 = 100_800;
 
 // Decode depth limit
 const MAX_DECODE_LIMIT: u32 = 52;
@@ -157,84 +156,86 @@ fn main() {
             #[cfg(not(fuzzing))]
             println!("\ninitializing block {}", block + lapse);
 
-            for b in (block)..(block + lapse) {
-                let current_timestamp = INITIAL_TIMESTAMP + u64::from(b) * SLOT_DURATION;
-                let pre_digest = match current_timestamp {
-                    INITIAL_TIMESTAMP => Default::default(),
-                    _ => Digest {
-                        logs: vec![DigestItem::PreRuntime(
-                            AURA_ENGINE_ID,
-                            Slot::from(current_timestamp / SLOT_DURATION).encode(),
-                        )],
-                    },
-                };
+            let next_block = block + lapse;
+            let current_timestamp = INITIAL_TIMESTAMP + u64::from(next_block) * SLOT_DURATION;
+            let pre_digest = match current_timestamp {
+                INITIAL_TIMESTAMP => Default::default(),
+                _ => Digest {
+                    logs: vec![DigestItem::PreRuntime(
+                        AURA_ENGINE_ID,
+                        Slot::from(current_timestamp / SLOT_DURATION).encode(),
+                    )],
+                },
+            };
 
-                let prev_header = match block {
-                    1 => None,
-                    _ => Some(Executive::finalize_block()),
-                };
+            let prev_header = match next_block {
+                1 => None,
+                _ => Some(Executive::finalize_block()),
+            };
 
-                let parent_header = &Header::new(
-                    b + 1,
-                    Default::default(),
-                    Default::default(),
-                    prev_header.clone().map(|x| x.hash()).unwrap_or_default(),
-                    pre_digest,
+            let parent_header = &Header::new(
+                next_block + 1,
+                Default::default(),
+                Default::default(),
+                prev_header.clone().map(|x| x.hash()).unwrap_or_default(),
+                pre_digest,
+            );
+            Executive::initialize_block(parent_header);
+
+            // We apply the timestamp extrinsic for the current block.
+            Executive::apply_extrinsic(UncheckedExtrinsic::new_unsigned(RuntimeCall::Timestamp(
+                pallet_timestamp::Call::set {
+                    now: current_timestamp,
+                },
+            )))
+            .unwrap()
+            .unwrap();
+
+            let parachain_validation_data = {
+                use cumulus_primitives_core::relay_chain::HeadData;
+                use cumulus_primitives_core::PersistedValidationData;
+                use cumulus_primitives_parachain_inherent::ParachainInherentData;
+                use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
+
+                let parent_head = HeadData(
+                    prev_header
+                        .clone()
+                        .unwrap_or(parent_header.clone())
+                        .encode(),
                 );
-                Executive::initialize_block(parent_header);
-
-                // We apply the timestamp extrinsic for the current block.
-                Executive::apply_extrinsic(UncheckedExtrinsic::new_unsigned(
-                    RuntimeCall::Timestamp(pallet_timestamp::Call::set {
-                        now: current_timestamp,
-                    }),
-                ))
-                .unwrap()
-                .unwrap();
-
-                let parachain_validation_data = {
-                    use cumulus_primitives_core::relay_chain::HeadData;
-                    use cumulus_primitives_core::PersistedValidationData;
-                    use cumulus_primitives_parachain_inherent::ParachainInherentData;
-                    use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
-
-                    let parent_head =
-                        HeadData(prev_header.unwrap_or(parent_header.clone()).encode()); // prev_header.encode());//
-                    let sproof_builder = RelayStateSproofBuilder {
-                        para_id: 100.into(),
-                        current_slot: Slot::from(2 * current_timestamp / SLOT_DURATION),
-                        included_para_head: Some(parent_head.clone()),
-                        ..Default::default()
-                    };
-
-                    let (relay_parent_storage_root, relay_chain_state) =
-                        sproof_builder.into_state_root_and_proof();
-                    let data = ParachainInherentData {
-                        validation_data: PersistedValidationData {
-                            parent_head,
-                            relay_parent_number: b,
-                            relay_parent_storage_root,
-                            max_pov_size: 1000,
-                        },
-                        relay_chain_state,
-                        downward_messages: Default::default(),
-                        horizontal_messages: Default::default(),
-                    };
-                    cumulus_pallet_parachain_system::Call::set_validation_data { data }
+                let sproof_builder = RelayStateSproofBuilder {
+                    para_id: 100.into(),
+                    current_slot: Slot::from(2 * current_timestamp / SLOT_DURATION),
+                    included_para_head: Some(parent_head.clone()),
+                    ..Default::default()
                 };
 
-                Executive::apply_extrinsic(UncheckedExtrinsic::new_unsigned(
-                    RuntimeCall::ParachainSystem(parachain_validation_data),
-                ))
-                .unwrap()
-                .unwrap();
-            }
+                let (relay_parent_storage_root, relay_chain_state) =
+                    sproof_builder.into_state_root_and_proof();
+                let data = ParachainInherentData {
+                    validation_data: PersistedValidationData {
+                        parent_head,
+                        relay_parent_number: next_block,
+                        relay_parent_storage_root,
+                        max_pov_size: 1000,
+                    },
+                    relay_chain_state,
+                    downward_messages: Default::default(),
+                    horizontal_messages: Default::default(),
+                };
+                cumulus_pallet_parachain_system::Call::set_validation_data { data }
+            };
+
+            Executive::apply_extrinsic(UncheckedExtrinsic::new_unsigned(
+                RuntimeCall::ParachainSystem(parachain_validation_data),
+            ))
+            .unwrap()
+            .unwrap();
 
             // Calls that need to be called before each block starts (init_calls) go here
         };
 
-        externalities.execute_with(|| start_block(current_block, 1));
-        current_block += 1;
+        externalities.execute_with(|| start_block(current_block, 0));
 
         for (lapse, origin, extrinsic) in extrinsics {
             // If the lapse is in the range [0, MAX_BLOCK_LAPSE] we finalize the block and initialize
