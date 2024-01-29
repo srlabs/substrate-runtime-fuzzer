@@ -8,7 +8,7 @@ use frame_support::{
     traits::{IntegrityTest, TryState, TryStateSelect},
     weights::constants::WEIGHT_REF_TIME_PER_SECOND,
 };
-use parachains_common::{AccountId, BlockNumber, SLOT_DURATION};
+use parachains_common::{AccountId, Balance, BlockNumber, SLOT_DURATION};
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_runtime::{
     traits::{Dispatchable, Header},
@@ -265,6 +265,15 @@ fn main() {
                 // Increment our balance counts
                 counted_free += acc.1.data.free;
                 counted_reserved += acc.1.data.reserved;
+                // Check that locks and holds are valid.
+                let max_lock: Balance = asset_hub_kusama_runtime::Balances::locks(&acc.0).iter().map(|l| l.amount).max().unwrap_or_default();
+                assert_eq!(max_lock, acc.1.data.frozen, "Max lock should be equal to frozen balance");
+                let sum_holds: Balance = pallet_balances::Holds::<Runtime>::get(&acc.0).iter().map(|l| l.amount).sum();
+                assert!(
+                    sum_holds <= acc.1.data.reserved,
+                    "Sum of all holds ({sum_holds}) should be less than or equal to reserved balance {}",
+                    acc.1.data.reserved
+                );
             }
 
             let total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
