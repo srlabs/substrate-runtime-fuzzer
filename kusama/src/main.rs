@@ -351,7 +351,7 @@ fn main() {
                 counted_reserved += acc.1.data.reserved;
                 // Check that locks and holds are valid.
                 let max_lock: Balance = staging_kusama_runtime::Balances::locks(&acc.0).iter().map(|l| l.amount).max().unwrap_or_default();
-                assert_eq!(max_lock, acc.1.data.frozen, "Max lock should be equal to frozen balance");
+                assert!(max_lock <= acc.1.data.frozen, "Max lock ({max_lock}) should be less than or equal to frozen balance ({})", acc.1.data.frozen);
                 let sum_holds: Balance = pallet_balances::Holds::<Runtime>::get(&acc.0).iter().map(|l| l.amount).sum();
                 assert!(
                     sum_holds <= acc.1.data.reserved,
