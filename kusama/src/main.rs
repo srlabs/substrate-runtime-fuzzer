@@ -44,6 +44,31 @@ struct Authority {
     authority_discovery: AuthorityDiscoveryId,
 }
 
+fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool) -> bool {
+    if let RuntimeCall::Utility(
+        pallet_utility::Call::batch { calls }
+        | pallet_utility::Call::force_batch { calls }
+        | pallet_utility::Call::batch_all { calls },
+    ) = call
+    {
+        for call in calls {
+            if recursively_find_call(call.clone(), matches_on) {
+                return true;
+            }
+        }
+    } else if let RuntimeCall::Multisig(pallet_multisig::Call::as_multi_threshold_1 {
+        call, ..
+    })
+    | RuntimeCall::Utility(pallet_utility::Call::as_derivative { call, .. })
+    | RuntimeCall::Proxy(pallet_proxy::Call::proxy { call, .. }) = call
+    {
+        return recursively_find_call(*call.clone(), matches_on);
+    } else if matches_on(call) {
+        return true;
+    }
+    false
+}
+
 fn main() {
     let endowed_accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
 
@@ -256,24 +281,22 @@ fn main() {
         externalities.execute_with(|| start_block(current_block, current_timestamp));
 
         for (maybe_lapse, origin, extrinsic) in extrinsics {
-            // We filter out a Society::bid call that will cause an overflow
-            // See https://github.com/paritytech/srlabs_findings/issues/292
-            if matches!(
-                extrinsic.clone(),
-                RuntimeCall::Society(pallet_society::Call::bid { .. })
-            ) {
+            if recursively_find_call(extrinsic.clone(), |call| {
+                // We filter out a Society::bid call that will cause an overflow
+                // See https://github.com/paritytech/srlabs_findings/issues/292
+                matches!(call, RuntimeCall::Society(pallet_society::Call::bid { .. }))
+                // We filter out calls with Fungible(0) as they cause a debug crash
+                || matches!(call, RuntimeCall::XcmPallet(pallet_xcm::Call::execute { message, .. })
+                    if matches!(message.as_ref(), staging_xcm::VersionedXcm::V2(staging_xcm::v2::Xcm(msg))
+                        if msg.iter().any(|m| matches!(m, staging_xcm::opaque::v2::prelude::BuyExecution { fees: staging_xcm::v2::MultiAsset { fun, .. }, .. }
+                            if fun == &staging_xcm::v2::Fungibility::Fungible(0)
+                        ))
+                    )
+                )
+            }) {
+                #[cfg(not(fuzzing))]
+                println!("    Skipping because of custom filter");
                 continue;
-            }
-
-            // We filter out calls with Fungible(0) as they cause a debug crash
-            if let RuntimeCall::XcmPallet(pallet_xcm::Call::execute { message, .. }) =
-                extrinsic.clone()
-            {
-                if let staging_xcm::VersionedXcm::V2(staging_xcm::v2::Xcm(msg)) = *message {
-                    if msg.iter().any(|m| matches!(m, staging_xcm::opaque::v2::prelude::BuyExecution { fees: staging_xcm::v2::MultiAsset { fun, .. }, .. } if fun == &staging_xcm::v2::Fungibility::Fungible(0))) {
-                        continue
-                    }
-                }
             }
 
             // If the lapse is in the range [0, MAX_BLOCK_LAPSE] we finalize the block and initialize

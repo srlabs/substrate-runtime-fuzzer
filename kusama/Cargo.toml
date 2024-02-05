@@ -28,6 +28,9 @@ pallet-balances = { default-features = false , version = "25.0.0" }
 pallet-grandpa = { default-features = false , version = "25.0.0" }
 pallet-im-online = { default-features = false , version = "24.0.0" }
 pallet-society = { default-features = false, version = "25.0.0" }
+pallet-utility = { default-features = false , version = "25.0.0" }
+pallet-multisig = { default-features = false , version = "25.0.0" }
+pallet-proxy = { default-features = false , version = "25.0.0" }
 frame-support = { default-features = false , version = "25.0.0" }
 pallet-staking = { default-features = false , version = "25.0.0" }
 frame-system = { default-features = false , version = "25.0.0" }
