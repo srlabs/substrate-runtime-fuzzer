@@ -280,6 +280,15 @@ fn main() {
 
         externalities.execute_with(|| start_block(current_block, current_timestamp));
 
+        // We add one of our accounts as an Identity::RegistrarOrigin
+        externalities.execute_with(|| {
+            RuntimeCall::Identity(pallet_identity::Call::add_registrar {
+                account: endowed_accounts[0].clone().into(),
+            })
+            .dispatch(RuntimeOrigin::root())
+            .unwrap();
+        });
+
         for (maybe_lapse, origin, extrinsic) in extrinsics {
             if recursively_find_call(extrinsic.clone(), |call| {
                 // We filter out a Society::bid call that will cause an overflow
