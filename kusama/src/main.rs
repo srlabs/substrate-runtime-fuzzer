@@ -341,16 +341,25 @@ fn main() {
                 continue;
             }
 
+            let origin = if matches!(
+                extrinsic,
+                RuntimeCall::Bounties(pallet_bounties::Call::approve_bounty { .. })
+                    | RuntimeCall::Bounties(pallet_bounties::Call::propose_curator { .. })
+                    | RuntimeCall::Bounties(pallet_bounties::Call::close_bounty { .. })
+            ) {
+                RuntimeOrigin::root()
+            } else {
+                RuntimeOrigin::signed(endowed_accounts[origin % endowed_accounts.len()].clone())
+            };
+
+            #[cfg(not(fuzzing))]
+            {
+                println!("\n    origin:     {origin:?}");
+                println!("    call:       {extrinsic:?}");
+            }
+
             externalities.execute_with(|| {
-                let origin_account = endowed_accounts[origin % endowed_accounts.len()].clone();
-                #[cfg(not(fuzzing))]
-                {
-                    println!("\n    origin:     {origin_account:?}");
-                    println!("    call:       {extrinsic:?}");
-                }
-                let _res = extrinsic
-                    .clone()
-                    .dispatch(RuntimeOrigin::signed(origin_account));
+                let _res = extrinsic.clone().dispatch(origin);
                 #[cfg(not(fuzzing))]
                 println!("    result:     {_res:?}");
             });
