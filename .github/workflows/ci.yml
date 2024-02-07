@@ -21,7 +21,5 @@ jobs:
           rustup target add wasm32-unknown-unknown
       - name: Build fuzzer
         run: |
-          cargo afl config --build
-          cargo ziggy build
-          cargo afl config --build --force
+          cargo afl config --build --firce
           cargo ziggy build
