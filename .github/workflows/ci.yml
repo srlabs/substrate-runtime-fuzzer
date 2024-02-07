@@ -19,6 +19,9 @@ jobs:
         run: |
           cargo install ziggy cargo-afl honggfuzz grcov
           rustup target add wasm32-unknown-unknown
-          cargo afl config --build
       - name: Build fuzzer
-        run: cargo ziggy build
+        run: |
+          cargo afl config --build
+          cargo ziggy build
+          cargo afl config --build --force
+          cargo ziggy build
