@@ -8,7 +8,7 @@ publish = false
 ziggy = { version = "0.8", default-features = false }
 substrate-runtime-fuzzer = { path = ".." }
 
-asset-hub-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v1.1.0", default-features = false }
+asset-hub-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v1.1.2", default-features = false }
 
 parachains-common = { default-features = false , version = "4.0.0" }
 

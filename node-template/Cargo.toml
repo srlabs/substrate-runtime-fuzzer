@@ -8,20 +8,20 @@ publish = false
 ziggy = { version = "0.8", default-features = false }
 substrate-runtime-fuzzer = { path = ".." }
 
-node-template-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.6.0", default-features = false }
+node-template-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.7.0", default-features = false }
 
 codec = { version = "3.6.5", features = ["derive", "max-encoded-len"], default-features = false, package = "parity-scale-codec" }
 
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.6.0", default-features = false }
-frame-system = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.6.0", default-features = false }
+frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.7.0", default-features = false }
+frame-system = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.7.0", default-features = false }
 
-sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.6.0", default-features = false }
-sp-state-machine = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.6.0", default-features = false }
-sp-consensus-aura = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.6.0", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.7.0", default-features = false }
+sp-state-machine = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.7.0", default-features = false }
+sp-consensus-aura = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.7.0", default-features = false }
 
-pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.6.0", default-features = false }
-pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.6.0", default-features = false }
-pallet-grandpa = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.6.0", default-features = false }
+pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.7.0", default-features = false }
+pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.7.0", default-features = false }
+pallet-grandpa = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.7.0", default-features = false }
 
 [features]
 default = ["std", "try-runtime"]

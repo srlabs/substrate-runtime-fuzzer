@@ -8,8 +8,8 @@ publish = false
 ziggy = { version = "0.8", default-features = false }
 substrate-runtime-fuzzer = { path = ".." }
 
-staging-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v1.1.0", default-features = false }
-kusama-runtime-constants = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v1.1.0", default-features = false }
+staging-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v1.1.2", default-features = false }
+kusama-runtime-constants = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v1.1.2", default-features = false }
 polkadot-primitives = { version = "4.0.0", default-features = false }
 polkadot-runtime-parachains = { version = "4.0.0", default-features = false }
 
