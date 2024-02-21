@@ -161,13 +161,6 @@ fn main() {
                 externalities.execute_with(|| start_block(current_block, current_timestamp));
             }
 
-            if matches!(
-                extrinsic,
-                RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death { .. })
-            ) {
-                continue;
-            }
-
             // We get the current time for timing purposes.
             let now = Instant::now();
 

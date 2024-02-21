@@ -294,7 +294,6 @@ fn main() {
                 // We filter out a Society::bid call that will cause an overflow
                 // See https://github.com/paritytech/srlabs_findings/issues/292
                 matches!(call, RuntimeCall::Society(pallet_society::Call::bid { .. }))
-                || matches!(call, RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death { .. }))
                 // We filter out calls with Fungible(0) as they cause a debug crash
                 || matches!(call, RuntimeCall::XcmPallet(pallet_xcm::Call::execute { message, .. })
                     if matches!(message.as_ref(), staging_xcm::VersionedXcm::V2(staging_xcm::v2::Xcm(msg))
