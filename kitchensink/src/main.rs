@@ -145,7 +145,7 @@ fn main() {
             sudo: SudoConfig { key: None },
             babe: BabeConfig {
                 authorities: vec![],
-                epoch_config: Some(kitchensink_runtime::BABE_GENESIS_EPOCH_CONFIG),
+                epoch_config: kitchensink_runtime::BABE_GENESIS_EPOCH_CONFIG,
                 ..Default::default()
             },
             im_online: ImOnlineConfig { keys: vec![] },

@@ -8,13 +8,13 @@ As a part of the [Substrate Builders Program](https://substrate.io/ecosystem/sub
 
 ## How do I use it?
 
-Here are the steps to launch `substrate-runtime-fuzzer` against the [node template runtime](https://github.com/paritytech/polkadot-sdk/tree/master/substrate/bin/node-template):
+Here are the steps to launch `substrate-runtime-fuzzer` against the [solochain template runtime](https://github.com/paritytech/polkadot-sdk/tree/master/templates/solochain/runtime):
 
 ```
 cargo install ziggy cargo-afl honggfuzz grcov
 rustup target add wasm32-unknown-unknown
 git clone https://github.com/srlabs/substrate-runtime-fuzzer
-cd substrate-runtime-fuzzer/node-template/
+cd substrate-runtime-fuzzer/solochain/
 cargo ziggy fuzz -t 20
 ```
 
@@ -30,8 +30,8 @@ It will spawn multiple different coverage-guided fuzzers with the right configur
 
 ## How do I use this on my substrate-based runtime?
 
-The first step is creating a project and adding the same dependencies as [this project](./node-template/Cargo.toml).
-Then, you can modify the `node-template-runtime` dependency to your own runtime (either as a local `path` or as a git URL).
+The first step is creating a project and adding the same dependencies as [this project](./solochain/Cargo.toml).
+Then, you can modify the `solochain-template-runtime` dependency to your own runtime (either as a local `path` or as a git URL).
 
 Finally you should add a genesis configuration to make sure the fuzzer can reach as much of the code as possible.
 You can take inspiration from the genesis configuration of the [kitchensink fuzzer](./kitchensink/src/main.rs).

@@ -12,6 +12,6 @@ resolver = "2"
 members = [
     "kitchensink",
     "kusama",
-    "node-template",
+    "solochain",
     "asset-hub-kusama",
 ]

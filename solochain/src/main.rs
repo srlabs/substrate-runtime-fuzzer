@@ -5,7 +5,7 @@ use frame_support::{
     traits::{IntegrityTest, TryState, TryStateSelect},
     weights::constants::WEIGHT_REF_TIME_PER_SECOND,
 };
-use node_template_runtime::{
+use solochain_template_runtime::{
     AccountId, AllPalletsWithSystem, BlockNumber, Executive, Runtime, RuntimeCall, RuntimeOrigin,
     UncheckedExtrinsic, SLOT_DURATION,
 };
@@ -27,10 +27,10 @@ fn main() {
     let endowed_accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
 
     let genesis_storage: Storage = {
-        use node_template_runtime::{
+        use pallet_grandpa::AuthorityId as GrandpaId;
+        use solochain_template_runtime::{
             AuraConfig, BalancesConfig, GrandpaConfig, RuntimeGenesisConfig, SudoConfig,
         };
-        use pallet_grandpa::AuthorityId as GrandpaId;
         use sp_consensus_aura::sr25519::AuthorityId as AuraId;
         use sp_runtime::app_crypto::ByteArray;
         use sp_runtime::BuildStorage;
@@ -205,7 +205,7 @@ fn main() {
                 /*
                 #[cfg(not(fuzzing))]
                 {
-                    let all_events = node_template_runtime::System::events();
+                    let all_events = solochain_template_runtime::System::events();
                     let events: Vec<_> = all_events.clone().into_iter().skip(already_seen).collect();
                     already_seen = all_events.len();
                     println!("  events:     {:?}\n", events);
@@ -242,7 +242,7 @@ fn main() {
                 counted_free += acc.1.data.free;
                 counted_reserved += acc.1.data.reserved;
                 // Check that locks and holds are valid.
-                let max_lock: Balance = node_template_runtime::Balances::locks(&acc.0).iter().map(|l| l.amount).max().unwrap_or_default();
+                let max_lock: Balance = solochain_template_runtime::Balances::locks(&acc.0).iter().map(|l| l.amount).max().unwrap_or_default();
                 assert_eq!(max_lock, acc.1.data.frozen, "Max lock should be equal to frozen balance");
                 let sum_holds: Balance = pallet_balances::Holds::<Runtime>::get(&acc.0).iter().map(|l| l.amount).sum();
                 assert!(
