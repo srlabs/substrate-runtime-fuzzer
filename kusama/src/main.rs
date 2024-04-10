@@ -25,7 +25,6 @@ use substrate_runtime_fuzzer::*;
 type Externalities = sp_state_machine::BasicExternalities;
 
 use pallet_grandpa::AuthorityId as GrandpaId;
-use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 use pallet_staking::StakerStatus;
 use polkadot_primitives::{AssignmentId, ValidatorId};
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
@@ -38,7 +37,6 @@ struct Authority {
     grandpa: GrandpaId,
     babe: BabeId,
     beefy: BeefyId,
-    im_online: ImOnlineId,
     validator: ValidatorId,
     assignment: AssignmentId,
     authority_discovery: AuthorityDiscoveryId,
@@ -80,7 +78,6 @@ fn main() {
             grandpa: GrandpaId::from_slice(&[0; 32]).unwrap(),
             babe: BabeId::from_slice(&[0; 32]).unwrap(),
             beefy: sp_application_crypto::ecdsa::Public::from_raw([0u8; 33]).into(),
-            im_online: ImOnlineId::from_slice(&[0; 32]).unwrap(),
             validator: ValidatorId::from_slice(&[0; 32]).unwrap(),
             assignment: AssignmentId::from_slice(&[0; 32]).unwrap(),
             authority_discovery: AuthorityDiscoveryId::from_slice(&[0; 32]).unwrap(),
@@ -120,7 +117,6 @@ fn main() {
                                 grandpa: x.grandpa.clone(),
                                 babe: x.babe.clone(),
                                 beefy: x.beefy.clone(),
-                                im_online: x.im_online.clone(),
                                 para_validator: x.validator.clone(),
                                 para_assignment: x.assignment.clone(),
                                 authority_discovery: x.authority_discovery.clone(),
@@ -144,7 +140,6 @@ fn main() {
                 ..Default::default()
             },
             grandpa: Default::default(),
-            im_online: Default::default(),
             authority_discovery: Default::default(),
             claims: kusama::ClaimsConfig {
                 claims: vec![],
@@ -164,6 +159,9 @@ fn main() {
                 ..Default::default()
             },
             nis_counterpart_balances: Default::default(),
+            registrar: Default::default(),
+            society: Default::default(),
+            transaction_payment: Default::default(),
         }
         .build_storage()
         .unwrap()

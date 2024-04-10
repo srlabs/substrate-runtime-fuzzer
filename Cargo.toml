@@ -5,7 +5,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
-codec = { version = "3.6.5", features = ["derive", "max-encoded-len"], default-features = false, package = "parity-scale-codec" }
+codec = { version = "3.6.9", features = ["derive", "max-encoded-len"], default-features = false, package = "parity-scale-codec" }
 
 [workspace]
 resolver = "2"

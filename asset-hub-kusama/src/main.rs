@@ -61,6 +61,10 @@ fn main() {
             parachain_info: Default::default(),
             parachain_system: Default::default(),
             polkadot_xcm: Default::default(),
+            assets: Default::default(),
+            foreign_assets: Default::default(),
+            pool_assets: Default::default(),
+            transaction_payment: Default::default(),
         }
         .build_storage()
         .unwrap()
