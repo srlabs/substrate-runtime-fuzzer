@@ -24,6 +24,9 @@ sp-consensus-aura = { default-features = false, version = "0.33.0" }
 
 pallet-timestamp = { default-features = false, version = "28.0.0" }
 pallet-balances = { default-features = false, version = "29.0.1" }
+pallet-utility = { default-features = false, version = "29.0.0" }
+pallet-multisig = { default-features = false, version = "29.0.0" }
+pallet-proxy = { default-features = false, version = "29.0.0" }
 pallet-broker = { default-features = false, version = "0.7.0" }
 
 cumulus-primitives-core = { default-features = false , version = "0.8.0" }

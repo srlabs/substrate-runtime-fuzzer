@@ -9,7 +9,7 @@ use frame_support::{
     traits::{IntegrityTest, TryState, TryStateSelect},
     weights::constants::WEIGHT_REF_TIME_PER_SECOND,
 };
-use pallet_broker::{ConfigRecord, ConfigRecordOf};
+use pallet_broker::{ConfigRecord, ConfigRecordOf, CoreIndex, CoreMask, Timeslice};
 use parachains_common::{AccountId, Balance, BlockNumber, SLOT_DURATION};
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_runtime::{
@@ -34,6 +34,31 @@ pub fn new_config() -> ConfigRecordOf<Runtime> {
         renewal_bump: Perbill::from_percent(10),
         contribution_timeout: 5,
     }
+}
+
+fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool) -> bool {
+    if let RuntimeCall::Utility(
+        pallet_utility::Call::batch { calls }
+        | pallet_utility::Call::force_batch { calls }
+        | pallet_utility::Call::batch_all { calls },
+    ) = call
+    {
+        for call in calls {
+            if recursively_find_call(call.clone(), matches_on) {
+                return true;
+            }
+        }
+    } else if let RuntimeCall::Multisig(pallet_multisig::Call::as_multi_threshold_1 {
+        call, ..
+    })
+    | RuntimeCall::Utility(pallet_utility::Call::as_derivative { call, .. })
+    | RuntimeCall::Proxy(pallet_proxy::Call::proxy { call, .. }) = call
+    {
+        return recursively_find_call(*call.clone(), matches_on);
+    } else if matches_on(call) {
+        return true;
+    }
+    false
 }
 
 fn main() {
@@ -200,12 +225,20 @@ fn main() {
 
         let mut extrinsics: Vec<(u8, u8, RuntimeCall)> = vec![];
         while let Ok(decoded) = DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data) {
+            match decoded {
+                (_, _, RuntimeCall::System(_)) => continue,
+                (_, _, call)
+                    if recursively_find_call(call.clone(), |call| {
+                        matches!(call, RuntimeCall::Broker(pallet_broker::Call::drop_history { when })
+                    if when > 4_000_000_000)
+                    }) =>
+                {
+                    continue
+                }
+                _ => {}
+            }
             extrinsics.push(decoded);
         }
-        extrinsics = extrinsics
-            .into_iter()
-            .filter(|(_, _, call)| !matches!(call, RuntimeCall::System(..)))
-            .collect();
         if extrinsics.is_empty() {
             return;
         }
