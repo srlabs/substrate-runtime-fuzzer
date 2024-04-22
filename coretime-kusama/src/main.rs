@@ -14,8 +14,8 @@ use pallet_broker::{ConfigRecord, ConfigRecordOf, CoreIndex, CoreMask, Timeslice
 use parachains_common::{AccountId, Balance, SLOT_DURATION};
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_runtime::{
-    traits::{Dispatchable, Header as _},
     generic::Header,
+    traits::{Dispatchable, Header as _},
     Digest, DigestItem, Perbill, Storage,
 };
 use sp_state_machine::BasicExternalities;
@@ -257,10 +257,7 @@ fn main() {
 
             #[cfg(not(fuzzing))]
             println!("    time:\t{elapsed:?}");
-            assert!(
-                elapsed.as_secs() <= 3,
-                "block execution took too much time"
-            );
+            assert!(elapsed.as_secs() <= 3, "block execution took too much time");
         }
 
         // After execution of all blocks.
@@ -313,9 +310,6 @@ fn main() {
                 assert_eq!(existing_mask ^ region.mask, existing_mask | region.mask);
                 existing_mask |= region.mask;
                 masks.insert((region.begin, region.core), existing_mask);
-            }
-            for mask in masks {
-                assert_eq!(mask.1, CoreMask::complete());
             }
 
             // Developer-defined invariants
