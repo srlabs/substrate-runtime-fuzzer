@@ -1,8 +1,9 @@
 use codec::{DecodeLimit, Encode};
 use coretime_kusama_runtime::{
-    AllPalletsWithSystem, Balances, Broker, Executive, Runtime, RuntimeCall, RuntimeOrigin,
-    Timestamp, UncheckedExtrinsic,
+    AllPalletsWithSystem, Balances, Broker, Executive, ParachainSystem, Runtime, RuntimeCall,
+    RuntimeOrigin, Timestamp,
 };
+use cumulus_primitives_core::relay_chain::BlakeTwo256;
 use frame_support::{
     dispatch::GetDispatchInfo,
     pallet_prelude::Weight,
@@ -10,20 +11,18 @@ use frame_support::{
     weights::constants::WEIGHT_REF_TIME_PER_SECOND,
 };
 use pallet_broker::{ConfigRecord, ConfigRecordOf, CoreIndex, CoreMask, Timeslice};
-use parachains_common::{AccountId, Balance, BlockNumber, SLOT_DURATION};
+use parachains_common::{AccountId, Balance, SLOT_DURATION};
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_runtime::{
-    traits::{Dispatchable, Header},
+    traits::{Dispatchable, Header as _},
+    generic::Header,
     Digest, DigestItem, Perbill, Storage,
 };
+use sp_state_machine::BasicExternalities;
 use std::time::{Duration, Instant};
-use substrate_runtime_fuzzer::*;
 use system_parachains_constants::kusama::currency::UNITS;
 
-// We use a simple Map-based Externalities implementation
-pub type Externalities = sp_state_machine::BasicExternalities;
-
-pub fn new_config() -> ConfigRecordOf<Runtime> {
+fn new_config() -> ConfigRecordOf<Runtime> {
     ConfigRecord {
         advance_notice: 2,
         interlude_length: 1,
@@ -59,6 +58,66 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
         return true;
     }
     false
+}
+
+fn generate_validation_data(
+    slot: Slot,
+    para_head: Header<u32, BlakeTwo256>,
+) -> cumulus_primitives_parachain_inherent::ParachainInherentData {
+    use cumulus_primitives_core::{relay_chain::HeadData, PersistedValidationData};
+    use cumulus_primitives_parachain_inherent::ParachainInherentData;
+    use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
+
+    let para_head_data: HeadData = HeadData(para_head.encode());
+    let sproof_builder = RelayStateSproofBuilder {
+        para_id: 100.into(),
+        current_slot: slot,
+        included_para_head: Some(para_head_data.clone()),
+        ..Default::default()
+    };
+
+    let (relay_parent_storage_root, relay_chain_state) = sproof_builder.into_state_root_and_proof();
+    ParachainInherentData {
+        validation_data: PersistedValidationData {
+            parent_head: para_head_data.clone(),
+            relay_parent_number: 1,
+            relay_parent_storage_root,
+            max_pov_size: 1000,
+        },
+        relay_chain_state,
+        downward_messages: Default::default(),
+        horizontal_messages: Default::default(),
+    }
+}
+
+fn jump_to_block(block: u32) {
+    let prev_header = match block {
+        1 => None,
+        _ => Some(Executive::finalize_block()),
+    };
+    let prev_header_hash = prev_header.clone().map(|h| h.hash()).unwrap_or_default();
+    let pre_digest = Digest {
+        logs: vec![DigestItem::PreRuntime(
+            AURA_ENGINE_ID,
+            Slot::from(block as u64).encode(),
+        )],
+    };
+    let parent_header = Header::<u32, BlakeTwo256>::new(
+        block,
+        Default::default(),
+        Default::default(),
+        prev_header_hash,
+        pre_digest,
+    );
+
+    Executive::initialize_block(&parent_header.clone());
+    Timestamp::set(RuntimeOrigin::none(), block as u64 * SLOT_DURATION).unwrap();
+
+    let parachain_validation_data = generate_validation_data(
+        Slot::from(2 * block as u64),
+        prev_header.unwrap_or(parent_header.clone()),
+    );
+    ParachainSystem::set_validation_data(RuntimeOrigin::none(), parachain_validation_data).unwrap();
 }
 
 fn main() {
@@ -106,113 +165,13 @@ fn main() {
         }
         .build_storage()
         .unwrap();
-        let mut chain = Externalities::new(storage.clone());
+        let mut chain = BasicExternalities::new(storage.clone());
 
         chain.execute_with(|| {
-            // Broker setup
-            Executive::initialize_block(&Header::new(
-                1,
-                Default::default(),
-                Default::default(),
-                Default::default(),
-                Default::default(),
-            ));
-            Timestamp::set(RuntimeOrigin::none(), 0).unwrap();
-
-            let parachain_validation_data = {
-                use cumulus_primitives_core::relay_chain::HeadData;
-                use cumulus_primitives_core::PersistedValidationData;
-                use cumulus_primitives_parachain_inherent::ParachainInherentData;
-                use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
-
-                let parent_head: HeadData = Default::default();
-                let sproof_builder = RelayStateSproofBuilder {
-                    para_id: 100.into(),
-                    current_slot: Slot::from(1),
-                    included_para_head: Some(parent_head.clone()),
-                    ..Default::default()
-                };
-
-                let (relay_parent_storage_root, relay_chain_state) =
-                    sproof_builder.into_state_root_and_proof();
-                let data = ParachainInherentData {
-                    validation_data: PersistedValidationData {
-                        parent_head,
-                        relay_parent_number: 1,
-                        relay_parent_storage_root,
-                        max_pov_size: 1000,
-                    },
-                    relay_chain_state,
-                    downward_messages: Default::default(),
-                    horizontal_messages: Default::default(),
-                };
-                cumulus_pallet_parachain_system::Call::set_validation_data { data }
-            };
-
-            Executive::apply_extrinsic(UncheckedExtrinsic::new_unsigned(
-                RuntimeCall::ParachainSystem(parachain_validation_data),
-            ))
-            .unwrap()
-            .unwrap();
-
+            jump_to_block(1);
             Broker::configure(RuntimeOrigin::root(), new_config()).unwrap();
             Broker::start_sales(RuntimeOrigin::root(), 10 * UNITS, 1).unwrap();
-
-            let pre_digest = Digest {
-                logs: vec![DigestItem::PreRuntime(
-                    AURA_ENGINE_ID,
-                    Slot::from(2).encode(),
-                )],
-            };
-
-            let prev_header = Executive::finalize_block();
-
-            let parent_header = &Header::new(
-                2,
-                Default::default(),
-                Default::default(),
-                prev_header.hash(),
-                pre_digest,
-            );
-
-            Executive::initialize_block(parent_header);
-            Timestamp::set(RuntimeOrigin::none(), SLOT_DURATION * 2).unwrap();
-
-            let parachain_validation_data = {
-                use cumulus_primitives_core::relay_chain::HeadData;
-                use cumulus_primitives_core::PersistedValidationData;
-                use cumulus_primitives_parachain_inherent::ParachainInherentData;
-                use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
-
-                let parent_head = HeadData(prev_header.clone().encode());
-                let sproof_builder = RelayStateSproofBuilder {
-                    para_id: 100.into(),
-                    current_slot: Slot::from(4),
-                    included_para_head: Some(parent_head.clone()),
-                    ..Default::default()
-                };
-
-                let (relay_parent_storage_root, relay_chain_state) =
-                    sproof_builder.into_state_root_and_proof();
-                let data = ParachainInherentData {
-                    validation_data: PersistedValidationData {
-                        parent_head,
-                        relay_parent_number: 2,
-                        relay_parent_storage_root,
-                        max_pov_size: 1000,
-                    },
-                    relay_chain_state,
-                    downward_messages: Default::default(),
-                    horizontal_messages: Default::default(),
-                };
-                cumulus_pallet_parachain_system::Call::set_validation_data { data }
-            };
-
-            Executive::apply_extrinsic(UncheckedExtrinsic::new_unsigned(
-                RuntimeCall::ParachainSystem(parachain_validation_data),
-            ))
-            .unwrap()
-            .unwrap();
+            jump_to_block(2);
         });
         chain.into_storages()
     };
@@ -244,93 +203,23 @@ fn main() {
         }
 
         // `externalities` represents the state of our mock chain.
-        let mut externalities = Externalities::new(genesis_storage.clone());
+        let mut externalities = BasicExternalities::new(genesis_storage.clone());
 
         let mut current_block: u32 = 2;
         let mut current_weight: Weight = Weight::zero();
         let mut elapsed: Duration = Duration::ZERO;
-
-        let start_block = |block: u32, lapse: u32| {
-            #[cfg(not(fuzzing))]
-            println!("\ninitializing block {}", block + lapse);
-
-            let next_block = block + lapse;
-            let current_timestamp = u64::from(next_block) * SLOT_DURATION;
-            let pre_digest = Digest {
-                logs: vec![DigestItem::PreRuntime(
-                    AURA_ENGINE_ID,
-                    Slot::from(current_timestamp / SLOT_DURATION).encode(),
-                )],
-            };
-
-            let prev_header = Executive::finalize_block();
-
-            let parent_header = &Header::new(
-                next_block + 1,
-                Default::default(),
-                Default::default(),
-                prev_header.hash(),
-                pre_digest,
-            );
-            Executive::initialize_block(parent_header);
-
-            // We apply the timestamp extrinsic for the current block.
-            Executive::apply_extrinsic(UncheckedExtrinsic::new_unsigned(RuntimeCall::Timestamp(
-                pallet_timestamp::Call::set {
-                    now: current_timestamp,
-                },
-            )))
-            .unwrap()
-            .unwrap();
-
-            let parachain_validation_data = {
-                use cumulus_primitives_core::relay_chain::HeadData;
-                use cumulus_primitives_core::PersistedValidationData;
-                use cumulus_primitives_parachain_inherent::ParachainInherentData;
-                use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
-
-                let parent_head = HeadData(prev_header.clone().encode());
-                let sproof_builder = RelayStateSproofBuilder {
-                    para_id: 100.into(),
-                    current_slot: Slot::from(2 * current_timestamp / SLOT_DURATION),
-                    included_para_head: Some(parent_head.clone()),
-                    ..Default::default()
-                };
-
-                let (relay_parent_storage_root, relay_chain_state) =
-                    sproof_builder.into_state_root_and_proof();
-                let data = ParachainInherentData {
-                    validation_data: PersistedValidationData {
-                        parent_head,
-                        relay_parent_number: next_block,
-                        relay_parent_storage_root,
-                        max_pov_size: 1000,
-                    },
-                    relay_chain_state,
-                    downward_messages: Default::default(),
-                    horizontal_messages: Default::default(),
-                };
-                cumulus_pallet_parachain_system::Call::set_validation_data { data }
-            };
-
-            Executive::apply_extrinsic(UncheckedExtrinsic::new_unsigned(
-                RuntimeCall::ParachainSystem(parachain_validation_data),
-            ))
-            .unwrap()
-            .unwrap();
-
-            // Calls that need to be called before each block starts (init_calls) go here
-        };
 
         for (lapse, origin, extrinsic) in extrinsics {
             if lapse > 0 {
                 // We update our state variables
                 current_weight = Weight::zero();
                 elapsed = Duration::ZERO;
-
-                // We end the previous block and start the next block
-                externalities.execute_with(|| start_block(current_block, u32::from(lapse) * 393));
                 current_block += u32::from(lapse) * 393;
+                #[cfg(not(fuzzing))]
+                println!("\ninitializing block {current_block}");
+                externalities.execute_with(|| {
+                    jump_to_block(current_block);
+                });
             }
 
             // We get the current time for timing purposes.
@@ -365,31 +254,19 @@ fn main() {
             });
 
             elapsed += now.elapsed();
-        }
 
-        #[cfg(not(fuzzing))]
-        println!("\n  time spent: {elapsed:?}");
-        assert!(
-            elapsed.as_secs() <= MAX_TIME_FOR_BLOCK,
-            "block execution took too much time"
-        );
-
-        // We end the final block
-        externalities.execute_with(|| {
-            // Finilization
-            Executive::finalize_block();
-            // Invariants
             #[cfg(not(fuzzing))]
-            println!("\ntesting invariants for block {current_block}");
-            <AllPalletsWithSystem as TryState<BlockNumber>>::try_state(
-                current_block,
-                TryStateSelect::All,
-            )
-            .unwrap();
-        });
+            println!("    time:\t{elapsed:?}");
+            assert!(
+                elapsed.as_secs() <= 3,
+                "block execution took too much time"
+            );
+        }
 
         // After execution of all blocks.
         externalities.execute_with(|| {
+            // We end the final block
+            Executive::finalize_block();
             // We keep track of the sum of balance of accounts
             let mut counted_free = 0;
             let mut counted_reserved = 0;
@@ -441,9 +318,12 @@ fn main() {
                 assert_eq!(mask.1, CoreMask::complete());
             }
 
+            // Developer-defined invariants
+            #[cfg(not(fuzzing))]
+            println!("\nrunning trystate invariants for block {current_block}");
+            AllPalletsWithSystem::try_state(current_block, TryStateSelect::All).unwrap();
             #[cfg(not(fuzzing))]
             println!("running integrity tests");
-            // We run all developer-defined integrity tests
             <AllPalletsWithSystem as IntegrityTest>::integrity_test();
         });
     });
