@@ -102,42 +102,37 @@ fn main() {
             Executive::finalize_block();
         };
 
-        chain.execute_with(|| start_block(current_block));
+        chain.execute_with(|| {
+            start_block(current_block);
 
-        for (lapse, origin, extrinsic) in extrinsics {
-            if lapse > 0 {
-                // We end the current block
-                chain.execute_with(|| end_block(current_block, elapsed));
+            for (lapse, origin, extrinsic) in extrinsics {
+                if lapse > 0 {
+                    // We end the current block
+                    end_block(current_block, elapsed);
 
-                // 393 * 256 = 100608 which nearly corresponds to a week
-                let actual_lapse = u32::from(lapse) * 393;
-                // We update our state variables
-                current_block += actual_lapse;
-                // current_timestamp += u64::from(actual_lapse) * SLOT_DURATION;
-                current_weight = Weight::zero();
-                elapsed = Duration::ZERO;
+                    // 393 * 256 = 100608 which nearly corresponds to a week
+                    let actual_lapse = u32::from(lapse) * 393;
+                    // We update our state variables
+                    current_block += actual_lapse;
+                    // current_timestamp += u64::from(actual_lapse) * SLOT_DURATION;
+                    current_weight = Weight::zero();
+                    elapsed = Duration::ZERO;
 
-                // We start the next block
-                chain.execute_with(|| start_block(current_block));
-            }
+                    // We start the next block
+                    start_block(current_block);
+                }
 
-            let mut call_weight = Weight::zero();
-            // We compute the weight to avoid overweight blocks.
-            chain.execute_with(|| {
-                call_weight = extrinsic.get_dispatch_info().weight;
-            });
+                // We compute the weight to avoid overweight blocks.
+                current_weight = current_weight.saturating_add(extrinsic.get_dispatch_info().weight);
 
-            current_weight = current_weight.saturating_add(call_weight);
+                if current_weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
+                    #[cfg(not(fuzzing))]
+                    println!("Extrinsic would exhaust block weight, skipping");
+                    continue;
+                }
 
-            if current_weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
-                #[cfg(not(fuzzing))]
-                println!("Extrinsic would exhaust block weight, skipping");
-                continue;
-            }
+                let now = Instant::now(); // We get the current time for timing purposes.
 
-            let now = Instant::now(); // We get the current time for timing purposes.
-
-            chain.execute_with(|| {
                 let origin_account =
                     endowed_accounts[origin as usize % endowed_accounts.len()].clone();
 
@@ -161,20 +156,16 @@ fn main() {
                     .dispatch(RuntimeOrigin::signed(origin_account));
                 #[cfg(not(fuzzing))]
                 println!("    result:     {_res:?}");
-            });
 
-            elapsed += now.elapsed();
-        }
+                elapsed += now.elapsed();
+            }
 
-        // We end the final block
-        chain.execute_with(|| end_block(current_block, elapsed));
+            // We end the final block
+            end_block(current_block, elapsed);
 
-        // After execution of all blocks.
-        chain.execute_with(|| {
-            // We keep track of the sum of balance of accounts
+            // After execution of all blocks, we run invariants
             let mut counted_free = 0;
             let mut counted_reserved = 0;
-
             for acc in frame_system::Account::<Runtime>::iter() {
                 // Check that the consumer/provider state is valid.
                 let acc_consumers = acc.1.consumers;
