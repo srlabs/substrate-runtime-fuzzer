@@ -6,20 +6,16 @@ use frame_support::{
     weights::constants::WEIGHT_REF_TIME_PER_SECOND,
 };
 use solochain_template_runtime::{
-    AccountId, AllPalletsWithSystem, Balance, Balances, BlockNumber, Executive, Runtime,
-    RuntimeCall, RuntimeOrigin, UncheckedExtrinsic, SLOT_DURATION,
+    AccountId, AllPalletsWithSystem, Balance, Balances, Executive, Runtime, RuntimeCall,
+    RuntimeOrigin, Timestamp, SLOT_DURATION,
 };
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_runtime::{
     traits::{Dispatchable, Header},
     Digest, DigestItem, Storage,
 };
+use sp_state_machine::BasicExternalities;
 use std::time::{Duration, Instant};
-
-// We use a simple Map-based Externalities implementation
-pub type Externalities = sp_state_machine::BasicExternalities;
-
-const MAX_BLOCK_REF_TIME: u64 = 2 * WEIGHT_REF_TIME_PER_SECOND; // 2 seconds
 
 fn genesis(accounts: &[AccountId]) -> Storage {
     use solochain_template_runtime::{
@@ -29,19 +25,16 @@ fn genesis(accounts: &[AccountId]) -> Storage {
     use sp_runtime::app_crypto::ByteArray;
     use sp_runtime::BuildStorage;
 
+    // Configure endowed accounts with initial balance of 1 << 60.
+    let balances = accounts.iter().cloned().map(|k| (k, 1 << 60)).collect();
+    let authorities = vec![AuraId::from_slice(&[0; 32]).unwrap()];
+
     RuntimeGenesisConfig {
         system: Default::default(),
-        balances: BalancesConfig {
-            // Configure endowed accounts with initial balance of 1 << 60.
-            balances: accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
-        },
-        aura: AuraConfig {
-            authorities: vec![AuraId::from_slice(&[0; 32]).unwrap()],
-        },
+        balances: BalancesConfig { balances },
+        aura: AuraConfig { authorities },
         grandpa: Default::default(),
-        sudo: SudoConfig {
-            key: None, // Assign no network admin rights.
-        },
+        sudo: SudoConfig { key: None }, // Assign no network admin rights.
         transaction_payment: Default::default(),
     }
     .build_storage()
@@ -54,40 +47,36 @@ fn main() {
     let genesis_storage = genesis(&endowed_accounts);
 
     ziggy::fuzz!(|data: &[u8]| {
+        // We build the list of extrinsics we will execute
         let mut extrinsic_data = data;
-
         let mut extrinsics: Vec<(u8, u8, RuntimeCall)> = vec![];
         while let Ok(decoded) = DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data) {
+            match decoded {
+                (_, _, RuntimeCall::System(_)) => continue,
+                _ => {}
+            }
             extrinsics.push(decoded);
         }
-        extrinsics = extrinsics
-            .into_iter()
-            .filter(|(_, _, call)| !matches!(call, RuntimeCall::System(..)))
-            .collect();
         if extrinsics.is_empty() {
             return;
         }
 
-        // `externalities` represents the state of our mock chain.
-        let mut externalities = Externalities::new(genesis_storage.clone());
+        // `chain` corresponds to the chain's state
+        let mut chain = BasicExternalities::new(genesis_storage.clone());
 
         let mut current_block: u32 = 1;
-        let mut current_timestamp: u64 = 0;
         let mut current_weight: Weight = Weight::zero();
         let mut elapsed: Duration = Duration::ZERO;
 
-        let start_block = |block: u32, current_timestamp: u64| {
+        let start_block = |block: u32| {
             #[cfg(not(fuzzing))]
             println!("\ninitializing block {block}");
 
-            let pre_digest = match current_timestamp {
-                0 => Default::default(),
-                _ => Digest {
-                    logs: vec![DigestItem::PreRuntime(
-                        AURA_ENGINE_ID,
-                        Slot::from(current_timestamp / SLOT_DURATION).encode(),
-                    )],
-                },
+            let pre_digest = Digest {
+                logs: vec![DigestItem::PreRuntime(
+                    AURA_ENGINE_ID,
+                    Slot::from(block as u64).encode(),
+                )],
             };
 
             Executive::initialize_block(&Header::new(
@@ -100,80 +89,57 @@ fn main() {
 
             #[cfg(not(fuzzing))]
             println!("  setting timestamp");
-            // We apply the timestamp extrinsic for the current block.
-            Executive::apply_extrinsic(UncheckedExtrinsic::new_unsigned(RuntimeCall::Timestamp(
-                pallet_timestamp::Call::set {
-                    now: current_timestamp,
-                },
-            )))
-            .unwrap()
-            .unwrap();
-
-            // Calls that need to be called before each block starts (init_calls) go here
+            Timestamp::set(RuntimeOrigin::none(), block as u64 * SLOT_DURATION).unwrap();
         };
 
         let end_block = |current_block: u32, elapsed: Duration| {
             #[cfg(not(fuzzing))]
             println!("\n  time spent: {elapsed:?}");
-            assert!(
-                elapsed.as_secs() <= 2, // two seconds
-                "block execution took too much time"
-            );
+            assert!(elapsed.as_secs() <= 2, "block execution took too much time");
 
             #[cfg(not(fuzzing))]
             println!("  finalizing block {current_block}");
             Executive::finalize_block();
-
-            #[cfg(not(fuzzing))]
-            println!("  testing invariants for block {current_block}");
-            <AllPalletsWithSystem as TryState<BlockNumber>>::try_state(
-                current_block,
-                TryStateSelect::All,
-            )
-            .unwrap();
         };
 
-        externalities.execute_with(|| start_block(current_block, current_timestamp));
+        chain.execute_with(|| start_block(current_block));
 
         for (lapse, origin, extrinsic) in extrinsics {
-            // If the lapse is in the range [0, MAX_BLOCK_LAPSE] we finalize the block and initialize
-            // a new one.
             if lapse > 0 {
                 // We end the current block
-                externalities.execute_with(|| end_block(current_block, elapsed));
+                chain.execute_with(|| end_block(current_block, elapsed));
 
                 // 393 * 256 = 100608 which nearly corresponds to a week
                 let actual_lapse = u32::from(lapse) * 393;
                 // We update our state variables
                 current_block += actual_lapse;
-                current_timestamp += u64::from(actual_lapse) * SLOT_DURATION;
+                // current_timestamp += u64::from(actual_lapse) * SLOT_DURATION;
                 current_weight = Weight::zero();
                 elapsed = Duration::ZERO;
 
                 // We start the next block
-                externalities.execute_with(|| start_block(current_block, current_timestamp));
+                chain.execute_with(|| start_block(current_block));
             }
 
             let mut call_weight = Weight::zero();
             // We compute the weight to avoid overweight blocks.
-            externalities.execute_with(|| {
+            chain.execute_with(|| {
                 call_weight = extrinsic.get_dispatch_info().weight;
             });
 
             current_weight = current_weight.saturating_add(call_weight);
 
-            if current_weight.ref_time() >= MAX_BLOCK_REF_TIME {
+            if current_weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
                 #[cfg(not(fuzzing))]
                 println!("Extrinsic would exhaust block weight, skipping");
                 continue;
             }
 
-            // We get the current time for timing purposes.
-            let now = Instant::now();
+            let now = Instant::now(); // We get the current time for timing purposes.
 
-            externalities.execute_with(|| {
+            chain.execute_with(|| {
                 let origin_account =
-                    endowed_accounts[usize::from(origin) % endowed_accounts.len()].clone();
+                    endowed_accounts[origin as usize % endowed_accounts.len()].clone();
 
                 // We do not continue if the origin account does not have a free balance
                 let acc = frame_system::Account::<Runtime>::get(&origin_account);
@@ -201,10 +167,10 @@ fn main() {
         }
 
         // We end the final block
-        externalities.execute_with(|| end_block(current_block, elapsed));
+        chain.execute_with(|| end_block(current_block, elapsed));
 
         // After execution of all blocks.
-        externalities.execute_with(|| {
+        chain.execute_with(|| {
             // We keep track of the sum of balance of accounts
             let mut counted_free = 0;
             let mut counted_reserved = 0;
@@ -231,15 +197,15 @@ fn main() {
 
             let total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
             let counted_issuance = counted_free + counted_reserved;
-            assert!(
-                total_issuance == counted_issuance,
-                "Inconsistent total issuance: {total_issuance} but counted {counted_issuance}"
-            );
+            assert_eq!(total_issuance, counted_issuance, "Inconsistent total issuance vs counted issuance");
 
-            //#[cfg(not(fuzzing))]
-            println!("\nrunning integrity tests\n");
+            #[cfg(not(fuzzing))]
+            println!("\nrunning integrity tests");
             // We run all developer-defined integrity tests
-            <AllPalletsWithSystem as IntegrityTest>::integrity_test();
+            AllPalletsWithSystem::integrity_test();
+            #[cfg(not(fuzzing))]
+            println!("running try_state for block {current_block}\n");
+            AllPalletsWithSystem::try_state(current_block, TryStateSelect::All).unwrap();
         });
     });
 }
