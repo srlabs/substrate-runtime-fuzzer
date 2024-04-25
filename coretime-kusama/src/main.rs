@@ -306,7 +306,7 @@ fn main() {
             let regions: Vec<pallet_broker::RegionId> = pallet_broker::Regions::<Runtime>::iter().map(|n| n.0).collect();
             let mut masks: std::collections::HashMap::<(Timeslice, CoreIndex), CoreMask> = Default::default();
             for region in regions {
-                let region_record =  pallet_broker::Regions::<Runtime>::get(region).unwrap(); //_or(&pallet_broker::RegionRecord::empty());
+                let region_record =  pallet_broker::Regions::<Runtime>::get(region).expect("Region id should have a region record"); 
 
                 for region_timeslice in region.begin..region_record.end {
                         let mut existing_mask = *masks.get(&(region_timeslice, region.core)).unwrap_or(&CoreMask::void());
