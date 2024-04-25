@@ -22,8 +22,7 @@ fn genesis(accounts: &[AccountId]) -> Storage {
         AuraConfig, BalancesConfig, RuntimeGenesisConfig, SudoConfig,
     };
     use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-    use sp_runtime::app_crypto::ByteArray;
-    use sp_runtime::BuildStorage;
+    use sp_runtime::{app_crypto::ByteArray, BuildStorage};
 
     // Configure endowed accounts with initial balance of 1 << 60.
     let balances = accounts.iter().cloned().map(|k| (k, 1 << 60)).collect();
@@ -41,6 +40,38 @@ fn genesis(accounts: &[AccountId]) -> Storage {
     .unwrap()
 }
 
+fn start_block(block: u32) {
+    #[cfg(not(fuzzing))]
+    println!("\ninitializing block {block}");
+
+    Executive::initialize_block(&Header::new(
+        block,
+        Default::default(),
+        Default::default(),
+        Default::default(),
+        Digest {
+            logs: vec![DigestItem::PreRuntime(
+                AURA_ENGINE_ID,
+                Slot::from(block as u64).encode(),
+            )],
+        },
+    ));
+
+    #[cfg(not(fuzzing))]
+    println!("  setting timestamp");
+    Timestamp::set(RuntimeOrigin::none(), block as u64 * SLOT_DURATION).unwrap();
+}
+
+fn end_block(elapsed: Duration) {
+    #[cfg(not(fuzzing))]
+    println!("\n  time spent: {elapsed:?}");
+    assert!(elapsed.as_secs() <= 2, "block execution took too much time");
+
+    #[cfg(not(fuzzing))]
+    println!("  finalizing block");
+    Executive::finalize_block();
+}
+
 fn main() {
     let endowed_accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
 
@@ -49,14 +80,12 @@ fn main() {
     ziggy::fuzz!(|data: &[u8]| {
         // We build the list of extrinsics we will execute
         let mut extrinsic_data = data;
-        let mut extrinsics: Vec<(u8, u8, RuntimeCall)> = vec![];
-        while let Ok(decoded) = DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data) {
-            match decoded {
-                (_, _, RuntimeCall::System(_)) => continue,
-                _ => {}
-            }
-            extrinsics.push(decoded);
-        }
+        // Vec<(lapse, origin, extrinsic)>
+        let extrinsics: Vec<(u8, u8, RuntimeCall)> = std::iter::from_fn(|| {
+            DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok()
+        })
+        .filter(|(_, _, x)| !matches!(x, RuntimeCall::System(_)))
+        .collect();
         if extrinsics.is_empty() {
             return;
         }
@@ -68,53 +97,18 @@ fn main() {
         let mut current_weight: Weight = Weight::zero();
         let mut elapsed: Duration = Duration::ZERO;
 
-        let start_block = |block: u32| {
-            #[cfg(not(fuzzing))]
-            println!("\ninitializing block {block}");
-
-            let pre_digest = Digest {
-                logs: vec![DigestItem::PreRuntime(
-                    AURA_ENGINE_ID,
-                    Slot::from(block as u64).encode(),
-                )],
-            };
-
-            Executive::initialize_block(&Header::new(
-                block,
-                Default::default(),
-                Default::default(),
-                Default::default(),
-                pre_digest,
-            ));
-
-            #[cfg(not(fuzzing))]
-            println!("  setting timestamp");
-            Timestamp::set(RuntimeOrigin::none(), block as u64 * SLOT_DURATION).unwrap();
-        };
-
-        let end_block = |current_block: u32, elapsed: Duration| {
-            #[cfg(not(fuzzing))]
-            println!("\n  time spent: {elapsed:?}");
-            assert!(elapsed.as_secs() <= 2, "block execution took too much time");
-
-            #[cfg(not(fuzzing))]
-            println!("  finalizing block {current_block}");
-            Executive::finalize_block();
-        };
-
         chain.execute_with(|| {
             start_block(current_block);
 
             for (lapse, origin, extrinsic) in extrinsics {
                 if lapse > 0 {
                     // We end the current block
-                    end_block(current_block, elapsed);
+                    end_block(elapsed);
 
                     // 393 * 256 = 100608 which nearly corresponds to a week
                     let actual_lapse = u32::from(lapse) * 393;
                     // We update our state variables
                     current_block += actual_lapse;
-                    // current_timestamp += u64::from(actual_lapse) * SLOT_DURATION;
                     current_weight = Weight::zero();
                     elapsed = Duration::ZERO;
 
@@ -136,6 +130,7 @@ fn main() {
                 let origin_account =
                     endowed_accounts[origin as usize % endowed_accounts.len()].clone();
 
+                /*
                 // We do not continue if the origin account does not have a free balance
                 let acc = frame_system::Account::<Runtime>::get(&origin_account);
                 if acc.data.free == 0 {
@@ -145,6 +140,7 @@ fn main() {
                     );
                     return;
                 }
+                */
 
                 #[cfg(not(fuzzing))]
                 {
@@ -161,7 +157,7 @@ fn main() {
             }
 
             // We end the final block
-            end_block(current_block, elapsed);
+            end_block(elapsed);
 
             // After execution of all blocks, we run invariants
             let mut counted_free = 0;
