@@ -306,10 +306,14 @@ fn main() {
             let regions: Vec<pallet_broker::RegionId> = pallet_broker::Regions::<Runtime>::iter().map(|n| n.0).collect();
             let mut masks: std::collections::HashMap::<(Timeslice, CoreIndex), CoreMask> = Default::default();
             for region in regions {
-                let mut existing_mask = *masks.get(&(region.begin, region.core)).unwrap_or(&CoreMask::void());
-                assert_eq!(existing_mask ^ region.mask, existing_mask | region.mask);
-                existing_mask |= region.mask;
-                masks.insert((region.begin, region.core), existing_mask);
+                let region_record =  pallet_broker::Regions::<Runtime>::get(region).unwrap(); //_or(&pallet_broker::RegionRecord::empty());
+
+                for region_timeslice in region.begin..region_record.end {
+                        let mut existing_mask = *masks.get(&(region_timeslice, region.core)).unwrap_or(&CoreMask::void());
+                        assert_eq!(existing_mask ^ region.mask, existing_mask | region.mask);
+                        existing_mask |= region.mask;
+                        masks.insert((region_timeslice, region.core), existing_mask);                        
+                }
             }
 
             // Developer-defined invariants
