@@ -34,11 +34,7 @@ fn genesis(accounts: &[AccountId]) -> Storage {
         system: Default::default(),
         balances: BalancesConfig {
             // Configure endowed accounts with initial balance of 1 << 60.
-            balances: accounts
-                .iter()
-                .cloned()
-                .map(|k| (k, 1 << 60))
-                .collect(),
+            balances: accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
         },
         aura: Default::default(),
         session: SessionConfig {
