@@ -166,18 +166,15 @@ fn start_block(block: u32) {
     #[cfg(not(fuzzing))]
     println!("\ninitializing block {block}");
 
-    let pre_digest = match block {
-        0 => Default::default(),
-        _ => Digest {
-            logs: vec![DigestItem::PreRuntime(
-                BABE_ENGINE_ID,
-                PreDigest::SecondaryPlain(SecondaryPlainPreDigest {
-                    slot: Slot::from(block as u64),
-                    authority_index: 0,
-                })
-                .encode(),
-            )],
-        },
+    let pre_digest = Digest {
+        logs: vec![DigestItem::PreRuntime(
+            BABE_ENGINE_ID,
+            PreDigest::SecondaryPlain(SecondaryPlainPreDigest {
+                slot: Slot::from(block as u64),
+                authority_index: 0,
+            })
+            .encode(),
+        )],
     };
 
     use sp_runtime::{generic, traits::BlakeTwo256};
