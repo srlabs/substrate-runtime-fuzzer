@@ -19,6 +19,52 @@ use sp_runtime::{
 use sp_state_machine::BasicExternalities;
 use std::time::{Duration, Instant};
 
+fn genesis(accounts: &[AccountId]) -> Storage {
+    use asset_hub_kusama_runtime::{
+        BalancesConfig, CollatorSelectionConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys,
+    };
+    use sp_consensus_aura::sr25519::AuthorityId as AuraId;
+    use sp_runtime::app_crypto::ByteArray;
+    use sp_runtime::BuildStorage;
+
+    let initial_authorities: Vec<(AccountId, AuraId)> =
+        vec![([0; 32].into(), AuraId::from_slice(&[0; 32]).unwrap())];
+
+    RuntimeGenesisConfig {
+        system: Default::default(),
+        balances: BalancesConfig {
+            // Configure endowed accounts with initial balance of 1 << 60.
+            balances: accounts
+                .iter()
+                .cloned()
+                .map(|k| (k, 1 << 60))
+                .collect(),
+        },
+        aura: Default::default(),
+        session: SessionConfig {
+            keys: initial_authorities
+                .iter()
+                .map(|x| (x.0.clone(), x.0.clone(), SessionKeys { aura: x.1.clone() }))
+                .collect::<Vec<_>>(),
+        },
+        collator_selection: CollatorSelectionConfig {
+            invulnerables: initial_authorities.iter().map(|x| (x.0.clone())).collect(),
+            candidacy_bond: 1 << 57,
+            desired_candidates: 1,
+        },
+        aura_ext: Default::default(),
+        parachain_info: Default::default(),
+        parachain_system: Default::default(),
+        polkadot_xcm: Default::default(),
+        assets: Default::default(),
+        foreign_assets: Default::default(),
+        pool_assets: Default::default(),
+        transaction_payment: Default::default(),
+    }
+    .build_storage()
+    .unwrap()
+}
+
 fn start_block(block: u32, prev_header: Option<Header>) {
     #[cfg(not(fuzzing))]
     println!("\ninitializing block {}", block);
@@ -93,57 +139,11 @@ fn end_block(elapsed: Duration) -> Header {
 
 fn main() {
     let endowed_accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
-
-    let genesis_storage: Storage = {
-        use asset_hub_kusama_runtime::{
-            BalancesConfig, CollatorSelectionConfig, RuntimeGenesisConfig, SessionConfig,
-            SessionKeys,
-        };
-        use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-        use sp_runtime::app_crypto::ByteArray;
-        use sp_runtime::BuildStorage;
-
-        let initial_authorities: Vec<(AccountId, AuraId)> =
-            vec![([0; 32].into(), AuraId::from_slice(&[0; 32]).unwrap())];
-
-        RuntimeGenesisConfig {
-            system: Default::default(),
-            balances: BalancesConfig {
-                // Configure endowed accounts with initial balance of 1 << 60.
-                balances: endowed_accounts
-                    .iter()
-                    .cloned()
-                    .map(|k| (k, 1 << 60))
-                    .collect(),
-            },
-            aura: Default::default(),
-            session: SessionConfig {
-                keys: initial_authorities
-                    .iter()
-                    .map(|x| (x.0.clone(), x.0.clone(), SessionKeys { aura: x.1.clone() }))
-                    .collect::<Vec<_>>(),
-            },
-            collator_selection: CollatorSelectionConfig {
-                invulnerables: initial_authorities.iter().map(|x| (x.0.clone())).collect(),
-                candidacy_bond: 1 << 57,
-                desired_candidates: 1,
-            },
-            aura_ext: Default::default(),
-            parachain_info: Default::default(),
-            parachain_system: Default::default(),
-            polkadot_xcm: Default::default(),
-            assets: Default::default(),
-            foreign_assets: Default::default(),
-            pool_assets: Default::default(),
-            transaction_payment: Default::default(),
-        }
-        .build_storage()
-        .unwrap()
-    };
+    let genesis_storage = genesis(&endowed_accounts);
 
     ziggy::fuzz!(|data: &[u8]| {
+        // We build the list of extrinsics we will execute
         let mut extrinsic_data = data;
-
         // Vec<(lapse, origin, extrinsic)>
         let extrinsics: Vec<(u8, u8, RuntimeCall)> = std::iter::from_fn(|| {
             DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok()
