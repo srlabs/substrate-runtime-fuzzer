@@ -1,4 +1,4 @@
-use codec::Encode;
+use codec::{DecodeLimit, Encode};
 use frame_support::{
     dispatch::GetDispatchInfo,
     pallet_prelude::Weight,
@@ -7,10 +7,10 @@ use frame_support::{
 };
 use kitchensink_runtime::{
     constants::{currency::DOLLARS, time::SLOT_DURATION},
-    AccountId, AllPalletsWithSystem, Executive, Runtime, RuntimeCall, RuntimeOrigin,
-    UncheckedExtrinsic,
+    AccountId, AllPalletsWithSystem, Broker, Executive, Runtime, RuntimeCall, RuntimeOrigin,
+    Timestamp,
 };
-use node_primitives::BlockNumber;
+use node_primitives::Balance;
 use sp_consensus_babe::{
     digests::{PreDigest, SecondaryPlainPreDigest},
     Slot, BABE_ENGINE_ID,
@@ -19,14 +19,169 @@ use sp_runtime::{
     traits::{Dispatchable, Header},
     Digest, DigestItem, Perbill, Storage,
 };
+use sp_state_machine::BasicExternalities;
 use std::time::{Duration, Instant};
-use substrate_runtime_fuzzer::*;
 
-// We use a simple Map-based Externalities implementation
-pub type Externalities = sp_state_machine::BasicExternalities;
+fn genesis(accounts: &[AccountId]) -> Storage {
+    use kitchensink_runtime::{
+        AssetsConfig, BabeConfig, BalancesConfig, BeefyConfig, CouncilConfig, DemocracyConfig,
+        ElectionsConfig, GluttonConfig, GrandpaConfig, ImOnlineConfig, IndicesConfig,
+        NominationPoolsConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys, SocietyConfig,
+        StakingConfig, SudoConfig, TechnicalCommitteeConfig,
+    };
+    use pallet_grandpa::AuthorityId as GrandpaId;
+    use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
+    use pallet_staking::StakerStatus;
+    use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
+    use sp_consensus_babe::AuthorityId as BabeId;
+    use sp_core::{sr25519::Public as MixnetId, Pair};
+    use sp_runtime::{app_crypto::ByteArray, BuildStorage};
 
-/// Types from the fuzzed runtime.
-type Balance = <Runtime as pallet_balances::Config>::Balance;
+    let beefy_pair = sp_consensus_beefy::ecdsa_crypto::Pair::generate().0;
+
+    let stakers = vec![(
+        [0; 32].into(),
+        [0; 32].into(),
+        STASH,
+        StakerStatus::Validator,
+    )];
+
+    let num_endowed_accounts = accounts.len();
+
+    const ENDOWMENT: Balance = 10_000_000 * DOLLARS;
+    const STASH: Balance = ENDOWMENT / 1000;
+
+    let storage = RuntimeGenesisConfig {
+        system: Default::default(),
+        balances: BalancesConfig {
+            balances: accounts.iter().cloned().map(|x| (x, ENDOWMENT)).collect(),
+        },
+        indices: IndicesConfig { indices: vec![] },
+        session: SessionConfig {
+            keys: vec![(
+                [0; 32].into(),
+                [0; 32].into(),
+                SessionKeys {
+                    grandpa: GrandpaId::from_slice(&[0; 32]).unwrap(),
+                    babe: BabeId::from_slice(&[0; 32]).unwrap(),
+                    beefy: beefy_pair.public(),
+                    im_online: ImOnlineId::from_slice(&[0; 32]).unwrap(),
+                    authority_discovery: AuthorityDiscoveryId::from_slice(&[0; 32]).unwrap(),
+                    mixnet: MixnetId::from_slice(&[0; 32]).unwrap().into(),
+                },
+            )],
+        },
+        beefy: BeefyConfig::default(),
+        staking: StakingConfig {
+            validator_count: 0u32,
+            // validator_count: initial_authorities.len() as u32,
+            minimum_validator_count: 0u32,
+            // minimum_validator_count: initial_authorities.len() as u32,
+            invulnerables: vec![[0; 32].into()],
+            slash_reward_fraction: Perbill::from_percent(10),
+            stakers,
+            ..Default::default()
+        },
+        democracy: DemocracyConfig::default(),
+        elections: ElectionsConfig {
+            members: accounts
+                .iter()
+                .take((num_endowed_accounts + 1) / 2)
+                .cloned()
+                .map(|member| (member, STASH))
+                .collect(),
+        },
+        council: CouncilConfig::default(),
+        technical_committee: TechnicalCommitteeConfig {
+            members: accounts
+                .iter()
+                .take((num_endowed_accounts + 1) / 2)
+                .cloned()
+                .collect(),
+            phantom: Default::default(),
+        },
+        sudo: SudoConfig { key: None },
+        babe: BabeConfig {
+            authorities: vec![],
+            epoch_config: kitchensink_runtime::BABE_GENESIS_EPOCH_CONFIG,
+            ..Default::default()
+        },
+        im_online: ImOnlineConfig { keys: vec![] },
+        authority_discovery: Default::default(),
+        grandpa: GrandpaConfig {
+            authorities: vec![],
+            ..Default::default()
+        },
+        technical_membership: Default::default(),
+        treasury: Default::default(),
+        society: SocietyConfig { pot: 0 },
+        vesting: Default::default(),
+        assets: AssetsConfig {
+            // This asset is used by the NIS pallet as counterpart currency.
+            assets: vec![(9, [0; 32].into(), true, 1)],
+            ..Default::default()
+        },
+        transaction_storage: Default::default(),
+        transaction_payment: Default::default(),
+        alliance: Default::default(),
+        alliance_motion: Default::default(),
+        nomination_pools: NominationPoolsConfig {
+            min_create_bond: 10 * DOLLARS,
+            min_join_bond: DOLLARS,
+            ..Default::default()
+        },
+        glutton: GluttonConfig {
+            compute: Default::default(),
+            storage: Default::default(),
+            trash_data_count: Default::default(),
+            ..Default::default()
+        },
+        pool_assets: Default::default(),
+        safe_mode: Default::default(),
+        tx_pause: Default::default(),
+        mixnet: Default::default(),
+    }
+    .build_storage()
+    .unwrap();
+    let mut chain = BasicExternalities::new(storage);
+    chain.execute_with(|| {
+        // We set the configuration for the broker pallet
+        Broker::configure(
+            RuntimeOrigin::root(),
+            pallet_broker::ConfigRecord {
+                advance_notice: 2,
+                interlude_length: 1,
+                leadin_length: 1,
+                ideal_bulk_proportion: Default::default(),
+                limit_cores_offered: None,
+                region_length: 3,
+                renewal_bump: Perbill::from_percent(10),
+                contribution_timeout: 5,
+            },
+        )
+        .unwrap();
+
+        /*
+        // WIP: found the society before each input
+        externalities.execute_with(|| {
+            RuntimeCall::Sudo(pallet_sudo::Call::sudo {
+                call: RuntimeCall::Society(pallet_society::Call::found_society {
+                    founder: AccountId::from([0; 32]).into(),
+                    max_members: 2,
+                    max_intake: 2,
+                    max_strikes: 2,
+                    candidate_deposit: 1_000,
+                    rules: vec![0],
+                })
+                .into(),
+            })
+            .dispatch(RuntimeOrigin::root())
+            .unwrap();
+        });
+        */
+    });
+    chain.into_storages()
+}
 
 fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool) -> bool {
     if let RuntimeCall::Utility(
@@ -57,259 +212,57 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
     false
 }
 
-fn main() {
-    let endowed_accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
+fn start_block(block: u32) {
+    #[cfg(not(fuzzing))]
+    println!("\ninitializing block {block}");
 
-    let genesis_storage: Storage = {
-        use kitchensink_runtime::{
-            AssetsConfig, BabeConfig, BalancesConfig, BeefyConfig, CouncilConfig, DemocracyConfig,
-            ElectionsConfig, GluttonConfig, GrandpaConfig, ImOnlineConfig, IndicesConfig,
-            NominationPoolsConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys, SocietyConfig,
-            StakingConfig, SudoConfig, TechnicalCommitteeConfig,
-        };
-        use pallet_grandpa::AuthorityId as GrandpaId;
-        use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
-        use pallet_staking::StakerStatus;
-        use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
-        use sp_consensus_babe::AuthorityId as BabeId;
-        use sp_core::{sr25519::Public as MixnetId, Pair};
-        use sp_runtime::{app_crypto::ByteArray, BuildStorage};
-
-        let beefy_pair = sp_consensus_beefy::ecdsa_crypto::Pair::generate().0;
-
-        let stakers = vec![(
-            [0; 32].into(),
-            [0; 32].into(),
-            STASH,
-            StakerStatus::Validator,
-        )];
-
-        let num_endowed_accounts = endowed_accounts.len();
-
-        const ENDOWMENT: Balance = 10_000_000 * DOLLARS;
-        const STASH: Balance = ENDOWMENT / 1000;
-
-        RuntimeGenesisConfig {
-            system: Default::default(),
-            balances: BalancesConfig {
-                balances: endowed_accounts
-                    .iter()
-                    .cloned()
-                    .map(|x| (x, ENDOWMENT))
-                    .collect(),
-            },
-            indices: IndicesConfig { indices: vec![] },
-            session: SessionConfig {
-                keys: vec![(
-                    [0; 32].into(),
-                    [0; 32].into(),
-                    SessionKeys {
-                        grandpa: GrandpaId::from_slice(&[0; 32]).unwrap(),
-                        babe: BabeId::from_slice(&[0; 32]).unwrap(),
-                        beefy: beefy_pair.public(),
-                        im_online: ImOnlineId::from_slice(&[0; 32]).unwrap(),
-                        authority_discovery: AuthorityDiscoveryId::from_slice(&[0; 32]).unwrap(),
-                        mixnet: MixnetId::from_slice(&[0; 32]).unwrap().into(),
-                    },
-                )],
-            },
-            beefy: BeefyConfig::default(),
-            staking: StakingConfig {
-                validator_count: 0u32,
-                // validator_count: initial_authorities.len() as u32,
-                minimum_validator_count: 0u32,
-                // minimum_validator_count: initial_authorities.len() as u32,
-                invulnerables: vec![[0; 32].into()],
-                slash_reward_fraction: Perbill::from_percent(10),
-                stakers,
-                ..Default::default()
-            },
-            democracy: DemocracyConfig::default(),
-            elections: ElectionsConfig {
-                members: endowed_accounts
-                    .iter()
-                    .take((num_endowed_accounts + 1) / 2)
-                    .cloned()
-                    .map(|member| (member, STASH))
-                    .collect(),
-            },
-            council: CouncilConfig::default(),
-            technical_committee: TechnicalCommitteeConfig {
-                members: endowed_accounts
-                    .iter()
-                    .take((num_endowed_accounts + 1) / 2)
-                    .cloned()
-                    .collect(),
-                phantom: Default::default(),
-            },
-            sudo: SudoConfig { key: None },
-            babe: BabeConfig {
-                authorities: vec![],
-                epoch_config: kitchensink_runtime::BABE_GENESIS_EPOCH_CONFIG,
-                ..Default::default()
-            },
-            im_online: ImOnlineConfig { keys: vec![] },
-            authority_discovery: Default::default(),
-            grandpa: GrandpaConfig {
-                authorities: vec![],
-                ..Default::default()
-            },
-            technical_membership: Default::default(),
-            treasury: Default::default(),
-            society: SocietyConfig { pot: 0 },
-            vesting: Default::default(),
-            assets: AssetsConfig {
-                // This asset is used by the NIS pallet as counterpart currency.
-                assets: vec![(9, [0; 32].into(), true, 1)],
-                ..Default::default()
-            },
-            transaction_storage: Default::default(),
-            transaction_payment: Default::default(),
-            alliance: Default::default(),
-            alliance_motion: Default::default(),
-            nomination_pools: NominationPoolsConfig {
-                min_create_bond: 10 * DOLLARS,
-                min_join_bond: DOLLARS,
-                ..Default::default()
-            },
-            glutton: GluttonConfig {
-                compute: Default::default(),
-                storage: Default::default(),
-                trash_data_count: Default::default(),
-                ..Default::default()
-            },
-            pool_assets: Default::default(),
-            safe_mode: Default::default(),
-            tx_pause: Default::default(),
-            mixnet: Default::default(),
-        }
-        .build_storage()
-        .unwrap()
+    let pre_digest = Digest {
+        logs: vec![DigestItem::PreRuntime(
+            BABE_ENGINE_ID,
+            PreDigest::SecondaryPlain(SecondaryPlainPreDigest {
+                slot: Slot::from(block as u64),
+                authority_index: 42,
+            })
+            .encode(),
+        )],
     };
 
+    Executive::initialize_block(&Header::new(
+        block,
+        Default::default(),
+        Default::default(),
+        Default::default(),
+        pre_digest,
+    ));
+
+    #[cfg(not(fuzzing))]
+    println!("  setting timestamp");
+    Timestamp::set(RuntimeOrigin::none(), block as u64 * SLOT_DURATION).unwrap();
+}
+
+fn end_block(elapsed: Duration) {
+    #[cfg(not(fuzzing))]
+    println!("\n  time spent: {elapsed:?}");
+    assert!(elapsed.as_secs() <= 2, "block execution took too much time");
+
+    #[cfg(not(fuzzing))]
+    println!("\n  finalizing block");
+    Executive::finalize_block();
+}
+
+fn main() {
+    let endowed_accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
+    let genesis_storage = genesis(&endowed_accounts);
+
     ziggy::fuzz!(|data: &[u8]| {
-        let mut iteratable = Data::from_data(data);
-
-        // Max weight for a block.
-        let max_weight: Weight = Weight::from_parts(WEIGHT_REF_TIME_PER_SECOND * 2, 0);
-
-        let extrinsics: Vec<(Option<u32>, usize, RuntimeCall)> =
-            iteratable.extract_extrinsics::<RuntimeCall>();
-
-        if extrinsics.is_empty() {
-            return;
-        }
-
-        // `externalities` represents the state of our mock chain.
-        let mut externalities = Externalities::new(genesis_storage.clone());
-
-        let mut current_block: u32 = 1;
-        let mut current_timestamp: u64 = INITIAL_TIMESTAMP;
-        let mut current_weight: Weight = Weight::zero();
-        // let mut already_seen = 0; // This must be uncommented if you want to print events
-        let mut elapsed: Duration = Duration::ZERO;
-        let mut initial_total_issuance = 0;
-
-        externalities.execute_with(|| {
-            initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
-        });
-
-        // We set the configuration for the broker pallet
-        let broker_config = pallet_broker::ConfigRecord {
-            advance_notice: 2,
-            interlude_length: 1,
-            leadin_length: 1,
-            ideal_bulk_proportion: Default::default(),
-            limit_cores_offered: None,
-            region_length: 3,
-            renewal_bump: Perbill::from_percent(10),
-            contribution_timeout: 5,
-        };
-        externalities.execute_with(|| {
-            RuntimeCall::Broker(pallet_broker::Call::configure {
-                config: broker_config,
-            })
-            .dispatch(RuntimeOrigin::root())
-            .unwrap();
-        });
-
-        let start_block = |block: u32, current_timestamp: u64| {
-            #[cfg(not(fuzzing))]
-            println!("\ninitializing block {block}");
-
-            let pre_digest = match current_timestamp {
-                INITIAL_TIMESTAMP => Default::default(),
-                _ => Digest {
-                    logs: vec![DigestItem::PreRuntime(
-                        BABE_ENGINE_ID,
-                        PreDigest::SecondaryPlain(SecondaryPlainPreDigest {
-                            slot: Slot::from(current_timestamp / SLOT_DURATION),
-                            authority_index: 42,
-                        })
-                        .encode(),
-                    )],
-                },
-            };
-
-            Executive::initialize_block(&Header::new(
-                block,
-                Default::default(),
-                Default::default(),
-                Default::default(),
-                pre_digest,
-            ));
-
-            #[cfg(not(fuzzing))]
-            println!("  setting timestamp");
-            // We apply the timestamp extrinsic for the current block.
-            Executive::apply_extrinsic(UncheckedExtrinsic::new_unsigned(RuntimeCall::Timestamp(
-                pallet_timestamp::Call::set {
-                    now: current_timestamp,
-                },
-            )))
-            .unwrap()
-            .unwrap();
-
-            // Calls that need to be called before each block starts (init_calls) go here
-        };
-
-        let end_block = |current_block: u32, _current_timestamp: u64| {
-            #[cfg(not(fuzzing))]
-            println!("\n  finalizing block {current_block}");
-            Executive::finalize_block();
-
-            #[cfg(not(fuzzing))]
-            println!("  testing invariants for block {current_block}");
-            <AllPalletsWithSystem as TryState<BlockNumber>>::try_state(
-                current_block,
-                TryStateSelect::All,
-            )
-            .unwrap();
-        };
-
-        externalities.execute_with(|| start_block(current_block, current_timestamp));
-
-        /*
-        // WIP: found the society before each extrinsic
-        externalities.execute_with(|| {
-            RuntimeCall::Sudo(pallet_sudo::Call::sudo {
-                call: RuntimeCall::Society(pallet_society::Call::found_society {
-                    founder: AccountId::from([0; 32]).into(),
-                    max_members: 2,
-                    max_intake: 2,
-                    max_strikes: 2,
-                    candidate_deposit: 1_000,
-                    rules: vec![0],
-                })
-                .into(),
-            })
-            .dispatch(RuntimeOrigin::root())
-            .unwrap();
-        });
-        */
-
-        for (maybe_lapse, origin, extrinsic) in extrinsics {
-            if recursively_find_call(extrinsic.clone(), |call| {
+        // We build the list of extrinsics we will execute
+        let mut extrinsic_data = data;
+        // Vec<(lapse, origin, extrinsic)>
+        let extrinsics: Vec<(u8, u8, RuntimeCall)> = std::iter::from_fn(|| {
+            DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok()
+        })
+        .filter(|(_, _, x): &(_, _, RuntimeCall)| {
+            !recursively_find_call(x.clone(), |call| {
                 // We disallow referenda calls with root origin
                 matches!(
                     &call,
@@ -378,46 +331,55 @@ pallet_society::Call::vouch { .. })
                         &call,
                         RuntimeCall::NominationPools(..)
                 )
-            }) {
-                #[cfg(not(fuzzing))]
-                println!("    Skipping because of custom filter");
-                continue;
-            }
+            })
+        })
+        .collect();
+        if extrinsics.is_empty() {
+            return;
+        }
 
-            // If the lapse is in the range [0, MAX_BLOCK_LAPSE] we finalize the block and initialize
-            // a new one.
-            if let Some(lapse) = maybe_lapse {
-                // We end the current block
-                externalities.execute_with(|| end_block(current_block, current_timestamp));
+        // `chain` represents the state of our mock chain.
+        let mut chain = BasicExternalities::new(genesis_storage.clone());
 
-                // We update our state variables
-                current_block += lapse;
-                current_timestamp += u64::from(lapse) * SLOT_DURATION;
-                current_weight = Weight::zero();
-                elapsed = Duration::ZERO;
+        let mut current_block: u32 = 1;
+        let mut current_weight: Weight = Weight::zero();
+        let mut elapsed: Duration = Duration::ZERO;
 
-                // We start the next block
-                externalities.execute_with(|| start_block(current_block, current_timestamp));
-            }
+        let mut initial_total_issuance = 0;
 
-            // We get the current time for timing purposes.
-            let now = Instant::now();
+        chain.execute_with(|| {
+            initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
 
-            let mut call_weight = Weight::zero();
-            // We compute the weight to avoid overweight blocks.
-            externalities.execute_with(|| {
-                call_weight = extrinsic.get_dispatch_info().weight;
-            });
+            start_block(current_block);
 
-            current_weight = current_weight.saturating_add(call_weight);
-            if current_weight.ref_time() >= max_weight.ref_time() {
-                #[cfg(not(fuzzing))]
-                println!("Skipping because of max weight {max_weight}");
-                continue;
-            }
+            for (lapse, origin, extrinsic) in extrinsics {
+                    if lapse > 0 {
+                    // We end the current block
+                    end_block(elapsed);
 
-            externalities.execute_with(|| {
-                let origin_account = endowed_accounts[origin % endowed_accounts.len()].clone();
+                    // 393 * 256 = 100608 which nearly corresponds to a week
+                    let actual_lapse = u32::from(lapse) * 393;
+                    // We update our state variables
+                    current_block += actual_lapse;
+                    current_weight = Weight::zero();
+                    elapsed = Duration::ZERO;
+
+                    // We start the next block
+                    start_block(current_block);
+                }
+
+                // We compute the weight to avoid overweight blocks.
+                current_weight = current_weight.saturating_add(extrinsic.get_dispatch_info().weight);
+
+                if current_weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
+                    #[cfg(not(fuzzing))]
+                    println!("Extrinsic would exhaust block weight, skipping");
+                    continue;
+                }
+
+                let now = Instant::now(); // We get the current time for timing purposes.
+
+                let origin_account = endowed_accounts[origin as usize % endowed_accounts.len()].clone();
 
                 // We do not continue if the origin account does not have a free balance
                 let acc = frame_system::Account::<Runtime>::get(&origin_account);
@@ -440,34 +402,12 @@ pallet_society::Call::vouch { .. })
                 #[cfg(not(fuzzing))]
                 println!("    result:     {_res:?}");
 
-                // Uncomment to print events for debugging purposes
-                /*
-                #[cfg(not(fuzzing))]
-                {
-                    let all_events = kitchensink_runtime::System::events();
-                    let events: Vec<_> = all_events.clone().into_iter().skip(already_seen).collect();
-                    already_seen = all_events.len();
-                    println!("  events:     {:?}\n", events);
-                }
-                */
-            });
+                elapsed += now.elapsed();
+            }
 
-            elapsed += now.elapsed();
-        }
+            end_block(elapsed);
 
-        #[cfg(not(fuzzing))]
-        println!("\n  time spent: {elapsed:?}");
-        assert!(
-            elapsed.as_secs() <= MAX_TIME_FOR_BLOCK,
-            "block execution took too much time"
-        );
-
-        // We end the final block
-        externalities.execute_with(|| end_block(current_block, current_timestamp));
-
-        // After execution of all blocks.
-        externalities.execute_with(|| {
-            // We keep track of the total free balance of accounts
+            // After execution of all blocks, we run invariants
             let mut total_free: Balance = 0;
             let mut total_reserved: Balance = 0;
             for acc in frame_system::Account::<Runtime>::iter() {
@@ -497,13 +437,15 @@ pallet_society::Call::vouch { .. })
             let total_counted = total_free + total_reserved;
 
             assert!(total_issuance == total_counted, "Inconsistent total issuance: {total_issuance} but counted {total_counted}");
-
             assert!(total_issuance <= initial_total_issuance, "Total issuance too high: {total_issuance} but initial was {initial_total_issuance}");
 
             #[cfg(not(fuzzing))]
             println!("\nrunning integrity tests\n");
             // We run all developer-defined integrity tests
-            <AllPalletsWithSystem as IntegrityTest>::integrity_test();
+            AllPalletsWithSystem::integrity_test();
+            #[cfg(not(fuzzing))]
+            println!("running try_state for block {current_block}\n");
+            AllPalletsWithSystem::try_state(current_block, TryStateSelect::All).unwrap();
         });
     });
 }
