@@ -6,7 +6,6 @@ publish = false
 
 [dependencies]
 ziggy = { version = "0.8", default-features = false }
-substrate-runtime-fuzzer = { path = ".." }
 
 staging-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v1.2.1", default-features = false }
 staging-xcm = { default-features = false , version = "8.0.1" }

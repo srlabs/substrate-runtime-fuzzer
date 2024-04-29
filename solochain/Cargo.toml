@@ -6,7 +6,6 @@ publish = false
 
 [dependencies]
 ziggy = { version = "0.8", default-features = false }
-substrate-runtime-fuzzer = { path = ".." }
 
 solochain-template-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.10.0", default-features = false }
 
