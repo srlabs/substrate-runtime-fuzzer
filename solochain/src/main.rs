@@ -74,7 +74,6 @@ fn end_block(elapsed: Duration) {
 
 fn main() {
     let endowed_accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
-
     let genesis_storage = genesis(&endowed_accounts);
 
     ziggy::fuzz!(|data: &[u8]| {
@@ -90,7 +89,7 @@ fn main() {
             return;
         }
 
-        // `chain` corresponds to the chain's state
+        // `chain` represents the state of our mock chain.
         let mut chain = BasicExternalities::new(genesis_storage.clone());
 
         let mut current_block: u32 = 1;
@@ -144,7 +143,6 @@ fn main() {
                 elapsed += now.elapsed();
             }
 
-            // We end the final block
             end_block(elapsed);
 
             // After execution of all blocks, we run invariants
