@@ -130,18 +130,6 @@ fn main() {
                 let origin_account =
                     endowed_accounts[origin as usize % endowed_accounts.len()].clone();
 
-                /*
-                // We do not continue if the origin account does not have a free balance
-                let acc = frame_system::Account::<Runtime>::get(&origin_account);
-                if acc.data.free == 0 {
-                    #[cfg(not(fuzzing))]
-                    println!(
-                        "\n    origin {origin_account:?} does not have free balance, skipping"
-                    );
-                    return;
-                }
-                */
-
                 #[cfg(not(fuzzing))]
                 {
                     println!("\n    origin:     {origin_account:?}");

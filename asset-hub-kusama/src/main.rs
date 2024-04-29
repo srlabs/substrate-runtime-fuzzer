@@ -142,7 +142,6 @@ fn main() {
     };
 
     ziggy::fuzz!(|data: &[u8]| {
-        // let mut iteratable = Data::from_data(data);
         let mut extrinsic_data = data;
 
         // Vec<(lapse, origin, extrinsic)>
@@ -166,8 +165,6 @@ fn main() {
             start_block(current_block, None);
 
             for (lapse, origin, extrinsic) in extrinsics {
-                // If the lapse is in the range [0, MAX_BLOCK_LAPSE] we finalize the block and initialize
-                // a new one.
                 if lapse > 0 {
                     let prev_header = end_block(elapsed);
 
