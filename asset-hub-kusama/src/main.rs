@@ -154,14 +154,14 @@ fn main() {
             return;
         }
 
-        // `externalities` represents the state of our mock chain.
-        let mut externalities = BasicExternalities::new(genesis_storage.clone());
+        // `chain` represents the state of our mock chain.
+        let mut chain = BasicExternalities::new(genesis_storage.clone());
 
         let mut current_block: u32 = 1;
         let mut current_weight: Weight = Weight::zero();
         let mut elapsed: Duration = Duration::ZERO;
 
-        externalities.execute_with(|| {
+        chain.execute_with(|| {
             start_block(current_block, None);
 
             for (lapse, origin, extrinsic) in extrinsics {
@@ -204,7 +204,6 @@ fn main() {
                 elapsed += now.elapsed();
             }
 
-            // We end the final block
             end_block(elapsed);
 
             // After execution of all blocks, we run invariants
