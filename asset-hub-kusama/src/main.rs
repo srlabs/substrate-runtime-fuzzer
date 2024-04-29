@@ -245,7 +245,6 @@ fn main() {
             #[cfg(not(fuzzing))]
             println!("running try_state for block {current_block}\n");
             AllPalletsWithSystem::try_state(current_block, TryStateSelect::All).unwrap();
-
         });
     });
 }
