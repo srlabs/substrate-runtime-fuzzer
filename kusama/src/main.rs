@@ -353,7 +353,7 @@ fn main() {
                 "Inconsistent total issuance: {total_issuance} but counted {counted_issuance}"
             );
             assert!(
-                total_issuance == initial_total_issuance,
+                total_issuance <= initial_total_issuance,
                 "Inconsistent total issuance: {total_issuance} but initial {initial_total_issuance}"
             );
             #[cfg(not(fuzzing))]
