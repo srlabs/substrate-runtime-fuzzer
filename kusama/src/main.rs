@@ -238,15 +238,14 @@ fn main() {
         .filter(|(_, _, x): &(_, _, RuntimeCall)| {
             !recursively_find_call(x.clone(), |call| {
                 // We filter out calls with Fungible(0) as they cause a debug crash
-                /*matches!(call.clone(), RuntimeCall::XcmPallet(pallet_xcm::Call::execute { message, .. })
+                matches!(call.clone(), RuntimeCall::XcmPallet(pallet_xcm::Call::execute { message, .. })
                     if matches!(message.as_ref(), staging_xcm::VersionedXcm::V2(staging_xcm::v2::Xcm(msg))
                         if msg.iter().any(|m| matches!(m, staging_xcm::opaque::v2::prelude::BuyExecution { fees: staging_xcm::v2::MultiAsset { fun, .. }, .. }
                             if fun == &staging_xcm::v2::Fungibility::Fungible(0)
                         ))
                     )
                 )
-                || */
-                matches!(call.clone(), RuntimeCall::System(_))
+                || matches!(call.clone(), RuntimeCall::System(_))
             })
         })
         .collect();
