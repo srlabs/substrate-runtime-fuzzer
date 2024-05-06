@@ -7,7 +7,7 @@ use cumulus_primitives_core::relay_chain::BlakeTwo256;
 use frame_support::{
     dispatch::GetDispatchInfo,
     pallet_prelude::Weight,
-    traits::{IntegrityTest, TryState, TryStateSelect},
+    traits::{TryState, TryStateSelect},
     weights::constants::WEIGHT_REF_TIME_PER_SECOND,
 };
 use pallet_broker::{ConfigRecord, ConfigRecordOf, CoreIndex, CoreMask, Timeslice};
@@ -90,7 +90,11 @@ fn generate_validation_data(
     }
 }
 
-fn jump_to_block(block: u32) {
+fn jump_to_block(block: u32, elapsed: Duration) {
+    #[cfg(not(fuzzing))]
+    println!("\n  time spent: {elapsed:?}");
+    assert!(elapsed.as_secs() <= 2, "block execution took too much time");
+
     let prev_header = match block {
         1 => None,
         _ => Some(Executive::finalize_block()),
@@ -168,77 +172,65 @@ fn main() {
         let mut chain = BasicExternalities::new(storage.clone());
 
         chain.execute_with(|| {
-            jump_to_block(1);
+            jump_to_block(1, Duration::ZERO);
             Broker::configure(RuntimeOrigin::root(), new_config()).unwrap();
             Broker::start_sales(RuntimeOrigin::root(), 10 * UNITS, 1).unwrap();
-            jump_to_block(2);
+            jump_to_block(2, Duration::ZERO);
         });
         chain.into_storages()
     };
 
     ziggy::fuzz!(|data: &[u8]| {
+        // We build the list of extrinsics we will execute
         let mut extrinsic_data = data;
-
-        // Max weight for a block.
-        let max_weight: Weight = Weight::from_parts(WEIGHT_REF_TIME_PER_SECOND * 2, 0);
-
-        let mut extrinsics: Vec<(u8, u8, RuntimeCall)> = vec![];
-        while let Ok(decoded) = DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data) {
-            match decoded {
-                (_, _, RuntimeCall::System(_)) => continue,
-                (_, _, call)
-                    if recursively_find_call(call.clone(), |call| {
-                        matches!(call, RuntimeCall::Broker(pallet_broker::Call::drop_history { when })
+        // Vec<(lapse, origin, extrinsic)>
+        let extrinsics: Vec<(u8, u8, RuntimeCall)> = std::iter::from_fn(|| {
+            DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok()
+        })
+        .filter(|(_, _, x): &(_, _, RuntimeCall)| {
+            !recursively_find_call(x.clone(), |call| {
+                matches!(call.clone(), RuntimeCall::Broker(pallet_broker::Call::drop_history { when })
                     if when > 4_000_000_000)
-                    }) =>
-                {
-                    continue
-                }
-                _ => {}
-            }
-            extrinsics.push(decoded);
-        }
+                || matches!(call.clone(), RuntimeCall::System(_))
+            })
+        })
+        .collect();
         if extrinsics.is_empty() {
             return;
         }
 
         // `externalities` represents the state of our mock chain.
-        let mut externalities = BasicExternalities::new(genesis_storage.clone());
+        let mut chain = BasicExternalities::new(genesis_storage.clone());
 
         let mut current_block: u32 = 2;
         let mut current_weight: Weight = Weight::zero();
         let mut elapsed: Duration = Duration::ZERO;
 
-        for (lapse, origin, extrinsic) in extrinsics {
-            if lapse > 0 {
-                // We update our state variables
-                current_weight = Weight::zero();
-                elapsed = Duration::ZERO;
-                current_block += u32::from(lapse) * 393;
-                #[cfg(not(fuzzing))]
-                println!("\ninitializing block {current_block}");
-                externalities.execute_with(|| {
-                    jump_to_block(current_block);
-                });
-            }
+        chain.execute_with(|| {
+            let initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
 
-            // We get the current time for timing purposes.
-            let now = Instant::now();
+            for (lapse, origin, extrinsic) in extrinsics {
+                if lapse > 0 {
+                    // We update our state variables
+                    current_weight = Weight::zero();
+                    elapsed = Duration::ZERO;
+                    current_block += u32::from(lapse) * 393;
+                    #[cfg(not(fuzzing))]
+                    println!("\ninitializing block {current_block}");
+                    jump_to_block(current_block, elapsed);
+                }
 
-            let mut call_weight = Weight::zero();
-            // We compute the weight to avoid overweight blocks.
-            externalities.execute_with(|| {
-                call_weight = extrinsic.get_dispatch_info().weight;
-            });
+                // We compute the weight to avoid overweight blocks.
+                current_weight = current_weight.saturating_add(extrinsic.get_dispatch_info().weight);
 
-            current_weight = current_weight.saturating_add(call_weight);
-            if current_weight.ref_time() >= max_weight.ref_time() {
-                #[cfg(not(fuzzing))]
-                println!("Skipping because of max weight {max_weight}");
-                continue;
-            }
+                if current_weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
+                    #[cfg(not(fuzzing))]
+                    println!("Extrinsic would exhaust block weight, skipping");
+                    continue;
+                }
 
-            externalities.execute_with(|| {
+                let now = Instant::now(); // We get the current time for timing purposes.
+
                 let origin_account =
                     endowed_accounts[usize::from(origin) % endowed_accounts.len()].clone();
                 #[cfg(not(fuzzing))]
@@ -251,23 +243,15 @@ fn main() {
                     .dispatch(RuntimeOrigin::signed(origin_account));
                 #[cfg(not(fuzzing))]
                 println!("    result:     {_res:?}");
-            });
 
-            elapsed += now.elapsed();
+                elapsed += now.elapsed();
+            }
 
-            #[cfg(not(fuzzing))]
-            println!("    time:\t{elapsed:?}");
-            assert!(elapsed.as_secs() <= 3, "block execution took too much time");
-        }
+            jump_to_block(current_block+1, elapsed);
 
-        // After execution of all blocks.
-        externalities.execute_with(|| {
-            // We end the final block
-            Executive::finalize_block();
-            // We keep track of the sum of balance of accounts
+            // After execution of all blocks, we run invariants
             let mut counted_free = 0;
             let mut counted_reserved = 0;
-
             for acc in frame_system::Account::<Runtime>::iter() {
                 // Check that the consumer/provider state is valid.
                 let acc_consumers = acc.1.consumers;
@@ -287,42 +271,38 @@ fn main() {
                     acc.1.data.reserved
                 );
             }
-
             let total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
             let counted_issuance = counted_free + counted_reserved;
-            // The reason we do not simply use `!=` here is that some balance might be transfered to another chain via XCM.
-            // If we find some kind of workaround for this, we could replace `<` by `!=` here and make the check stronger.
             assert!(
                 total_issuance <= counted_issuance,
                 "Inconsistent total issuance: {total_issuance} but counted {counted_issuance}"
             );
-
+            assert!(
+                total_issuance <= initial_total_issuance,
+                "Inconsistent total issuance: {total_issuance} but initial {initial_total_issuance}"
+            );
             // Broker invariants
             let status = pallet_broker::Status::<Runtime>::get().expect("Broker pallet should always have a status");
             let sale_info = pallet_broker::SaleInfo::<Runtime>::get().expect("Broker pallet should always have a sale info");
             assert!(sale_info.first_core <= status.core_count, "Sale info first_core too large");
             assert!(sale_info.cores_sold <= sale_info.cores_offered, "Sale info cores mismatch");
-
             let regions: Vec<pallet_broker::RegionId> = pallet_broker::Regions::<Runtime>::iter().map(|n| n.0).collect();
             let mut masks: std::collections::HashMap::<(Timeslice, CoreIndex), CoreMask> = Default::default();
             for region in regions {
                 let region_record =  pallet_broker::Regions::<Runtime>::get(region).expect("Region id should have a region record"); 
-
                 for region_timeslice in region.begin..region_record.end {
-                        let mut existing_mask = *masks.get(&(region_timeslice, region.core)).unwrap_or(&CoreMask::void());
-                        assert_eq!(existing_mask ^ region.mask, existing_mask | region.mask);
-                        existing_mask |= region.mask;
-                        masks.insert((region_timeslice, region.core), existing_mask);                        
+                    let mut existing_mask = *masks.get(&(region_timeslice, region.core)).unwrap_or(&CoreMask::void());
+                    assert_eq!(existing_mask ^ region.mask, existing_mask | region.mask);
+                    existing_mask |= region.mask;
+                    masks.insert((region_timeslice, region.core), existing_mask);
                 }
             }
-
-            // Developer-defined invariants
+            // We run all developer-defined integrity tests
             #[cfg(not(fuzzing))]
-            println!("\nrunning trystate invariants for block {current_block}");
+            AllPalletsWithSystem::integrity_test();
+            #[cfg(not(fuzzing))]
+            println!("running try_state for block {current_block}\n");
             AllPalletsWithSystem::try_state(current_block, TryStateSelect::All).unwrap();
-            #[cfg(not(fuzzing))]
-            println!("running integrity tests");
-            <AllPalletsWithSystem as IntegrityTest>::integrity_test();
         });
     });
 }
