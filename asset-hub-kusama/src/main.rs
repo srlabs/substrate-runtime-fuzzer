@@ -158,6 +158,8 @@ fn main() {
         let mut elapsed: Duration = Duration::ZERO;
 
         chain.execute_with(|| {
+            let initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
+
             start_block(current_block, None);
 
             for (lapse, origin, extrinsic) in extrinsics {
@@ -232,6 +234,10 @@ fn main() {
             assert!(
                 total_issuance <= counted_issuance,
                 "Inconsistent total issuance: {total_issuance} but counted {counted_issuance}"
+            );
+            assert!(
+                total_issuance <= initial_total_issuance,
+                "Total issuance {total_issuance} greater than initial issuance {initial_total_issuance}"
             );
 
             #[cfg(not(fuzzing))]

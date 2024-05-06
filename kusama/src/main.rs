@@ -260,10 +260,8 @@ fn main() {
         let mut current_weight: Weight = Weight::zero();
         let mut elapsed: Duration = Duration::ZERO;
 
-        let mut initial_total_issuance = 0;
-
         chain.execute_with(|| {
-            initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
+            let initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
 
             start_block(current_block);
 
@@ -350,8 +348,9 @@ fn main() {
             );
             assert!(
                 total_issuance <= initial_total_issuance,
-                "Inconsistent total issuance: {total_issuance} but initial {initial_total_issuance}"
+                "Total issuance {total_issuance} greater than initial issuance {initial_total_issuance}"
             );
+
             #[cfg(not(fuzzing))]
             println!("\nrunning integrity tests\n");
             // We run all developer-defined integrity tests
