@@ -345,10 +345,8 @@ pallet_society::Call::vouch { .. })
         let mut current_weight: Weight = Weight::zero();
         let mut elapsed: Duration = Duration::ZERO;
 
-        let mut initial_total_issuance = 0;
-
         chain.execute_with(|| {
-            initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
+            let initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
 
             start_block(current_block);
 
@@ -437,7 +435,10 @@ pallet_society::Call::vouch { .. })
             let total_counted = total_free + total_reserved;
 
             assert!(total_issuance == total_counted, "Inconsistent total issuance: {total_issuance} but counted {total_counted}");
-            assert!(total_issuance <= initial_total_issuance, "Total issuance too high: {total_issuance} but initial was {initial_total_issuance}");
+            assert!(
+                total_issuance <= initial_total_issuance,
+                "Total issuance {total_issuance} greater than initial issuance {initial_total_issuance}"
+            );
 
             #[cfg(not(fuzzing))]
             println!("\nrunning integrity tests\n");
