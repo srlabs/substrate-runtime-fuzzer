@@ -11,4 +11,5 @@ members = [
     "kusama",
     "solochain",
     "asset-hub-kusama",
+    "coretime-kusama",
 ]

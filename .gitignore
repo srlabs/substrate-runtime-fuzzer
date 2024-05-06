@@ -1,4 +1,5 @@
 cargo
+.cargo
 target
 output
 Cargo.lock
