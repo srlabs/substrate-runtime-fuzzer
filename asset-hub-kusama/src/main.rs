@@ -65,14 +65,12 @@ fn start_block(block: u32, prev_header: Option<Header>) {
     #[cfg(not(fuzzing))]
     println!("\ninitializing block {}", block);
 
-    let current_timestamp = u64::from(block) * SLOT_DURATION;
     let pre_digest = Digest {
         logs: vec![DigestItem::PreRuntime(
             AURA_ENGINE_ID,
-            Slot::from(current_timestamp / SLOT_DURATION).encode(),
+            Slot::from(block as u64).encode(),
         )],
     };
-
     let parent_header = &Header::new(
         block,
         Default::default(),
@@ -84,7 +82,7 @@ fn start_block(block: u32, prev_header: Option<Header>) {
 
     #[cfg(not(fuzzing))]
     println!("  setting timestamp");
-    Timestamp::set(RuntimeOrigin::none(), current_timestamp).unwrap();
+    Timestamp::set(RuntimeOrigin::none(), block as u64 * SLOT_DURATION).unwrap();
 
     #[cfg(not(fuzzing))]
     println!("  setting parachain validation data");
@@ -101,7 +99,7 @@ fn start_block(block: u32, prev_header: Option<Header>) {
         );
         let sproof_builder = RelayStateSproofBuilder {
             para_id: 100.into(),
-            current_slot: Slot::from(2 * current_timestamp / SLOT_DURATION),
+            current_slot: Slot::from(2 * block as u64),
             included_para_head: Some(parent_head.clone()),
             ..Default::default()
         };
@@ -240,12 +238,8 @@ fn main() {
                 "Total issuance {total_issuance} greater than initial issuance {initial_total_issuance}"
             );
 
-            #[cfg(not(fuzzing))]
-            println!("running integrity tests");
             // We run all developer-defined integrity tests
             AllPalletsWithSystem::integrity_test();
-            #[cfg(not(fuzzing))]
-            println!("running try_state for block {current_block}\n");
             AllPalletsWithSystem::try_state(current_block, TryStateSelect::All).unwrap();
         });
     });

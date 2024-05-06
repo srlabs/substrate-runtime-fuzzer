@@ -3,24 +3,76 @@ use coretime_kusama_runtime::{
     AllPalletsWithSystem, Balances, Broker, Executive, ParachainSystem, Runtime, RuntimeCall,
     RuntimeOrigin, Timestamp,
 };
-use cumulus_primitives_core::relay_chain::BlakeTwo256;
+use cumulus_primitives_core::relay_chain::Header;
 use frame_support::{
     dispatch::GetDispatchInfo,
     pallet_prelude::Weight,
-    traits::{TryState, TryStateSelect},
+    traits::{IntegrityTest, TryState, TryStateSelect},
     weights::constants::WEIGHT_REF_TIME_PER_SECOND,
 };
 use pallet_broker::{ConfigRecord, ConfigRecordOf, CoreIndex, CoreMask, Timeslice};
 use parachains_common::{AccountId, Balance, SLOT_DURATION};
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_runtime::{
-    generic::Header,
     traits::{Dispatchable, Header as _},
     Digest, DigestItem, Perbill, Storage,
 };
 use sp_state_machine::BasicExternalities;
 use std::time::{Duration, Instant};
 use system_parachains_constants::kusama::currency::UNITS;
+
+fn genesis(accounts: &[AccountId]) -> Storage {
+        use coretime_kusama_runtime::{
+            BalancesConfig, CollatorSelectionConfig, RuntimeGenesisConfig, SessionConfig,
+            SessionKeys,
+        };
+        use sp_consensus_aura::sr25519::AuthorityId as AuraId;
+        use sp_runtime::app_crypto::ByteArray;
+        use sp_runtime::BuildStorage;
+
+        let initial_authorities: Vec<(AccountId, AuraId)> =
+            vec![([0; 32].into(), AuraId::from_slice(&[0; 32]).unwrap())];
+
+        let storage = RuntimeGenesisConfig {
+            system: Default::default(),
+            balances: BalancesConfig {
+                // Configure endowed accounts with initial balance of 1 << 60.
+                balances: accounts
+                    .iter()
+                    .cloned()
+                    .map(|k| (k, 1 << 60))
+                    .collect(),
+            },
+            aura: Default::default(),
+            session: SessionConfig {
+                keys: initial_authorities
+                    .iter()
+                    .map(|x| (x.0.clone(), x.0.clone(), SessionKeys { aura: x.1.clone() }))
+                    .collect::<Vec<_>>(),
+            },
+            collator_selection: CollatorSelectionConfig {
+                invulnerables: initial_authorities.iter().map(|x| (x.0.clone())).collect(),
+                candidacy_bond: 1 << 57,
+                desired_candidates: 1,
+            },
+            aura_ext: Default::default(),
+            parachain_info: Default::default(),
+            parachain_system: Default::default(),
+            polkadot_xcm: Default::default(),
+            transaction_payment: Default::default(),
+        }
+        .build_storage()
+        .unwrap();
+        let mut chain = BasicExternalities::new(storage.clone());
+
+        chain.execute_with(|| {
+            start_block(1, None);
+            Broker::configure(RuntimeOrigin::root(), new_config()).unwrap();
+            Broker::start_sales(RuntimeOrigin::root(), 10 * UNITS, 1).unwrap();
+            start_block(2, Some(end_block(Duration::ZERO)));
+        });
+        chain.into_storages()
+}
 
 fn new_config() -> ConfigRecordOf<Runtime> {
     ConfigRecord {
@@ -60,125 +112,77 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
     false
 }
 
-fn generate_validation_data(
-    slot: Slot,
-    para_head: Header<u32, BlakeTwo256>,
-) -> cumulus_primitives_parachain_inherent::ParachainInherentData {
-    use cumulus_primitives_core::{relay_chain::HeadData, PersistedValidationData};
-    use cumulus_primitives_parachain_inherent::ParachainInherentData;
-    use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
-
-    let para_head_data: HeadData = HeadData(para_head.encode());
-    let sproof_builder = RelayStateSproofBuilder {
-        para_id: 100.into(),
-        current_slot: slot,
-        included_para_head: Some(para_head_data.clone()),
-        ..Default::default()
-    };
-
-    let (relay_parent_storage_root, relay_chain_state) = sproof_builder.into_state_root_and_proof();
-    ParachainInherentData {
-        validation_data: PersistedValidationData {
-            parent_head: para_head_data.clone(),
-            relay_parent_number: 1,
-            relay_parent_storage_root,
-            max_pov_size: 1000,
-        },
-        relay_chain_state,
-        downward_messages: Default::default(),
-        horizontal_messages: Default::default(),
-    }
-}
-
-fn jump_to_block(block: u32, elapsed: Duration) {
+fn start_block(block: u32, prev_header: Option<Header>) {
     #[cfg(not(fuzzing))]
-    println!("\n  time spent: {elapsed:?}");
-    assert!(elapsed.as_secs() <= 2, "block execution took too much time");
+    println!("\ninitializing block {}", block);
 
-    let prev_header = match block {
-        1 => None,
-        _ => Some(Executive::finalize_block()),
-    };
-    let prev_header_hash = prev_header.clone().map(|h| h.hash()).unwrap_or_default();
     let pre_digest = Digest {
         logs: vec![DigestItem::PreRuntime(
             AURA_ENGINE_ID,
             Slot::from(block as u64).encode(),
         )],
     };
-    let parent_header = Header::<u32, BlakeTwo256>::new(
+    let parent_header = Header::new(
         block,
         Default::default(),
         Default::default(),
-        prev_header_hash,
+        prev_header.clone().map(|h| h.hash()).unwrap_or_default(),
         pre_digest,
     );
 
     Executive::initialize_block(&parent_header.clone());
     Timestamp::set(RuntimeOrigin::none(), block as u64 * SLOT_DURATION).unwrap();
 
-    let parachain_validation_data = generate_validation_data(
-        Slot::from(2 * block as u64),
-        prev_header.unwrap_or(parent_header.clone()),
-    );
+    #[cfg(not(fuzzing))]
+    println!("  setting parachain validation data");
+    let parachain_validation_data = {
+        use cumulus_primitives_core::{relay_chain::HeadData, PersistedValidationData};
+        use cumulus_primitives_parachain_inherent::ParachainInherentData;
+        use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
+
+        let parent_head = HeadData(
+            prev_header
+                .clone()
+                .unwrap_or(parent_header.clone())
+                .encode(),
+        );
+        let sproof_builder = RelayStateSproofBuilder {
+            para_id: 100.into(),
+            current_slot: Slot::from(2 * block as u64),
+            included_para_head: Some(parent_head.clone()),
+            ..Default::default()
+        };
+
+        let (relay_parent_storage_root, relay_chain_state) =
+            sproof_builder.into_state_root_and_proof();
+        ParachainInherentData {
+            validation_data: PersistedValidationData {
+                parent_head,
+                relay_parent_number: block,
+                relay_parent_storage_root,
+                max_pov_size: 1000,
+            },
+            relay_chain_state,
+            downward_messages: Default::default(),
+            horizontal_messages: Default::default(),
+        }
+    };
     ParachainSystem::set_validation_data(RuntimeOrigin::none(), parachain_validation_data).unwrap();
+}
+
+fn end_block(elapsed: Duration) -> Header {
+    #[cfg(not(fuzzing))]
+    println!("\n  time spent: {elapsed:?}");
+    assert!(elapsed.as_secs() <= 2, "block execution took too much time");
+
+    #[cfg(not(fuzzing))]
+    println!("finalizing block");
+    Executive::finalize_block()
 }
 
 fn main() {
     let endowed_accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
-
-    let genesis_storage: Storage = {
-        use coretime_kusama_runtime::{
-            BalancesConfig, CollatorSelectionConfig, RuntimeGenesisConfig, SessionConfig,
-            SessionKeys,
-        };
-        use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-        use sp_runtime::app_crypto::ByteArray;
-        use sp_runtime::BuildStorage;
-
-        let initial_authorities: Vec<(AccountId, AuraId)> =
-            vec![([0; 32].into(), AuraId::from_slice(&[0; 32]).unwrap())];
-
-        let storage = RuntimeGenesisConfig {
-            system: Default::default(),
-            balances: BalancesConfig {
-                // Configure endowed accounts with initial balance of 1 << 60.
-                balances: endowed_accounts
-                    .iter()
-                    .cloned()
-                    .map(|k| (k, 1 << 60))
-                    .collect(),
-            },
-            aura: Default::default(),
-            session: SessionConfig {
-                keys: initial_authorities
-                    .iter()
-                    .map(|x| (x.0.clone(), x.0.clone(), SessionKeys { aura: x.1.clone() }))
-                    .collect::<Vec<_>>(),
-            },
-            collator_selection: CollatorSelectionConfig {
-                invulnerables: initial_authorities.iter().map(|x| (x.0.clone())).collect(),
-                candidacy_bond: 1 << 57,
-                desired_candidates: 1,
-            },
-            aura_ext: Default::default(),
-            parachain_info: Default::default(),
-            parachain_system: Default::default(),
-            polkadot_xcm: Default::default(),
-            transaction_payment: Default::default(),
-        }
-        .build_storage()
-        .unwrap();
-        let mut chain = BasicExternalities::new(storage.clone());
-
-        chain.execute_with(|| {
-            jump_to_block(1, Duration::ZERO);
-            Broker::configure(RuntimeOrigin::root(), new_config()).unwrap();
-            Broker::start_sales(RuntimeOrigin::root(), 10 * UNITS, 1).unwrap();
-            jump_to_block(2, Duration::ZERO);
-        });
-        chain.into_storages()
-    };
+    let genesis_storage = genesis(&endowed_accounts);
 
     ziggy::fuzz!(|data: &[u8]| {
         // We build the list of extrinsics we will execute
@@ -211,13 +215,14 @@ fn main() {
 
             for (lapse, origin, extrinsic) in extrinsics {
                 if lapse > 0 {
+                    let prev_header = end_block(elapsed);
+
                     // We update our state variables
+                    current_block += u32::from(lapse) * 393;
                     current_weight = Weight::zero();
                     elapsed = Duration::ZERO;
-                    current_block += u32::from(lapse) * 393;
-                    #[cfg(not(fuzzing))]
-                    println!("\ninitializing block {current_block}");
-                    jump_to_block(current_block, elapsed);
+
+                    start_block(current_block, Some(prev_header));
                 }
 
                 // We compute the weight to avoid overweight blocks.
@@ -247,7 +252,7 @@ fn main() {
                 elapsed += now.elapsed();
             }
 
-            jump_to_block(current_block+1, elapsed);
+            end_block(elapsed);
 
             // After execution of all blocks, we run invariants
             let mut counted_free = 0;
@@ -279,7 +284,7 @@ fn main() {
             );
             assert!(
                 total_issuance <= initial_total_issuance,
-                "Inconsistent total issuance: {total_issuance} but initial {initial_total_issuance}"
+                "Total issuance {total_issuance} greater than initial issuance {initial_total_issuance}"
             );
             // Broker invariants
             let status = pallet_broker::Status::<Runtime>::get().expect("Broker pallet should always have a status");
@@ -298,10 +303,7 @@ fn main() {
                 }
             }
             // We run all developer-defined integrity tests
-            #[cfg(not(fuzzing))]
             AllPalletsWithSystem::integrity_test();
-            #[cfg(not(fuzzing))]
-            println!("running try_state for block {current_block}\n");
             AllPalletsWithSystem::try_state(current_block, TryStateSelect::All).unwrap();
         });
     });

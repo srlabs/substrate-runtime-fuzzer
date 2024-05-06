@@ -350,13 +350,8 @@ fn main() {
                 total_issuance <= initial_total_issuance,
                 "Total issuance {total_issuance} greater than initial issuance {initial_total_issuance}"
             );
-
-            #[cfg(not(fuzzing))]
-            println!("\nrunning integrity tests\n");
             // We run all developer-defined integrity tests
             AllPalletsWithSystem::integrity_test();
-            #[cfg(not(fuzzing))]
-            println!("running try_state for block {current_block}\n");
             AllPalletsWithSystem::try_state(current_block, TryStateSelect::All).unwrap();
         });
     });
