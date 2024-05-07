@@ -13,15 +13,23 @@ use frame_support::{
 use parachains_common::{AccountId, Balance, SLOT_DURATION};
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_runtime::{
+    testing::H256,
     traits::{Dispatchable, Header as _},
     Digest, DigestItem, Storage,
 };
 use sp_state_machine::BasicExternalities;
-use std::time::{Duration, Instant};
+use std::{
+    collections::BTreeMap,
+    iter,
+    time::{Duration, Instant},
+};
 
 fn genesis(accounts: &[AccountId]) -> Storage {
     use asset_hub_kusama_runtime::{
-        BalancesConfig, CollatorSelectionConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys,
+        AssetsConfig, AuraConfig, AuraExtConfig, BalancesConfig, CollatorSelectionConfig,
+        ForeignAssetsConfig, ParachainInfoConfig, ParachainSystemConfig, PolkadotXcmConfig,
+        PoolAssetsConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys, SystemConfig,
+        TransactionPaymentConfig,
     };
     use sp_consensus_aura::sr25519::AuthorityId as AuraId;
     use sp_runtime::app_crypto::ByteArray;
@@ -31,12 +39,12 @@ fn genesis(accounts: &[AccountId]) -> Storage {
         vec![([0; 32].into(), AuraId::from_slice(&[0; 32]).unwrap())];
 
     RuntimeGenesisConfig {
-        system: Default::default(),
+        system: SystemConfig::default(),
         balances: BalancesConfig {
             // Configure endowed accounts with initial balance of 1 << 60.
             balances: accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
         },
-        aura: Default::default(),
+        aura: AuraConfig::default(),
         session: SessionConfig {
             keys: initial_authorities
                 .iter()
@@ -48,33 +56,33 @@ fn genesis(accounts: &[AccountId]) -> Storage {
             candidacy_bond: 1 << 57,
             desired_candidates: 1,
         },
-        aura_ext: Default::default(),
-        parachain_info: Default::default(),
-        parachain_system: Default::default(),
-        polkadot_xcm: Default::default(),
-        assets: Default::default(),
-        foreign_assets: Default::default(),
-        pool_assets: Default::default(),
-        transaction_payment: Default::default(),
+        aura_ext: AuraExtConfig::default(),
+        parachain_info: ParachainInfoConfig::default(),
+        parachain_system: ParachainSystemConfig::default(),
+        polkadot_xcm: PolkadotXcmConfig::default(),
+        assets: AssetsConfig::default(),
+        foreign_assets: ForeignAssetsConfig::default(),
+        pool_assets: PoolAssetsConfig::default(),
+        transaction_payment: TransactionPaymentConfig::default(),
     }
     .build_storage()
     .unwrap()
 }
 
-fn start_block(block: u32, prev_header: Option<Header>) {
+fn start_block(block: u32, prev_header: &Option<Header>) {
     #[cfg(not(fuzzing))]
-    println!("\ninitializing block {}", block);
+    println!("\ninitializing block {block}");
 
     let pre_digest = Digest {
         logs: vec![DigestItem::PreRuntime(
             AURA_ENGINE_ID,
-            Slot::from(block as u64).encode(),
+            Slot::from(u64::from(block)).encode(),
         )],
     };
     let parent_header = &Header::new(
         block,
-        Default::default(),
-        Default::default(),
+        H256::default(),
+        H256::default(),
         prev_header.clone().map(|x| x.hash()).unwrap_or_default(),
         pre_digest,
     );
@@ -82,7 +90,7 @@ fn start_block(block: u32, prev_header: Option<Header>) {
 
     #[cfg(not(fuzzing))]
     println!("  setting timestamp");
-    Timestamp::set(RuntimeOrigin::none(), block as u64 * SLOT_DURATION).unwrap();
+    Timestamp::set(RuntimeOrigin::none(), u64::from(block) * SLOT_DURATION).unwrap();
 
     #[cfg(not(fuzzing))]
     println!("  setting parachain validation data");
@@ -99,7 +107,7 @@ fn start_block(block: u32, prev_header: Option<Header>) {
         );
         let sproof_builder = RelayStateSproofBuilder {
             para_id: 100.into(),
-            current_slot: Slot::from(2 * block as u64),
+            current_slot: Slot::from(2 * u64::from(block)),
             included_para_head: Some(parent_head.clone()),
             ..Default::default()
         };
@@ -114,8 +122,8 @@ fn start_block(block: u32, prev_header: Option<Header>) {
                 max_pov_size: 1000,
             },
             relay_chain_state,
-            downward_messages: Default::default(),
-            horizontal_messages: Default::default(),
+            downward_messages: Vec::default(),
+            horizontal_messages: BTreeMap::default(),
         }
     };
     ParachainSystem::set_validation_data(RuntimeOrigin::none(), parachain_validation_data).unwrap();
@@ -139,11 +147,10 @@ fn main() {
         // We build the list of extrinsics we will execute
         let mut extrinsic_data = data;
         // Vec<(lapse, origin, extrinsic)>
-        let extrinsics: Vec<(u8, u8, RuntimeCall)> = std::iter::from_fn(|| {
-            DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok()
-        })
-        .filter(|(_, _, x)| !matches!(x, RuntimeCall::System(_)))
-        .collect();
+        let extrinsics: Vec<(u8, u8, RuntimeCall)> =
+            iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
+                .filter(|(_, _, x)| !matches!(x, RuntimeCall::System(_)))
+                .collect();
         if extrinsics.is_empty() {
             return;
         }
@@ -158,7 +165,7 @@ fn main() {
         chain.execute_with(|| {
             let initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
 
-            start_block(current_block, None);
+            start_block(current_block, &None);
 
             for (lapse, origin, extrinsic) in extrinsics {
                 if lapse > 0 {
@@ -170,7 +177,7 @@ fn main() {
                     elapsed = Duration::ZERO;
 
                     // We start the next block
-                    start_block(current_block, Some(prev_header));
+                    start_block(current_block, &Some(prev_header));
                 }
 
                 // We compute the weight to avoid overweight blocks.
@@ -191,11 +198,11 @@ fn main() {
                     println!("\n    origin:     {origin_account:?}");
                     println!("    call:       {extrinsic:?}");
                 }
-                let _res = extrinsic
-                    .clone()
+                #[allow(unused_variables)]
+                let res = extrinsic
                     .dispatch(RuntimeOrigin::signed(origin_account));
                 #[cfg(not(fuzzing))]
-                println!("    result:     {_res:?}");
+                println!("    result:     {res:?}");
 
                 elapsed += now.elapsed();
             }
