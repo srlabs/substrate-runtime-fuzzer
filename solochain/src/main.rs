@@ -139,30 +139,29 @@ fn run_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
         // After execution of all blocks, we run invariants
         let mut counted_free = 0;
         let mut counted_reserved = 0;
-        for acc in Account::<Runtime>::iter() {
-            // Check that the consumer/provider state is valid.
-            let acc_consumers = acc.1.consumers;
-            let acc_providers = acc.1.providers;
-            assert!(!(acc_consumers > 0 && acc_providers == 0), "Invalid state");
-
-            // Increment our balance counts
-            counted_free += acc.1.data.free;
-            counted_reserved += acc.1.data.reserved;
-            // Check that locks and holds are valid.
-            let max_lock: Balance = Balances::locks(&acc.0)
+        for (account, info) in Account::<Runtime>::iter() {
+            let consumers = info.consumers;
+            let providers = info.providers;
+            assert!(!(consumers > 0 && providers == 0), "Invalid c/p state");
+            counted_free += info.data.free;
+            counted_reserved += info.data.reserved;
+            let max_lock: Balance = Balances::locks(&account)
                 .iter()
                 .map(|l| l.amount)
                 .max()
                 .unwrap_or_default();
             assert_eq!(
-                max_lock, acc.1.data.frozen,
+                max_lock, info.data.frozen,
                 "Max lock should be equal to frozen balance"
             );
-            let sum_holds: Balance = Holds::<Runtime>::get(&acc.0).iter().map(|l| l.amount).sum();
+            let sum_holds: Balance = Holds::<Runtime>::get(&account)
+                .iter()
+                .map(|l| l.amount)
+                .sum();
             assert!(
-                sum_holds <= acc.1.data.reserved,
+                sum_holds <= info.data.reserved,
                 "Sum of all holds ({sum_holds}) should be less than or equal to reserved balance {}",
-                acc.1.data.reserved
+                info.data.reserved
             );
         }
         let total_issuance = TotalIssuance::<Runtime>::get();
