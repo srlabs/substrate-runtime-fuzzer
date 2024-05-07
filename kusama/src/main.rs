@@ -5,11 +5,12 @@ use frame_support::{
     traits::{IntegrityTest, TryState, TryStateSelect},
     weights::constants::WEIGHT_REF_TIME_PER_SECOND,
 };
+use frame_system::Account;
 use kusama_runtime_constants::{currency::UNITS, time::SLOT_DURATION};
+use pallet_balances::{Holds, TotalIssuance};
 use pallet_grandpa::AuthorityId as GrandpaId;
 use pallet_staking::StakerStatus;
-use polkadot_primitives::{AccountId, Balance, BlockNumber};
-use polkadot_primitives::{AssignmentId, ValidatorId};
+use polkadot_primitives::{AccountId, AssignmentId, Balance, Header, ValidatorId};
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use sp_consensus_babe::AuthorityId as BabeId;
 use sp_consensus_babe::{
@@ -18,39 +19,34 @@ use sp_consensus_babe::{
 };
 use sp_runtime::{app_crypto::ByteArray, BuildStorage, Perbill};
 use sp_runtime::{
-    traits::{Dispatchable, Header},
+    testing::H256,
+    traits::{Dispatchable, Header as _},
     Digest, DigestItem, Storage,
 };
 use sp_state_machine::BasicExternalities;
 use staging_kusama_runtime::{
-    AllPalletsWithSystem, Executive, Identity, ParaInherent, Runtime, RuntimeCall, RuntimeOrigin,
-    Timestamp,
+    AllPalletsWithSystem, Balances, Executive, Identity, ParaInherent, Runtime, RuntimeCall,
+    RuntimeOrigin, Timestamp,
 };
-use std::time::{Duration, Instant};
-type BeefyId = sp_consensus_beefy::ecdsa_crypto::AuthorityId;
-
-struct Authority {
-    account: AccountId,
-    grandpa: GrandpaId,
-    babe: BabeId,
-    beefy: BeefyId,
-    validator: ValidatorId,
-    assignment: AssignmentId,
-    authority_discovery: AuthorityDiscoveryId,
-}
+use std::{
+    iter,
+    time::{Duration, Instant},
+};
 
 fn genesis(accounts: &[AccountId]) -> Storage {
     use staging_kusama_runtime as kusama;
 
-    let initial_authorities: Vec<Authority> = vec![Authority {
-        account: [0; 32].into(),
+    const ENDOWMENT: Balance = 10_000_000 * UNITS;
+    const STASH: Balance = ENDOWMENT / 1000;
+
+    let initial_authority = kusama::SessionKeys {
         grandpa: GrandpaId::from_slice(&[0; 32]).unwrap(),
         babe: BabeId::from_slice(&[0; 32]).unwrap(),
         beefy: sp_application_crypto::ecdsa::Public::from_raw([0u8; 33]).into(),
-        validator: ValidatorId::from_slice(&[0; 32]).unwrap(),
-        assignment: AssignmentId::from_slice(&[0; 32]).unwrap(),
+        para_validator: ValidatorId::from_slice(&[0; 32]).unwrap(),
+        para_assignment: AssignmentId::from_slice(&[0; 32]).unwrap(),
         authority_discovery: AuthorityDiscoveryId::from_slice(&[0; 32]).unwrap(),
-    }];
+    };
 
     let stakers = vec![(
         [0; 32].into(),
@@ -59,74 +55,50 @@ fn genesis(accounts: &[AccountId]) -> Storage {
         StakerStatus::Validator,
     )];
 
-    let _num_endowed_accounts = accounts.len();
-
-    const ENDOWMENT: Balance = 10_000_000 * UNITS;
-    const STASH: Balance = ENDOWMENT / 1000;
-
     let storage = kusama::RuntimeGenesisConfig {
-        system: Default::default(),
+        system: kusama::SystemConfig::default(),
         balances: kusama::BalancesConfig {
             // Configure endowed accounts with initial balance of 1 << 60.
             balances: accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
         },
         indices: kusama::IndicesConfig { indices: vec![] },
         session: kusama::SessionConfig {
-            keys: initial_authorities
-                .iter()
-                .map(|x| {
-                    (
-                        x.account.clone(),
-                        x.account.clone(),
-                        kusama::SessionKeys {
-                            grandpa: x.grandpa.clone(),
-                            babe: x.babe.clone(),
-                            beefy: x.beefy.clone(),
-                            para_validator: x.validator.clone(),
-                            para_assignment: x.assignment.clone(),
-                            authority_discovery: x.authority_discovery.clone(),
-                        },
-                    )
-                })
-                .collect::<Vec<_>>(),
+            keys: vec![([0; 32].into(), [0; 32].into(), initial_authority)],
         },
-        beefy: Default::default(),
+        beefy: kusama::BeefyConfig::default(),
         staking: kusama::StakingConfig {
-            validator_count: initial_authorities.len() as u32,
-            minimum_validator_count: initial_authorities.len() as u32,
+            validator_count: 1,
+            minimum_validator_count: 1,
             invulnerables: vec![[0; 32].into()],
             slash_reward_fraction: Perbill::from_percent(10),
             stakers,
             ..Default::default()
         },
         babe: kusama::BabeConfig {
-            authorities: Default::default(),
             epoch_config: Some(kusama::BABE_GENESIS_EPOCH_CONFIG),
             ..Default::default()
         },
-        grandpa: Default::default(),
-        authority_discovery: Default::default(),
+        grandpa: kusama::GrandpaConfig::default(),
+        authority_discovery: kusama::AuthorityDiscoveryConfig::default(),
         claims: kusama::ClaimsConfig {
             claims: vec![],
             vesting: vec![],
         },
         vesting: kusama::VestingConfig { vesting: vec![] },
-        treasury: Default::default(),
-        hrmp: Default::default(),
-        configuration: kusama::ConfigurationConfig {
-            config: Default::default(),
-        },
-        paras: Default::default(),
-        xcm_pallet: Default::default(),
+        treasury: kusama::TreasuryConfig::default(),
+        hrmp: kusama::HrmpConfig::default(),
+        configuration: kusama::ConfigurationConfig::default(),
+        paras: kusama::ParasConfig::default(),
+        xcm_pallet: kusama::XcmPalletConfig::default(),
         nomination_pools: kusama::NominationPoolsConfig {
             min_create_bond: 1 << 43,
             min_join_bond: 1 << 42,
             ..Default::default()
         },
-        nis_counterpart_balances: Default::default(),
-        registrar: Default::default(),
-        society: Default::default(),
-        transaction_payment: Default::default(),
+        nis_counterpart_balances: kusama::NisCounterpartBalancesConfig::default(),
+        registrar: kusama::RegistrarConfig::default(),
+        society: kusama::SocietyConfig::default(),
+        transaction_payment: kusama::TransactionPaymentConfig::default(),
     }
     .build_storage()
     .unwrap();
@@ -170,26 +142,25 @@ fn start_block(block: u32) {
         logs: vec![DigestItem::PreRuntime(
             BABE_ENGINE_ID,
             PreDigest::SecondaryPlain(SecondaryPlainPreDigest {
-                slot: Slot::from(block as u64),
+                slot: Slot::from(u64::from(block)),
                 authority_index: 0,
             })
             .encode(),
         )],
     };
 
-    use sp_runtime::{generic, traits::BlakeTwo256};
-    let grandparent_header: generic::Header<BlockNumber, BlakeTwo256> = Header::new(
+    let grandparent_header = Header::new(
         block,
-        Default::default(),
-        Default::default(),
+        H256::default(),
+        H256::default(),
         <frame_system::Pallet<Runtime>>::parent_hash(),
         pre_digest.clone(),
     );
 
     let parent_header = Header::new(
         block,
-        Default::default(),
-        Default::default(),
+        H256::default(),
+        H256::default(),
         grandparent_header.hash(),
         pre_digest,
     );
@@ -198,7 +169,7 @@ fn start_block(block: u32) {
 
     #[cfg(not(fuzzing))]
     println!("  setting timestamp");
-    Timestamp::set(RuntimeOrigin::none(), block as u64 * SLOT_DURATION).unwrap();
+    Timestamp::set(RuntimeOrigin::none(), u64::from(block) * SLOT_DURATION).unwrap();
 
     #[cfg(not(fuzzing))]
     println!("  setting bitfields");
@@ -206,9 +177,9 @@ fn start_block(block: u32) {
         RuntimeOrigin::none(),
         polkadot_primitives::InherentData {
             parent_header: grandparent_header,
-            bitfields: Default::default(),
-            backed_candidates: Default::default(),
-            disputes: Default::default(),
+            backed_candidates: Vec::default(),
+            bitfields: Vec::default(),
+            disputes: Vec::default(),
         },
     )
     .unwrap();
@@ -224,15 +195,55 @@ fn end_block(elapsed: Duration) {
     Executive::finalize_block();
 }
 
-fn main() {
-    let endowed_accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
-    let genesis_storage = genesis(&endowed_accounts);
+fn execute_invariants(block: u32, initial_total_issuance: Balance) {
+    // After execution of all blocks, we run invariants
+    let mut counted_free = 0;
+    let mut counted_reserved = 0;
+    for (account, info) in Account::<Runtime>::iter() {
+        let consumers = info.consumers;
+        let providers = info.providers;
+        assert!(!(consumers > 0 && providers == 0), "Invalid c/p state");
+        counted_free += info.data.free;
+        counted_reserved += info.data.reserved;
+        let max_lock: Balance = Balances::locks(&account)
+            .iter()
+            .map(|l| l.amount)
+            .max()
+            .unwrap_or_default();
+        assert!(
+            max_lock <= info.data.frozen,
+            "Max lock ({max_lock}) should be less than or equal to frozen balance ({})",
+            info.data.frozen
+        );
+        let sum_holds: Balance = Holds::<Runtime>::get(&account)
+            .iter()
+            .map(|l| l.amount)
+            .sum();
+        assert!(
+            sum_holds <= info.data.reserved,
+            "Sum of all holds ({sum_holds}) should be less than or equal to reserved balance {}",
+            info.data.reserved
+        );
+    }
+    let total_issuance = TotalIssuance::<Runtime>::get();
+    let counted_issuance = counted_free + counted_reserved;
+    assert!(
+        total_issuance == counted_issuance,
+        "Inconsistent total issuance: {total_issuance} but counted {counted_issuance}"
+    );
+    assert!(
+        total_issuance <= initial_total_issuance,
+        "Total issuance {total_issuance} greater than initial issuance {initial_total_issuance}"
+    );
+    // We run all developer-defined integrity tests
+    AllPalletsWithSystem::integrity_test();
+    AllPalletsWithSystem::try_state(block, TryStateSelect::All).unwrap();
+}
 
-    ziggy::fuzz!(|data: &[u8]| {
-        // We build the list of extrinsics we will execute
-        let mut extrinsic_data = data;
-        // Vec<(lapse, origin, extrinsic)>
-        let extrinsics: Vec<(u8, u8, RuntimeCall)> = std::iter::from_fn(|| {
+fn run_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
+    let mut extrinsic_data = data;
+    // We build the list of extrinsics we will execute
+    let extrinsics: Vec<(/* lapse */ u8, /* origin */ u8, RuntimeCall)> = iter::from_fn(|| {
             DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok()
         })
         .filter(|(_, _, x): &(_, _, RuntimeCall)| {
@@ -249,110 +260,75 @@ fn main() {
             })
         })
         .collect();
-        if extrinsics.is_empty() {
-            return;
+    if extrinsics.is_empty() {
+        return;
+    }
+
+    let mut block: u32 = 1;
+    let mut weight: Weight = Weight::zero();
+    let mut elapsed: Duration = Duration::ZERO;
+
+    BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
+        let initial_total_issuance = TotalIssuance::<Runtime>::get();
+
+        start_block(block);
+
+        for (lapse, origin, extrinsic) in extrinsics {
+            if lapse > 0 {
+                end_block(elapsed);
+
+                block += u32::from(lapse) * 393; // 393 * 256 = 100608 which nearly corresponds to a week
+                weight = 0.into();
+                elapsed = Duration::ZERO;
+
+                start_block(block);
+            }
+
+            weight.saturating_accrue(extrinsic.get_dispatch_info().weight);
+            if weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
+                #[cfg(not(fuzzing))]
+                println!("Extrinsic would exhaust block weight, skipping");
+                continue;
+            }
+
+            let origin = if matches!(
+                extrinsic,
+                RuntimeCall::Bounties(
+                    pallet_bounties::Call::approve_bounty { .. }
+                        | pallet_bounties::Call::propose_curator { .. }
+                        | pallet_bounties::Call::close_bounty { .. }
+                )
+            ) {
+                RuntimeOrigin::root()
+            } else {
+                RuntimeOrigin::signed(accounts[origin as usize % accounts.len()].clone())
+            };
+
+            #[cfg(not(fuzzing))]
+            println!("\n    origin:     {origin:?}");
+            #[cfg(not(fuzzing))]
+            println!("    call:       {extrinsic:?}");
+
+            let now = Instant::now(); // We get the current time for timing purposes.
+            #[allow(unused_variables)]
+            let res = extrinsic.clone().dispatch(origin);
+            elapsed += now.elapsed();
+
+            #[cfg(not(fuzzing))]
+            println!("    result:     {res:?}");
         }
 
-        // `chain` represents the state of our mock chain.
-        let mut chain = BasicExternalities::new(genesis_storage.clone());
+        end_block(elapsed);
 
-        let mut current_block: u32 = 1;
-        let mut current_weight: Weight = Weight::zero();
-        let mut elapsed: Duration = Duration::ZERO;
+        execute_invariants(block, initial_total_issuance);
+    });
+}
 
-        chain.execute_with(|| {
-            let initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
+fn main() {
+    let accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
+    let genesis = genesis(&accounts);
 
-            start_block(current_block);
-
-            for (lapse, origin, extrinsic) in extrinsics {
-                if lapse > 0 {
-                    // We end the current block
-                    end_block(elapsed);
-
-                    // 393 * 256 = 100608 which nearly corresponds to a week
-                    let actual_lapse = u32::from(lapse) * 393;
-                    // We update our state variables
-                    current_block += actual_lapse;
-                    // current_timestamp += u64::from(lapse) * SLOT_DURATION;
-                    current_weight = Weight::zero();
-                    elapsed = Duration::ZERO;
-
-                    // We start the next block
-                    start_block(current_block);
-                }
-
-                // We compute the weight to avoid overweight blocks.
-                current_weight = current_weight.saturating_add(extrinsic.get_dispatch_info().weight);
-
-                if current_weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
-                    #[cfg(not(fuzzing))]
-                    println!("Extrinsic would exhaust block weight, skipping");
-                    continue;
-                }
-
-                let now = Instant::now(); // We get the current time for timing purposes.
-
-                let origin = if matches!(
-                    extrinsic,
-                    RuntimeCall::Bounties(pallet_bounties::Call::approve_bounty { .. })
-                        | RuntimeCall::Bounties(pallet_bounties::Call::propose_curator { .. })
-                        | RuntimeCall::Bounties(pallet_bounties::Call::close_bounty { .. })
-                ) {
-                    RuntimeOrigin::root()
-                } else {
-                    RuntimeOrigin::signed(endowed_accounts[origin as usize % endowed_accounts.len()].clone())
-                };
-
-                #[cfg(not(fuzzing))]
-                {
-                    println!("\n    origin:     {origin:?}");
-                    println!("    call:       {extrinsic:?}");
-                }
-
-                let _res = extrinsic.clone().dispatch(origin);
-                #[cfg(not(fuzzing))]
-                println!("    result:     {_res:?}");
-
-                elapsed += now.elapsed();
-            }
-
-            end_block(elapsed);
-
-            // After execution of all blocks, we run invariants
-            let mut counted_free = 0;
-            let mut counted_reserved = 0;
-            for acc in frame_system::Account::<Runtime>::iter() {
-                // Check that the consumer/provider state is valid.
-                let acc_consumers = acc.1.consumers;
-                let acc_providers = acc.1.providers;
-                assert!(!(acc_consumers > 0 && acc_providers == 0), "Invalid state");
-                // Increment our balance counts
-                counted_free += acc.1.data.free;
-                counted_reserved += acc.1.data.reserved;
-                // Check that locks and holds are valid.
-                let max_lock: Balance = staging_kusama_runtime::Balances::locks(&acc.0).iter().map(|l| l.amount).max().unwrap_or_default();
-                assert!(max_lock <= acc.1.data.frozen, "Max lock ({max_lock}) should be less than or equal to frozen balance ({})", acc.1.data.frozen);
-                let sum_holds: Balance = pallet_balances::Holds::<Runtime>::get(&acc.0).iter().map(|l| l.amount).sum();
-                assert!(
-                    sum_holds <= acc.1.data.reserved,
-                    "Sum of all holds ({sum_holds}) should be less than or equal to reserved balance {}",
-                    acc.1.data.reserved
-                );
-            }
-            let total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
-            let counted_issuance = counted_free + counted_reserved;
-            assert!(
-                total_issuance == counted_issuance,
-                "Inconsistent total issuance: {total_issuance} but counted {counted_issuance}"
-            );
-            assert!(
-                total_issuance <= initial_total_issuance,
-                "Total issuance {total_issuance} greater than initial issuance {initial_total_issuance}"
-            );
-            // We run all developer-defined integrity tests
-            AllPalletsWithSystem::integrity_test();
-            AllPalletsWithSystem::try_state(current_block, TryStateSelect::All).unwrap();
-        });
+    ziggy::fuzz!(|data: &[u8]| {
+        run_input(&accounts, &genesis, data);
     });
 }
