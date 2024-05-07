@@ -4,6 +4,7 @@ on: [push]
 
 env:
   CARGO_TERM_COLOR: always
+  SKIP_WASM_BUILD: 1
 
 jobs:
   run-fmt-and-clippy:
