@@ -1,0 +1,17 @@
+name: CI
+
+on: [push]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  run-fmt-and-clippy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run fmt
+        run: cargo fmt --check
+      - name: Run clippy
+        run: cargo clippy --workplace -- -W clippy::pedantic
