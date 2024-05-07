@@ -79,6 +79,43 @@ fn end_block(elapsed: Duration) {
     Executive::finalize_block();
 }
 
+fn execute_invariants(block: u32, initial_total_issuance: Balance) {
+    let mut counted_free = 0;
+    let mut counted_reserved = 0;
+    for (account, info) in Account::<Runtime>::iter() {
+        let consumers = info.consumers;
+        let providers = info.providers;
+        assert!(!(consumers > 0 && providers == 0), "Invalid c/p state");
+        counted_free += info.data.free;
+        counted_reserved += info.data.reserved;
+        let max_lock: Balance = Balances::locks(&account)
+            .iter()
+            .map(|l| l.amount)
+            .max()
+            .unwrap_or_default();
+        assert_eq!(
+            max_lock, info.data.frozen,
+            "Max lock should be equal to frozen balance"
+        );
+        let sum_holds: Balance = Holds::<Runtime>::get(&account)
+            .iter()
+            .map(|l| l.amount)
+            .sum();
+        assert!(
+            sum_holds <= info.data.reserved,
+            "Sum of all holds ({sum_holds}) should be less than or equal to reserved balance {}",
+            info.data.reserved
+        );
+    }
+    let total_issuance = TotalIssuance::<Runtime>::get();
+    let counted_issuance = counted_free + counted_reserved;
+    assert_eq!(total_issuance, counted_issuance);
+    assert!(total_issuance <= initial_total_issuance);
+    // We run all developer-defined integrity tests
+    AllPalletsWithSystem::integrity_test();
+    AllPalletsWithSystem::try_state(block, TryStateSelect::All).unwrap();
+}
+
 fn run_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     let mut data = data;
     // We build the list of extrinsics we will execute
@@ -110,8 +147,7 @@ fn run_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                 start_block(block);
             }
 
-            // We compute the weight to avoid overweight blocks.
-            weight = weight.saturating_add(extrinsic.get_dispatch_info().weight);
+            weight.saturating_accrue(extrinsic.get_dispatch_info().weight);
             if weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
                 #[cfg(not(fuzzing))]
                 println!("Extrinsic would exhaust block weight, skipping");
@@ -136,41 +172,7 @@ fn run_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
 
         end_block(elapsed);
 
-        // After execution of all blocks, we run invariants
-        let mut counted_free = 0;
-        let mut counted_reserved = 0;
-        for (account, info) in Account::<Runtime>::iter() {
-            let consumers = info.consumers;
-            let providers = info.providers;
-            assert!(!(consumers > 0 && providers == 0), "Invalid c/p state");
-            counted_free += info.data.free;
-            counted_reserved += info.data.reserved;
-            let max_lock: Balance = Balances::locks(&account)
-                .iter()
-                .map(|l| l.amount)
-                .max()
-                .unwrap_or_default();
-            assert_eq!(
-                max_lock, info.data.frozen,
-                "Max lock should be equal to frozen balance"
-            );
-            let sum_holds: Balance = Holds::<Runtime>::get(&account)
-                .iter()
-                .map(|l| l.amount)
-                .sum();
-            assert!(
-                sum_holds <= info.data.reserved,
-                "Sum of all holds ({sum_holds}) should be less than or equal to reserved balance {}",
-                info.data.reserved
-            );
-        }
-        let total_issuance = TotalIssuance::<Runtime>::get();
-        let counted_issuance = counted_free + counted_reserved;
-        assert_eq!(total_issuance, counted_issuance);
-        assert!(total_issuance <= initial_total_issuance);
-        // We run all developer-defined integrity tests
-        AllPalletsWithSystem::integrity_test();
-        AllPalletsWithSystem::try_state(block, TryStateSelect::All).unwrap();
+        execute_invariants(block, initial_total_issuance);
     });
 }
 
