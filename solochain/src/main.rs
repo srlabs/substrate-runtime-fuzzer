@@ -5,21 +5,28 @@ use frame_support::{
     traits::{IntegrityTest, TryState, TryStateSelect},
     weights::constants::WEIGHT_REF_TIME_PER_SECOND,
 };
+use frame_system::Account;
+use pallet_balances::{Holds, TotalIssuance};
 use solochain_template_runtime::{
     AccountId, AllPalletsWithSystem, Balance, Balances, Executive, Runtime, RuntimeCall,
     RuntimeOrigin, Timestamp, SLOT_DURATION,
 };
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_runtime::{
+    testing::H256,
     traits::{Dispatchable, Header},
     Digest, DigestItem, Storage,
 };
 use sp_state_machine::BasicExternalities;
-use std::time::{Duration, Instant};
+use std::{
+    iter,
+    time::{Duration, Instant},
+};
 
 fn genesis(accounts: &[AccountId]) -> Storage {
     use solochain_template_runtime::{
-        AuraConfig, BalancesConfig, RuntimeGenesisConfig, SudoConfig,
+        AuraConfig, BalancesConfig, GrandpaConfig, RuntimeGenesisConfig, SudoConfig, SystemConfig,
+        TransactionPaymentConfig,
     };
     use sp_consensus_aura::sr25519::AuthorityId as AuraId;
     use sp_runtime::{app_crypto::ByteArray, BuildStorage};
@@ -29,12 +36,12 @@ fn genesis(accounts: &[AccountId]) -> Storage {
     let authorities = vec![AuraId::from_slice(&[0; 32]).unwrap()];
 
     RuntimeGenesisConfig {
-        system: Default::default(),
+        system: SystemConfig::default(),
         balances: BalancesConfig { balances },
         aura: AuraConfig { authorities },
-        grandpa: Default::default(),
+        grandpa: GrandpaConfig::default(),
         sudo: SudoConfig { key: None }, // Assign no network admin rights.
-        transaction_payment: Default::default(),
+        transaction_payment: TransactionPaymentConfig::default(),
     }
     .build_storage()
     .unwrap()
@@ -46,20 +53,20 @@ fn start_block(block: u32) {
 
     Executive::initialize_block(&Header::new(
         block,
-        Default::default(),
-        Default::default(),
-        Default::default(),
+        H256::default(),
+        H256::default(),
+        H256::default(),
         Digest {
             logs: vec![DigestItem::PreRuntime(
                 AURA_ENGINE_ID,
-                Slot::from(block as u64).encode(),
+                Slot::from(u64::from(block)).encode(),
             )],
         },
     ));
 
     #[cfg(not(fuzzing))]
     println!("  setting timestamp");
-    Timestamp::set(RuntimeOrigin::none(), block as u64 * SLOT_DURATION).unwrap();
+    Timestamp::set(RuntimeOrigin::none(), u64::from(block) * SLOT_DURATION).unwrap();
 }
 
 fn end_block(elapsed: Duration) {
@@ -72,114 +79,107 @@ fn end_block(elapsed: Duration) {
     Executive::finalize_block();
 }
 
-fn main() {
-    let endowed_accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
-    let genesis_storage = genesis(&endowed_accounts);
+fn run_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
+    let mut data = data;
+    // We build the list of extrinsics we will execute
+    let extrinsics: Vec<(/* lapse */ u8, /* origin */ u8, RuntimeCall)> =
+        iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut data).ok())
+            .filter(|(_, _, x)| !matches!(x, RuntimeCall::System(_)))
+            .collect();
+    if extrinsics.is_empty() {
+        return;
+    }
 
-    ziggy::fuzz!(|data: &[u8]| {
-        // We build the list of extrinsics we will execute
-        let mut extrinsic_data = data;
-        // Vec<(lapse, origin, extrinsic)>
-        let extrinsics: Vec<(u8, u8, RuntimeCall)> = std::iter::from_fn(|| {
-            DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok()
-        })
-        .filter(|(_, _, x)| !matches!(x, RuntimeCall::System(_)))
-        .collect();
-        if extrinsics.is_empty() {
-            return;
+    let mut block: u32 = 1;
+    let mut weight: Weight = 0.into();
+    let mut elapsed: Duration = Duration::ZERO;
+
+    BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
+        let initial_total_issuance = TotalIssuance::<Runtime>::get();
+
+        start_block(block);
+
+        for (lapse, origin, extrinsic) in extrinsics {
+            if lapse > 0 {
+                end_block(elapsed);
+
+                block += u32::from(lapse) * 393; // 393 * 256 = 100608 which nearly corresponds to a week
+                weight = 0.into();
+                elapsed = Duration::ZERO;
+
+                start_block(block);
+            }
+
+            // We compute the weight to avoid overweight blocks.
+            weight = weight.saturating_add(extrinsic.get_dispatch_info().weight);
+            if weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
+                #[cfg(not(fuzzing))]
+                println!("Extrinsic would exhaust block weight, skipping");
+                continue;
+            }
+
+            let origin = accounts[origin as usize % accounts.len()].clone();
+
+            #[cfg(not(fuzzing))]
+            println!("\n    origin:     {origin:?}");
+            #[cfg(not(fuzzing))]
+            println!("    call:       {extrinsic:?}");
+
+            let now = Instant::now(); // We get the current time for timing purposes.
+            #[allow(unused_variables)]
+            let res = extrinsic.dispatch(RuntimeOrigin::signed(origin));
+            elapsed += now.elapsed();
+
+            #[cfg(not(fuzzing))]
+            println!("    result:     {res:?}");
         }
 
-        // `chain` represents the state of our mock chain.
-        let mut chain = BasicExternalities::new(genesis_storage.clone());
+        end_block(elapsed);
 
-        let mut current_block: u32 = 1;
-        let mut current_weight: Weight = Weight::zero();
-        let mut elapsed: Duration = Duration::ZERO;
+        // After execution of all blocks, we run invariants
+        let mut counted_free = 0;
+        let mut counted_reserved = 0;
+        for acc in Account::<Runtime>::iter() {
+            // Check that the consumer/provider state is valid.
+            let acc_consumers = acc.1.consumers;
+            let acc_providers = acc.1.providers;
+            assert!(!(acc_consumers > 0 && acc_providers == 0), "Invalid state");
 
-        chain.execute_with(|| {
-            let initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
-
-            start_block(current_block);
-
-            for (lapse, origin, extrinsic) in extrinsics {
-                if lapse > 0 {
-                    // We end the current block
-                    end_block(elapsed);
-
-                    // 393 * 256 = 100608 which nearly corresponds to a week
-                    let actual_lapse = u32::from(lapse) * 393;
-                    // We update our state variables
-                    current_block += actual_lapse;
-                    current_weight = Weight::zero();
-                    elapsed = Duration::ZERO;
-
-                    // We start the next block
-                    start_block(current_block);
-                }
-
-                // We compute the weight to avoid overweight blocks.
-                current_weight = current_weight.saturating_add(extrinsic.get_dispatch_info().weight);
-
-                if current_weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
-                    #[cfg(not(fuzzing))]
-                    println!("Extrinsic would exhaust block weight, skipping");
-                    continue;
-                }
-
-                let now = Instant::now(); // We get the current time for timing purposes.
-
-                let origin_account =
-                    endowed_accounts[origin as usize % endowed_accounts.len()].clone();
-
-                #[cfg(not(fuzzing))]
-                {
-                    println!("\n    origin:     {origin_account:?}");
-                    println!("    call:       {extrinsic:?}");
-                }
-                let _res = extrinsic
-                    .clone()
-                    .dispatch(RuntimeOrigin::signed(origin_account));
-                #[cfg(not(fuzzing))]
-                println!("    result:     {_res:?}");
-
-                elapsed += now.elapsed();
-            }
-
-            end_block(elapsed);
-
-            // After execution of all blocks, we run invariants
-            let mut counted_free = 0;
-            let mut counted_reserved = 0;
-            for acc in frame_system::Account::<Runtime>::iter() {
-                // Check that the consumer/provider state is valid.
-                let acc_consumers = acc.1.consumers;
-                let acc_providers = acc.1.providers;
-                assert!(!(acc_consumers > 0 && acc_providers == 0), "Invalid state");
-
-                // Increment our balance counts
-                counted_free += acc.1.data.free;
-                counted_reserved += acc.1.data.reserved;
-                // Check that locks and holds are valid.
-                let max_lock: Balance = Balances::locks(&acc.0).iter().map(|l| l.amount).max().unwrap_or_default();
-                assert_eq!(max_lock, acc.1.data.frozen, "Max lock should be equal to frozen balance");
-                let sum_holds: Balance = pallet_balances::Holds::<Runtime>::get(&acc.0).iter().map(|l| l.amount).sum();
-                assert!(
-                    sum_holds <= acc.1.data.reserved,
-                    "Sum of all holds ({sum_holds}) should be less than or equal to reserved balance {}",
-                    acc.1.data.reserved
-                );
-            }
-
-            let total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
-            let counted_issuance = counted_free + counted_reserved;
-            assert_eq!(total_issuance, counted_issuance, "Inconsistent total issuance vs counted issuance");
-            assert!(
-                total_issuance <= initial_total_issuance,
-                "Total issuance {total_issuance} greater than initial issuance {initial_total_issuance}"
+            // Increment our balance counts
+            counted_free += acc.1.data.free;
+            counted_reserved += acc.1.data.reserved;
+            // Check that locks and holds are valid.
+            let max_lock: Balance = Balances::locks(&acc.0)
+                .iter()
+                .map(|l| l.amount)
+                .max()
+                .unwrap_or_default();
+            assert_eq!(
+                max_lock, acc.1.data.frozen,
+                "Max lock should be equal to frozen balance"
             );
-            // We run all developer-defined integrity tests
-            AllPalletsWithSystem::integrity_test();
-            AllPalletsWithSystem::try_state(current_block, TryStateSelect::All).unwrap();
-        });
+            let sum_holds: Balance = Holds::<Runtime>::get(&acc.0).iter().map(|l| l.amount).sum();
+            assert!(
+                sum_holds <= acc.1.data.reserved,
+                "Sum of all holds ({sum_holds}) should be less than or equal to reserved balance {}",
+                acc.1.data.reserved
+            );
+        }
+        let total_issuance = TotalIssuance::<Runtime>::get();
+        let counted_issuance = counted_free + counted_reserved;
+        assert_eq!(total_issuance, counted_issuance);
+        assert!(total_issuance <= initial_total_issuance);
+        // We run all developer-defined integrity tests
+        AllPalletsWithSystem::integrity_test();
+        AllPalletsWithSystem::try_state(block, TryStateSelect::All).unwrap();
+    });
+}
+
+fn main() {
+    let accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
+    let genesis = genesis(&accounts);
+
+    ziggy::fuzz!(|data: &[u8]| {
+        run_input(&accounts, &genesis, data);
     });
 }
