@@ -5,29 +5,39 @@ use frame_support::{
     traits::{IntegrityTest, OriginTrait, TryState, TryStateSelect},
     weights::constants::WEIGHT_REF_TIME_PER_SECOND,
 };
+use frame_system::Account;
 use kitchensink_runtime::{
     constants::{currency::DOLLARS, time::SLOT_DURATION},
-    AccountId, AllPalletsWithSystem, Broker, Executive, Runtime, RuntimeCall, RuntimeOrigin,
-    Timestamp,
+    AccountId, AllPalletsWithSystem, Balances, Broker, Executive, Runtime, RuntimeCall,
+    RuntimeOrigin, Timestamp,
 };
 use node_primitives::Balance;
+use pallet_balances::{Holds, TotalIssuance};
 use sp_consensus_babe::{
     digests::{PreDigest, SecondaryPlainPreDigest},
     Slot, BABE_ENGINE_ID,
 };
 use sp_runtime::{
+    testing::H256,
     traits::{Dispatchable, Header},
-    Digest, DigestItem, Perbill, Storage,
+    Digest, DigestItem, FixedU64, Perbill, Storage,
 };
 use sp_state_machine::BasicExternalities;
-use std::time::{Duration, Instant};
+use std::{
+    iter,
+    time::{Duration, Instant},
+};
 
+#[allow(clippy::too_many_lines)]
 fn genesis(accounts: &[AccountId]) -> Storage {
     use kitchensink_runtime::{
-        AssetsConfig, BabeConfig, BalancesConfig, BeefyConfig, CouncilConfig, DemocracyConfig,
-        ElectionsConfig, GluttonConfig, GrandpaConfig, ImOnlineConfig, IndicesConfig,
-        NominationPoolsConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys, SocietyConfig,
-        StakingConfig, SudoConfig, TechnicalCommitteeConfig,
+        AllianceConfig, AllianceMotionConfig, AssetsConfig, AuthorityDiscoveryConfig, BabeConfig,
+        BalancesConfig, BeefyConfig, CouncilConfig, DemocracyConfig, ElectionsConfig,
+        GluttonConfig, GrandpaConfig, ImOnlineConfig, IndicesConfig, MixnetConfig,
+        NominationPoolsConfig, PoolAssetsConfig, RuntimeGenesisConfig, SafeModeConfig,
+        SessionConfig, SessionKeys, SocietyConfig, StakingConfig, SudoConfig, SystemConfig,
+        TechnicalCommitteeConfig, TechnicalMembershipConfig, TransactionPaymentConfig,
+        TransactionStorageConfig, TreasuryConfig, TxPauseConfig, VestingConfig,
     };
     use pallet_grandpa::AuthorityId as GrandpaId;
     use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
@@ -36,6 +46,9 @@ fn genesis(accounts: &[AccountId]) -> Storage {
     use sp_consensus_babe::AuthorityId as BabeId;
     use sp_core::{sr25519::Public as MixnetId, Pair};
     use sp_runtime::{app_crypto::ByteArray, BuildStorage};
+
+    const ENDOWMENT: Balance = 10_000_000 * DOLLARS;
+    const STASH: Balance = ENDOWMENT / 1000;
 
     let beefy_pair = sp_consensus_beefy::ecdsa_crypto::Pair::generate().0;
 
@@ -48,11 +61,8 @@ fn genesis(accounts: &[AccountId]) -> Storage {
 
     let num_endowed_accounts = accounts.len();
 
-    const ENDOWMENT: Balance = 10_000_000 * DOLLARS;
-    const STASH: Balance = ENDOWMENT / 1000;
-
-    let storage = RuntimeGenesisConfig {
-        system: Default::default(),
+    let mut storage = RuntimeGenesisConfig {
+        system: SystemConfig::default(),
         balances: BalancesConfig {
             balances: accounts.iter().cloned().map(|x| (x, ENDOWMENT)).collect(),
         },
@@ -74,9 +84,7 @@ fn genesis(accounts: &[AccountId]) -> Storage {
         beefy: BeefyConfig::default(),
         staking: StakingConfig {
             validator_count: 0u32,
-            // validator_count: initial_authorities.len() as u32,
             minimum_validator_count: 0u32,
-            // minimum_validator_count: initial_authorities.len() as u32,
             invulnerables: vec![[0; 32].into()],
             slash_reward_fraction: Perbill::from_percent(10),
             stakers,
@@ -98,7 +106,7 @@ fn genesis(accounts: &[AccountId]) -> Storage {
                 .take((num_endowed_accounts + 1) / 2)
                 .cloned()
                 .collect(),
-            phantom: Default::default(),
+            ..Default::default()
         },
         sudo: SudoConfig { key: None },
         babe: BabeConfig {
@@ -107,44 +115,40 @@ fn genesis(accounts: &[AccountId]) -> Storage {
             ..Default::default()
         },
         im_online: ImOnlineConfig { keys: vec![] },
-        authority_discovery: Default::default(),
-        grandpa: GrandpaConfig {
-            authorities: vec![],
-            ..Default::default()
-        },
-        technical_membership: Default::default(),
-        treasury: Default::default(),
+        authority_discovery: AuthorityDiscoveryConfig::default(),
+        grandpa: GrandpaConfig::default(),
+        technical_membership: TechnicalMembershipConfig::default(),
+        treasury: TreasuryConfig::default(),
         society: SocietyConfig { pot: 0 },
-        vesting: Default::default(),
+        vesting: VestingConfig::default(),
         assets: AssetsConfig {
             // This asset is used by the NIS pallet as counterpart currency.
             assets: vec![(9, [0; 32].into(), true, 1)],
             ..Default::default()
         },
-        transaction_storage: Default::default(),
-        transaction_payment: Default::default(),
-        alliance: Default::default(),
-        alliance_motion: Default::default(),
+        transaction_storage: TransactionStorageConfig::default(),
+        transaction_payment: TransactionPaymentConfig::default(),
+        alliance: AllianceConfig::default(),
+        alliance_motion: AllianceMotionConfig::default(),
         nomination_pools: NominationPoolsConfig {
             min_create_bond: 10 * DOLLARS,
             min_join_bond: DOLLARS,
             ..Default::default()
         },
         glutton: GluttonConfig {
-            compute: Default::default(),
-            storage: Default::default(),
+            compute: FixedU64::default(),
+            storage: FixedU64::default(),
             trash_data_count: Default::default(),
             ..Default::default()
         },
-        pool_assets: Default::default(),
-        safe_mode: Default::default(),
-        tx_pause: Default::default(),
-        mixnet: Default::default(),
+        pool_assets: PoolAssetsConfig::default(),
+        safe_mode: SafeModeConfig::default(),
+        tx_pause: TxPauseConfig::default(),
+        mixnet: MixnetConfig::default(),
     }
     .build_storage()
     .unwrap();
-    let mut chain = BasicExternalities::new(storage);
-    chain.execute_with(|| {
+    BasicExternalities::execute_with_storage(&mut storage, || {
         // We set the configuration for the broker pallet
         Broker::configure(
             RuntimeOrigin::root(),
@@ -152,7 +156,7 @@ fn genesis(accounts: &[AccountId]) -> Storage {
                 advance_notice: 2,
                 interlude_length: 1,
                 leadin_length: 1,
-                ideal_bulk_proportion: Default::default(),
+                ideal_bulk_proportion: Perbill::default(),
                 limit_cores_offered: None,
                 region_length: 3,
                 renewal_bump: Perbill::from_percent(10),
@@ -160,7 +164,6 @@ fn genesis(accounts: &[AccountId]) -> Storage {
             },
         )
         .unwrap();
-
         /*
         // WIP: found the society before each input
         externalities.execute_with(|| {
@@ -180,7 +183,7 @@ fn genesis(accounts: &[AccountId]) -> Storage {
         });
         */
     });
-    chain.into_storages()
+    storage
 }
 
 fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool) -> bool {
@@ -220,7 +223,7 @@ fn start_block(block: u32) {
         logs: vec![DigestItem::PreRuntime(
             BABE_ENGINE_ID,
             PreDigest::SecondaryPlain(SecondaryPlainPreDigest {
-                slot: Slot::from(block as u64),
+                slot: Slot::from(u64::from(block)),
                 authority_index: 42,
             })
             .encode(),
@@ -229,15 +232,15 @@ fn start_block(block: u32) {
 
     Executive::initialize_block(&Header::new(
         block,
-        Default::default(),
-        Default::default(),
-        Default::default(),
+        H256::default(),
+        H256::default(),
+        H256::default(),
         pre_digest,
     ));
 
     #[cfg(not(fuzzing))]
     println!("  setting timestamp");
-    Timestamp::set(RuntimeOrigin::none(), block as u64 * SLOT_DURATION).unwrap();
+    Timestamp::set(RuntimeOrigin::none(), u64::from(block) * SLOT_DURATION).unwrap();
 }
 
 fn end_block(elapsed: Duration) {
@@ -250,15 +253,49 @@ fn end_block(elapsed: Duration) {
     Executive::finalize_block();
 }
 
-fn main() {
-    let endowed_accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
-    let genesis_storage = genesis(&endowed_accounts);
+fn execute_invariants(block: u32, initial_total_issuance: Balance) {
+    // After execution of all blocks, we run invariants
+    let mut counted_free: Balance = 0;
+    let mut counted_reserved: Balance = 0;
+    for (account, info) in Account::<Runtime>::iter() {
+        let consumers = info.consumers;
+        let providers = info.providers;
+        assert!(!(consumers > 0 && providers == 0), "Invalid c/p state");
+        counted_free += info.data.free;
+        counted_reserved += info.data.reserved;
+        let max_lock: Balance = Balances::locks(&account)
+            .iter()
+            .map(|l| l.amount)
+            .max()
+            .unwrap_or_default();
+        assert_eq!(
+            max_lock, info.data.frozen,
+            "Max lock should be equal to frozen balance"
+        );
+        let sum_holds: Balance = Holds::<Runtime>::get(&account)
+            .iter()
+            .map(|l| l.amount)
+            .sum();
+        assert!(
+            sum_holds <= info.data.reserved,
+            "Sum of all holds ({sum_holds}) should be less than or equal to reserved balance {}",
+            info.data.reserved
+        );
+    }
+    let total_issuance = TotalIssuance::<Runtime>::get();
+    let counted_issuance = counted_free + counted_reserved;
+    assert_eq!(total_issuance, counted_issuance);
+    assert!(total_issuance <= initial_total_issuance);
+    // We run all developer-defined integrity tests
+    AllPalletsWithSystem::integrity_test();
+    AllPalletsWithSystem::try_state(block, TryStateSelect::All).unwrap();
+}
 
-    ziggy::fuzz!(|data: &[u8]| {
-        // We build the list of extrinsics we will execute
-        let mut extrinsic_data = data;
-        // Vec<(lapse, origin, extrinsic)>
-        let extrinsics: Vec<(u8, u8, RuntimeCall)> = std::iter::from_fn(|| {
+fn run_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
+    // We build the list of extrinsics we will execute
+    let mut extrinsic_data = data;
+    // Vec<(lapse, origin, extrinsic)>
+    let extrinsics: Vec<(u8, u8, RuntimeCall)> = iter::from_fn(|| {
             DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok()
         })
         .filter(|(_, _, x): &(_, _, RuntimeCall)| {
@@ -283,34 +320,11 @@ fn main() {
                 // We filter out contracts call that will take too long because of fuzzer instrumentation
                 || matches!(
                         &call,
-                        RuntimeCall::Contracts(pallet_contracts::Call::instantiate_with_code {
-                            gas_limit: _limit,
-                            ..
-                        })
-                        // }) if limit.ref_time() > 10_000_000_000)
-                    )
-
-                // We filter out contracts call that will take too long because of fuzzer instrumentation
-                || matches!(
-                        &call,
-                        RuntimeCall::Contracts(pallet_contracts::Call::upload_code {
-                            ..
-                        })
-                    )
-
-                // We filter out contracts call that will take too long because of fuzzer instrumentation
-                || matches!(
-                        &call,
                         RuntimeCall::Contracts(
+                            pallet_contracts::Call::instantiate_with_code { .. } |
+                            pallet_contracts::Call::upload_code { .. } |
                             pallet_contracts::Call::instantiate_with_code_old_weight { .. }
                         )
-                    )
-                // We filter out a Society::bid call that will cause an overflow
-                // See https://github.com/paritytech/srlabs_findings/issues/292
-                || matches!(
-                        &call,
-                        RuntimeCall::Society(pallet_society::Call::bid { .. } |
-pallet_society::Call::vouch { .. })
                     )
                 // We filter out safe_mode calls, as they block timestamps from being set.
                 || matches!(&call, RuntimeCall::SafeMode(..))
@@ -323,9 +337,9 @@ pallet_society::Call::vouch { .. })
                 // We filter out deprecated extrinsics that lead to failing TryState
                 || matches!(
                         &call,
-                        RuntimeCall::Treasury(pallet_treasury::Call::approve_proposal { .. })
-                            | RuntimeCall::Treasury(pallet_treasury::Call::reject_proposal{ .. })
-                            | RuntimeCall::Treasury(pallet_treasury::Call::propose_spend{ .. })
+                        RuntimeCall::Treasury(pallet_treasury::Call::approve_proposal { .. }
+                            | pallet_treasury::Call::reject_proposal{ .. }
+                            | pallet_treasury::Call::propose_spend{ .. })
                     )
                 || matches!(
                         &call,
@@ -334,113 +348,74 @@ pallet_society::Call::vouch { .. })
             })
         })
         .collect();
-        if extrinsics.is_empty() {
-            return;
+    if extrinsics.is_empty() {
+        return;
+    }
+
+    let mut block: u32 = 1;
+    let mut weight: Weight = Weight::zero();
+    let mut elapsed: Duration = Duration::ZERO;
+
+    BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
+        let initial_total_issuance = TotalIssuance::<Runtime>::get();
+
+        start_block(block);
+
+        for (lapse, origin, extrinsic) in extrinsics {
+            if lapse > 0 {
+                // We end the current block
+                end_block(elapsed);
+
+                block += u32::from(lapse) * 393; // 393 * 256 = 100608 which nearly corresponds to a week
+                weight = Weight::zero();
+                elapsed = Duration::ZERO;
+
+                // We start the next block
+                start_block(block);
+            }
+
+            weight.saturating_accrue(extrinsic.get_dispatch_info().weight);
+            if weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
+                #[cfg(not(fuzzing))]
+                println!("Extrinsic would exhaust block weight, skipping");
+                continue;
+            }
+
+            let origin = accounts[origin as usize % accounts.len()].clone();
+
+            // We do not continue if the origin account does not have a free balance
+            let account = Account::<Runtime>::get(&origin);
+            if account.data.free == 0 {
+                #[cfg(not(fuzzing))]
+                println!("\n    origin {origin:?} does not have free balance, skipping");
+                return;
+            }
+
+            #[cfg(not(fuzzing))]
+            println!("\n    origin:     {origin:?}");
+            #[cfg(not(fuzzing))]
+            println!("    call:       {extrinsic:?}");
+
+            let now = Instant::now(); // We get the current time for timing purposes.
+            #[allow(unused_variables)]
+            let res = extrinsic.dispatch(RuntimeOrigin::signed(origin));
+            elapsed += now.elapsed();
+
+            #[cfg(not(fuzzing))]
+            println!("    result:     {res:?}");
         }
 
-        // `chain` represents the state of our mock chain.
-        let mut chain = BasicExternalities::new(genesis_storage.clone());
+        end_block(elapsed);
 
-        let mut current_block: u32 = 1;
-        let mut current_weight: Weight = Weight::zero();
-        let mut elapsed: Duration = Duration::ZERO;
+        execute_invariants(block, initial_total_issuance);
+    });
+}
 
-        chain.execute_with(|| {
-            let initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
+fn main() {
+    let accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
+    let genesis = genesis(&accounts);
 
-            start_block(current_block);
-
-            for (lapse, origin, extrinsic) in extrinsics {
-                    if lapse > 0 {
-                    // We end the current block
-                    end_block(elapsed);
-
-                    // 393 * 256 = 100608 which nearly corresponds to a week
-                    let actual_lapse = u32::from(lapse) * 393;
-                    // We update our state variables
-                    current_block += actual_lapse;
-                    current_weight = Weight::zero();
-                    elapsed = Duration::ZERO;
-
-                    // We start the next block
-                    start_block(current_block);
-                }
-
-                // We compute the weight to avoid overweight blocks.
-                current_weight = current_weight.saturating_add(extrinsic.get_dispatch_info().weight);
-
-                if current_weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
-                    #[cfg(not(fuzzing))]
-                    println!("Extrinsic would exhaust block weight, skipping");
-                    continue;
-                }
-
-                let now = Instant::now(); // We get the current time for timing purposes.
-
-                let origin_account = endowed_accounts[origin as usize % endowed_accounts.len()].clone();
-
-                // We do not continue if the origin account does not have a free balance
-                let acc = frame_system::Account::<Runtime>::get(&origin_account);
-                if acc.data.free == 0 {
-                    #[cfg(not(fuzzing))]
-                    println!(
-                        "\n    origin {origin_account:?} does not have free balance, skipping"
-                    );
-                    return;
-                }
-
-                #[cfg(not(fuzzing))]
-                {
-                    println!("\n    origin:     {origin_account:?}");
-                    println!("    call:       {extrinsic:?}");
-                }
-                let _res = extrinsic
-                    .clone()
-                    .dispatch(RuntimeOrigin::signed(origin_account));
-                #[cfg(not(fuzzing))]
-                println!("    result:     {_res:?}");
-
-                elapsed += now.elapsed();
-            }
-
-            end_block(elapsed);
-
-            // After execution of all blocks, we run invariants
-            let mut total_free: Balance = 0;
-            let mut total_reserved: Balance = 0;
-            for acc in frame_system::Account::<Runtime>::iter() {
-                // Check that the consumer/provider state is valid.
-                let acc_consumers = acc.1.consumers;
-                let acc_providers = acc.1.providers;
-                assert!(!(acc_consumers > 0 && acc_providers == 0), "Invalid state");
-                #[cfg(not(fuzzing))]
-                {
-                    println!("   account: {acc:?}");
-                    println!("      data: {:?}", acc.1.data);
-                }
-                // Increment our balance counts
-                total_free += acc.1.data.free;
-                total_reserved += acc.1.data.reserved;
-                // Check that locks and holds are valid.
-                let max_lock: Balance = kitchensink_runtime::Balances::locks(&acc.0).iter().map(|l| l.amount).max().unwrap_or_default();
-                assert_eq!(max_lock, acc.1.data.frozen, "Max lock should be equal to frozen balance");
-                let sum_holds: Balance = pallet_balances::Holds::<Runtime>::get(&acc.0).iter().map(|l| l.amount).sum();
-                assert!(
-                    sum_holds <= acc.1.data.reserved,
-                    "Sum of all holds ({sum_holds}) should be less than or equal to reserved balance {}",
-                    acc.1.data.reserved
-                );
-            }
-            let total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
-            let total_counted = total_free + total_reserved;
-            assert!(total_issuance == total_counted, "Inconsistent total issuance: {total_issuance} but counted {total_counted}");
-            assert!(
-                total_issuance <= initial_total_issuance,
-                "Total issuance {total_issuance} greater than initial issuance {initial_total_issuance}"
-            );
-            // We run all developer-defined integrity tests
-            AllPalletsWithSystem::integrity_test();
-            AllPalletsWithSystem::try_state(current_block, TryStateSelect::All).unwrap();
-        });
+    ziggy::fuzz!(|data: &[u8]| {
+        run_input(&accounts, &genesis, data);
     });
 }
