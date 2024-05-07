@@ -1,6 +1,6 @@
 use asset_hub_kusama_runtime::{
-    AllPalletsWithSystem, Executive, ParachainSystem, Runtime, RuntimeCall, RuntimeOrigin,
-    Timestamp,
+    AllPalletsWithSystem, Balances, Executive, ParachainSystem, Runtime, RuntimeCall,
+    RuntimeOrigin, Timestamp,
 };
 use codec::{DecodeLimit, Encode};
 use cumulus_primitives_core::relay_chain::Header;
@@ -10,6 +10,7 @@ use frame_support::{
     traits::{IntegrityTest, TryState, TryStateSelect},
     weights::constants::WEIGHT_REF_TIME_PER_SECOND,
 };
+use pallet_balances::{Holds, TotalIssuance};
 use parachains_common::{AccountId, Balance, SLOT_DURATION};
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_runtime::{
@@ -205,16 +206,15 @@ fn run_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
         let mut counted_free = 0;
         let mut counted_reserved = 0;
         for acc in frame_system::Account::<Runtime>::iter() {
-            // Check that the consumer/provider state is valid.
             let acc_consumers = acc.1.consumers;
             let acc_providers = acc.1.providers;
-            assert!(!(acc_consumers > 0 && acc_providers == 0), "Invalid state");
-
-            // Increment our balance counts
+            assert!(
+                !(acc_consumers > 0 && acc_providers == 0),
+                "Invalid consumer/provider state"
+            );
             counted_free += acc.1.data.free;
             counted_reserved += acc.1.data.reserved;
-            // Check that locks and holds are valid.
-            let max_lock: Balance = asset_hub_kusama_runtime::Balances::locks(&acc.0)
+            let max_lock: Balance = Balances::locks(&acc.0)
                 .iter()
                 .map(|l| l.amount)
                 .max()
@@ -223,30 +223,19 @@ fn run_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                 max_lock, acc.1.data.frozen,
                 "Max lock should be equal to frozen balance"
             );
-            let sum_holds: Balance = pallet_balances::Holds::<Runtime>::get(&acc.0)
-                .iter()
-                .map(|l| l.amount)
-                .sum();
+            let sum_holds: Balance = Holds::<Runtime>::get(&acc.0).iter().map(|l| l.amount).sum();
             assert!(
                 sum_holds <= acc.1.data.reserved,
                 "Sum of all holds ({sum_holds}) should be less than or equal to reserved balance {}",
                 acc.1.data.reserved
             );
         }
-
-        let total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
+        let total_issuance = TotalIssuance::<Runtime>::get();
         let counted_issuance = counted_free + counted_reserved;
         // The reason we do not simply use `!=` here is that some balance might be transfered to another chain via XCM.
         // If we find some kind of workaround for this, we could replace `<` by `!=` here and make the check stronger.
-        assert!(
-            total_issuance <= counted_issuance,
-            "Inconsistent total issuance: {total_issuance} but counted {counted_issuance}"
-        );
-        assert!(
-            total_issuance <= initial_total_issuance,
-            "Total issuance {total_issuance} greater than initial issuance {initial_total_issuance}"
-        );
-
+        assert!(total_issuance <= counted_issuance,);
+        assert!(total_issuance <= initial_total_issuance,);
         // We run all developer-defined integrity tests
         AllPalletsWithSystem::integrity_test();
         AllPalletsWithSystem::try_state(current_block, TryStateSelect::All).unwrap();
