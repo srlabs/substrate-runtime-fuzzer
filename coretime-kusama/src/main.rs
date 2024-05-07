@@ -22,56 +22,51 @@ use std::time::{Duration, Instant};
 use system_parachains_constants::kusama::currency::UNITS;
 
 fn genesis(accounts: &[AccountId]) -> Storage {
-        use coretime_kusama_runtime::{
-            BalancesConfig, CollatorSelectionConfig, RuntimeGenesisConfig, SessionConfig,
-            SessionKeys,
-        };
-        use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-        use sp_runtime::app_crypto::ByteArray;
-        use sp_runtime::BuildStorage;
+    use coretime_kusama_runtime::{
+        BalancesConfig, CollatorSelectionConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys,
+    };
+    use sp_consensus_aura::sr25519::AuthorityId as AuraId;
+    use sp_runtime::app_crypto::ByteArray;
+    use sp_runtime::BuildStorage;
 
-        let initial_authorities: Vec<(AccountId, AuraId)> =
-            vec![([0; 32].into(), AuraId::from_slice(&[0; 32]).unwrap())];
+    let initial_authorities: Vec<(AccountId, AuraId)> =
+        vec![([0; 32].into(), AuraId::from_slice(&[0; 32]).unwrap())];
 
-        let storage = RuntimeGenesisConfig {
-            system: Default::default(),
-            balances: BalancesConfig {
-                // Configure endowed accounts with initial balance of 1 << 60.
-                balances: accounts
-                    .iter()
-                    .cloned()
-                    .map(|k| (k, 1 << 60))
-                    .collect(),
-            },
-            aura: Default::default(),
-            session: SessionConfig {
-                keys: initial_authorities
-                    .iter()
-                    .map(|x| (x.0.clone(), x.0.clone(), SessionKeys { aura: x.1.clone() }))
-                    .collect::<Vec<_>>(),
-            },
-            collator_selection: CollatorSelectionConfig {
-                invulnerables: initial_authorities.iter().map(|x| (x.0.clone())).collect(),
-                candidacy_bond: 1 << 57,
-                desired_candidates: 1,
-            },
-            aura_ext: Default::default(),
-            parachain_info: Default::default(),
-            parachain_system: Default::default(),
-            polkadot_xcm: Default::default(),
-            transaction_payment: Default::default(),
-        }
-        .build_storage()
-        .unwrap();
-        let mut chain = BasicExternalities::new(storage.clone());
+    let storage = RuntimeGenesisConfig {
+        system: Default::default(),
+        balances: BalancesConfig {
+            // Configure endowed accounts with initial balance of 1 << 60.
+            balances: accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
+        },
+        aura: Default::default(),
+        session: SessionConfig {
+            keys: initial_authorities
+                .iter()
+                .map(|x| (x.0.clone(), x.0.clone(), SessionKeys { aura: x.1.clone() }))
+                .collect::<Vec<_>>(),
+        },
+        collator_selection: CollatorSelectionConfig {
+            invulnerables: initial_authorities.iter().map(|x| (x.0.clone())).collect(),
+            candidacy_bond: 1 << 57,
+            desired_candidates: 1,
+        },
+        aura_ext: Default::default(),
+        parachain_info: Default::default(),
+        parachain_system: Default::default(),
+        polkadot_xcm: Default::default(),
+        transaction_payment: Default::default(),
+    }
+    .build_storage()
+    .unwrap();
+    let mut chain = BasicExternalities::new(storage.clone());
 
-        chain.execute_with(|| {
-            start_block(1, None);
-            Broker::configure(RuntimeOrigin::root(), new_config()).unwrap();
-            Broker::start_sales(RuntimeOrigin::root(), 10 * UNITS, 1).unwrap();
-            start_block(2, Some(end_block(Duration::ZERO)));
-        });
-        chain.into_storages()
+    chain.execute_with(|| {
+        start_block(1, None);
+        Broker::configure(RuntimeOrigin::root(), new_config()).unwrap();
+        Broker::start_sales(RuntimeOrigin::root(), 10 * UNITS, 1).unwrap();
+        start_block(2, Some(end_block(Duration::ZERO)));
+    });
+    chain.into_storages()
 }
 
 fn new_config() -> ConfigRecordOf<Runtime> {
