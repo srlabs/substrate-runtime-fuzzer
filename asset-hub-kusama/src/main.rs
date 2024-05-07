@@ -139,115 +139,125 @@ fn end_block(elapsed: Duration) -> Header {
     Executive::finalize_block()
 }
 
-fn main() {
-    let endowed_accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
-    let genesis_storage = genesis(&endowed_accounts);
+fn run_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
+    // We build the list of extrinsics we will execute
+    let mut extrinsic_data = data;
+    // Vec<(lapse, origin, extrinsic)>
+    let extrinsics: Vec<(u8, u8, RuntimeCall)> =
+        iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
+            .filter(|(_, _, x)| !matches!(x, RuntimeCall::System(_)))
+            .collect();
+    if extrinsics.is_empty() {
+        return;
+    }
 
-    ziggy::fuzz!(|data: &[u8]| {
-        // We build the list of extrinsics we will execute
-        let mut extrinsic_data = data;
-        // Vec<(lapse, origin, extrinsic)>
-        let extrinsics: Vec<(u8, u8, RuntimeCall)> =
-            iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
-                .filter(|(_, _, x)| !matches!(x, RuntimeCall::System(_)))
-                .collect();
-        if extrinsics.is_empty() {
-            return;
+    let mut current_block: u32 = 1;
+    let mut current_weight: Weight = Weight::zero();
+    let mut elapsed: Duration = Duration::ZERO;
+
+    BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
+        let initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
+
+        start_block(current_block, &None);
+
+        for (lapse, origin, extrinsic) in extrinsics {
+            if lapse > 0 {
+                let prev_header = end_block(elapsed);
+
+                // We update our state variables
+                current_block += u32::from(lapse);
+                current_weight = Weight::zero();
+                elapsed = Duration::ZERO;
+
+                // We start the next block
+                start_block(current_block, &Some(prev_header));
+            }
+
+            // We compute the weight to avoid overweight blocks.
+            current_weight = current_weight.saturating_add(extrinsic.get_dispatch_info().weight);
+
+            if current_weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
+                #[cfg(not(fuzzing))]
+                println!("Skipping because of max weight {current_weight}");
+                continue;
+            }
+
+            // We get the current time for timing purposes.
+            let now = Instant::now();
+
+            let origin_account = accounts[origin as usize % accounts.len()].clone();
+            #[cfg(not(fuzzing))]
+            {
+                println!("\n    origin:     {origin_account:?}");
+                println!("    call:       {extrinsic:?}");
+            }
+            #[allow(unused_variables)]
+            let res = extrinsic.dispatch(RuntimeOrigin::signed(origin_account));
+            #[cfg(not(fuzzing))]
+            println!("    result:     {res:?}");
+
+            elapsed += now.elapsed();
         }
 
-        // `chain` represents the state of our mock chain.
-        let mut chain = BasicExternalities::new(genesis_storage.clone());
+        end_block(elapsed);
 
-        let mut current_block: u32 = 1;
-        let mut current_weight: Weight = Weight::zero();
-        let mut elapsed: Duration = Duration::ZERO;
+        // After execution of all blocks, we run invariants
+        let mut counted_free = 0;
+        let mut counted_reserved = 0;
+        for acc in frame_system::Account::<Runtime>::iter() {
+            // Check that the consumer/provider state is valid.
+            let acc_consumers = acc.1.consumers;
+            let acc_providers = acc.1.providers;
+            assert!(!(acc_consumers > 0 && acc_providers == 0), "Invalid state");
 
-        chain.execute_with(|| {
-            let initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
-
-            start_block(current_block, &None);
-
-            for (lapse, origin, extrinsic) in extrinsics {
-                if lapse > 0 {
-                    let prev_header = end_block(elapsed);
-
-                    // We update our state variables
-                    current_block += u32::from(lapse);
-                    current_weight = Weight::zero();
-                    elapsed = Duration::ZERO;
-
-                    // We start the next block
-                    start_block(current_block, &Some(prev_header));
-                }
-
-                // We compute the weight to avoid overweight blocks.
-                current_weight = current_weight.saturating_add(extrinsic.get_dispatch_info().weight);
-
-                if current_weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
-                    #[cfg(not(fuzzing))]
-                    println!("Skipping because of max weight {current_weight}");
-                    continue;
-                }
-
-                // We get the current time for timing purposes.
-                let now = Instant::now();
-
-                let origin_account = endowed_accounts[origin as usize % endowed_accounts.len()].clone();
-                #[cfg(not(fuzzing))]
-                {
-                    println!("\n    origin:     {origin_account:?}");
-                    println!("    call:       {extrinsic:?}");
-                }
-                #[allow(unused_variables)]
-                let res = extrinsic
-                    .dispatch(RuntimeOrigin::signed(origin_account));
-                #[cfg(not(fuzzing))]
-                println!("    result:     {res:?}");
-
-                elapsed += now.elapsed();
-            }
-
-            end_block(elapsed);
-
-            // After execution of all blocks, we run invariants
-            let mut counted_free = 0;
-            let mut counted_reserved = 0;
-            for acc in frame_system::Account::<Runtime>::iter() {
-                // Check that the consumer/provider state is valid.
-                let acc_consumers = acc.1.consumers;
-                let acc_providers = acc.1.providers;
-                assert!(!(acc_consumers > 0 && acc_providers == 0), "Invalid state");
-
-                // Increment our balance counts
-                counted_free += acc.1.data.free;
-                counted_reserved += acc.1.data.reserved;
-                // Check that locks and holds are valid.
-                let max_lock: Balance = asset_hub_kusama_runtime::Balances::locks(&acc.0).iter().map(|l| l.amount).max().unwrap_or_default();
-                assert_eq!(max_lock, acc.1.data.frozen, "Max lock should be equal to frozen balance");
-                let sum_holds: Balance = pallet_balances::Holds::<Runtime>::get(&acc.0).iter().map(|l| l.amount).sum();
-                assert!(
-                    sum_holds <= acc.1.data.reserved,
-                    "Sum of all holds ({sum_holds}) should be less than or equal to reserved balance {}",
-                    acc.1.data.reserved
-                );
-            }
-
-            let total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
-            let counted_issuance = counted_free + counted_reserved;
-            // The reason we do not simply use `!=` here is that some balance might be transfered to another chain via XCM.
-            // If we find some kind of workaround for this, we could replace `<` by `!=` here and make the check stronger.
-            assert!(
-                total_issuance <= counted_issuance,
-                "Inconsistent total issuance: {total_issuance} but counted {counted_issuance}"
+            // Increment our balance counts
+            counted_free += acc.1.data.free;
+            counted_reserved += acc.1.data.reserved;
+            // Check that locks and holds are valid.
+            let max_lock: Balance = asset_hub_kusama_runtime::Balances::locks(&acc.0)
+                .iter()
+                .map(|l| l.amount)
+                .max()
+                .unwrap_or_default();
+            assert_eq!(
+                max_lock, acc.1.data.frozen,
+                "Max lock should be equal to frozen balance"
             );
+            let sum_holds: Balance = pallet_balances::Holds::<Runtime>::get(&acc.0)
+                .iter()
+                .map(|l| l.amount)
+                .sum();
             assert!(
-                total_issuance <= initial_total_issuance,
-                "Total issuance {total_issuance} greater than initial issuance {initial_total_issuance}"
+                sum_holds <= acc.1.data.reserved,
+                "Sum of all holds ({sum_holds}) should be less than or equal to reserved balance {}",
+                acc.1.data.reserved
             );
+        }
 
-            // We run all developer-defined integrity tests
-            AllPalletsWithSystem::integrity_test();
-            AllPalletsWithSystem::try_state(current_block, TryStateSelect::All).unwrap();
-        });
+        let total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
+        let counted_issuance = counted_free + counted_reserved;
+        // The reason we do not simply use `!=` here is that some balance might be transfered to another chain via XCM.
+        // If we find some kind of workaround for this, we could replace `<` by `!=` here and make the check stronger.
+        assert!(
+            total_issuance <= counted_issuance,
+            "Inconsistent total issuance: {total_issuance} but counted {counted_issuance}"
+        );
+        assert!(
+            total_issuance <= initial_total_issuance,
+            "Total issuance {total_issuance} greater than initial issuance {initial_total_issuance}"
+        );
+
+        // We run all developer-defined integrity tests
+        AllPalletsWithSystem::integrity_test();
+        AllPalletsWithSystem::try_state(current_block, TryStateSelect::All).unwrap();
+    });
+}
+
+fn main() {
+    let accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
+    let genesis = genesis(&accounts);
+
+    ziggy::fuzz!(|data: &[u8]| {
+        run_input(&accounts, &genesis, data);
     });
 }
