@@ -177,7 +177,7 @@ fn execute_invariants(block: u32, initial_total_issuance: Balance) {
     assert!(total_issuance <= initial_total_issuance,);
     // We run all developer-defined integrity tests
     AllPalletsWithSystem::integrity_test();
-    AllPalletsWithSystem::try_state(current_block, TryStateSelect::All).unwrap();
+    AllPalletsWithSystem::try_state(block, TryStateSelect::All).unwrap();
 }
 
 fn run_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
@@ -199,7 +199,7 @@ fn run_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
         let initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
 
-        start_block(current_block, &None);
+        start_block(block, &None);
 
         for (lapse, origin, extrinsic) in extrinsics {
             if lapse > 0 {
@@ -211,13 +211,13 @@ fn run_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                 elapsed = Duration::ZERO;
 
                 // We start the next block
-                start_block(current_block, &Some(prev_header));
+                start_block(block, &Some(prev_header));
             }
 
             weight.saturating_accrue(extrinsic.get_dispatch_info().weight);
             if weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
                 #[cfg(not(fuzzing))]
-                println!("Skipping because of max weight {current_weight}");
+                println!("Skipping because of max weight {weight}");
                 continue;
             }
 
