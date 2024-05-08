@@ -305,6 +305,13 @@ fn main() {
                             pallet_contracts::Call::instantiate_with_code_old_weight { .. }
                         )
                     )
+                // We filter out Contracts::migrate calls that can debug_assert
+                || matches!(
+                        &call,
+                        RuntimeCall::Contracts(
+                            pallet_contracts::Call::migrate { .. }
+                        )
+                    )
                 // We filter out a Society::bid call that will cause an overflow
                 // See https://github.com/paritytech/srlabs_findings/issues/292
                 || matches!(
