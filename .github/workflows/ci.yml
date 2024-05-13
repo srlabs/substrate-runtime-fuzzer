@@ -13,6 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: rustup default nightly
+      - run: rustup component add rustfmt
       - uses: Swatinem/rust-cache@v2
       - name: Run fmt
         run: cargo fmt --check
