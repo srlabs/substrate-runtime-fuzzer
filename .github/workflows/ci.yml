@@ -13,6 +13,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run fmt
-        run: cargo fmt --check
+        run: cargo +nightly fmt --check
       - name: Run clippy
-        run: cargo clippy --workspace -- -D clippy::pedantic
+        run: cargo +nightly clippy --workspace -- -D clippy::pedantic
