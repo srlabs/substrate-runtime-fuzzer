@@ -44,6 +44,7 @@ pallet-broker = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = 
 
 [features]
 default = ["std", "try-runtime"]
+fuzzing = []
 std = [
     "kitchensink-runtime/std",
 	"codec/std",

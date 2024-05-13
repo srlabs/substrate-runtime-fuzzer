@@ -41,6 +41,7 @@ pallet-xcm = { default-features = false , version = "8.0.4" }
 
 [features]
 default = ["std", "try-runtime"]
+fuzzing = []
 std = [
     "staging-kusama-runtime/std",
 	"codec/std",

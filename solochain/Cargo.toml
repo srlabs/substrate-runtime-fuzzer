@@ -24,6 +24,7 @@ pallet-grandpa = { git = "https://github.com/paritytech/polkadot-sdk.git", tag =
 
 [features]
 default = ["std", "try-runtime"]
+fuzzing = []
 std = [
     "solochain-template-runtime/std",
 	"sp-runtime/std",

@@ -216,7 +216,7 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
 }
 
 fn start_block(block: u32) {
-    #[cfg(not(fuzzing))]
+    #[cfg(not(feature = "fuzzing"))]
     println!("\ninitializing block {block}");
 
     let pre_digest = Digest {
@@ -238,17 +238,17 @@ fn start_block(block: u32) {
         pre_digest,
     ));
 
-    #[cfg(not(fuzzing))]
+    #[cfg(not(feature = "fuzzing"))]
     println!("  setting timestamp");
     Timestamp::set(RuntimeOrigin::none(), u64::from(block) * SLOT_DURATION).unwrap();
 }
 
 fn end_block(elapsed: Duration) {
-    #[cfg(not(fuzzing))]
+    #[cfg(not(feature = "fuzzing"))]
     println!("\n  time spent: {elapsed:?}");
     assert!(elapsed.as_secs() <= 2, "block execution took too much time");
 
-    #[cfg(not(fuzzing))]
+    #[cfg(not(feature = "fuzzing"))]
     println!("\n  finalizing block");
     Executive::finalize_block();
 }
@@ -376,7 +376,7 @@ fn run_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
 
             weight.saturating_accrue(extrinsic.get_dispatch_info().weight);
             if weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
-                #[cfg(not(fuzzing))]
+                #[cfg(not(feature = "fuzzing"))]
                 println!("Extrinsic would exhaust block weight, skipping");
                 continue;
             }
@@ -386,14 +386,14 @@ fn run_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
             // We do not continue if the origin account does not have a free balance
             let account = Account::<Runtime>::get(&origin);
             if account.data.free == 0 {
-                #[cfg(not(fuzzing))]
+                #[cfg(not(feature = "fuzzing"))]
                 println!("\n    origin {origin:?} does not have free balance, skipping");
                 return;
             }
 
-            #[cfg(not(fuzzing))]
+            #[cfg(not(feature = "fuzzing"))]
             println!("\n    origin:     {origin:?}");
-            #[cfg(not(fuzzing))]
+            #[cfg(not(feature = "fuzzing"))]
             println!("    call:       {extrinsic:?}");
 
             let now = Instant::now(); // We get the current time for timing purposes.
@@ -401,7 +401,7 @@ fn run_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
             let res = extrinsic.dispatch(RuntimeOrigin::signed(origin));
             elapsed += now.elapsed();
 
-            #[cfg(not(fuzzing))]
+            #[cfg(not(feature = "fuzzing"))]
             println!("    result:     {res:?}");
         }
 

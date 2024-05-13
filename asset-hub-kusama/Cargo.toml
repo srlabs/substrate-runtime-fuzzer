@@ -30,6 +30,7 @@ cumulus-test-relay-sproof-builder = { default-features = false , version = "0.8.
 
 [features]
 default = ["std", "try-runtime"]
+fuzzing = []
 std = [
     "asset-hub-kusama-runtime/std",
 	"codec/std",
