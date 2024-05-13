@@ -323,7 +323,8 @@ fn run_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                         RuntimeCall::Contracts(
                             pallet_contracts::Call::instantiate_with_code { .. } |
                             pallet_contracts::Call::upload_code { .. } |
-                            pallet_contracts::Call::instantiate_with_code_old_weight { .. }
+                            pallet_contracts::Call::instantiate_with_code_old_weight { .. } |
+                            pallet_contracts::Call::migrate { .. } |
                         )
                     )
                 // We filter out safe_mode calls, as they block timestamps from being set.
