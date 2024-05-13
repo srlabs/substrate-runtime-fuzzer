@@ -12,9 +12,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - run: rustup toolchain install nightly
+      - run: rustup default nightly
       - uses: Swatinem/rust-cache@v2
       - name: Run fmt
-        run: cargo +nightly fmt --check
+        run: cargo fmt --check
       - name: Run clippy
-        run: cargo +nightly clippy --workspace -- -D clippy::pedantic
+        run: cargo clippy --workspace -- -D clippy::pedantic
