@@ -166,21 +166,19 @@ fn genesis(accounts: &[AccountId]) -> Storage {
         .unwrap();
         /*
         // WIP: found the society before each input
-        externalities.execute_with(|| {
-            RuntimeCall::Sudo(pallet_sudo::Call::sudo {
-                call: RuntimeCall::Society(pallet_society::Call::found_society {
-                    founder: AccountId::from([0; 32]).into(),
-                    max_members: 2,
-                    max_intake: 2,
-                    max_strikes: 2,
-                    candidate_deposit: 1_000,
-                    rules: vec![0],
-                })
-                .into(),
+        RuntimeCall::Sudo(pallet_sudo::Call::sudo {
+            call: RuntimeCall::Society(pallet_society::Call::found_society {
+                founder: AccountId::from([0; 32]).into(),
+                max_members: 2,
+                max_intake: 2,
+                max_strikes: 2,
+                candidate_deposit: 1_000,
+                rules: vec![0],
             })
-            .dispatch(RuntimeOrigin::root())
-            .unwrap();
-        });
+            .into(),
+        })
+        .dispatch(RuntimeOrigin::root())
+        .unwrap();
         */
     });
     storage

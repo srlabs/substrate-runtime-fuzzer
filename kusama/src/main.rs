@@ -55,7 +55,7 @@ fn genesis(accounts: &[AccountId]) -> Storage {
         StakerStatus::Validator,
     )];
 
-    let storage = kusama::RuntimeGenesisConfig {
+    let mut storage = kusama::RuntimeGenesisConfig {
         system: kusama::SystemConfig::default(),
         balances: kusama::BalancesConfig {
             // Configure endowed accounts with initial balance of 1 << 60.
@@ -102,11 +102,10 @@ fn genesis(accounts: &[AccountId]) -> Storage {
     }
     .build_storage()
     .unwrap();
-    let mut chain = BasicExternalities::new(storage);
-    chain.execute_with(|| {
+    BasicExternalities::execute_with_storage(&mut storage, || {
         Identity::add_registrar(RuntimeOrigin::root(), accounts[0].clone().into()).unwrap();
     });
-    chain.into_storages()
+    storage
 }
 
 fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool) -> bool {
