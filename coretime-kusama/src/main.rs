@@ -1,3 +1,4 @@
+#![warn(clippy::pedantic)]
 use codec::{DecodeLimit, Encode};
 use coretime_kusama_runtime::{
     AllPalletsWithSystem, Balances, Broker, Executive, ParachainSystem, Runtime, RuntimeCall,

@@ -1,3 +1,4 @@
+#![warn(clippy::pedantic)]
 use asset_hub_kusama_runtime::{
     AllPalletsWithSystem, Balances, Executive, ParachainSystem, Runtime, RuntimeCall,
     RuntimeOrigin, Timestamp,

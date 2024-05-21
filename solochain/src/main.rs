@@ -1,3 +1,4 @@
+#![warn(clippy::pedantic)]
 use codec::{DecodeLimit, Encode};
 use frame_support::{
     dispatch::GetDispatchInfo,
