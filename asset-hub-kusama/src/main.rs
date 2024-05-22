@@ -32,7 +32,7 @@ fn genesis(accounts: &[AccountId]) -> Storage {
         AssetsConfig, AuraConfig, AuraExtConfig, BalancesConfig, CollatorSelectionConfig,
         ForeignAssetsConfig, ParachainInfoConfig, ParachainSystemConfig, PolkadotXcmConfig,
         PoolAssetsConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys, SystemConfig,
-        TransactionPaymentConfig,
+        TransactionPaymentConfig, VestingConfig,
     };
     use sp_consensus_aura::sr25519::AuthorityId as AuraId;
     use sp_runtime::app_crypto::ByteArray;
@@ -67,6 +67,7 @@ fn genesis(accounts: &[AccountId]) -> Storage {
         foreign_assets: ForeignAssetsConfig::default(),
         pool_assets: PoolAssetsConfig::default(),
         transaction_payment: TransactionPaymentConfig::default(),
+        vesting: VestingConfig::default(),
     }
     .build_storage()
     .unwrap()

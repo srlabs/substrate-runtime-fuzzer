@@ -5,10 +5,10 @@ edition = "2021"
 publish = false
 
 [dependencies]
-ziggy = { version = "0.8", default-features = false }
+ziggy = { version = "1.0.2", default-features = false }
 
-coretime-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v1.2.1", default-features = false }
-system-parachains-constants = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v1.2.1", default-features = false }
+coretime-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", rev = "2fe6f56", default-features = false }
+system-parachains-constants = { git = "https://github.com/polkadot-fellows/runtimes.git", rev = "2fe6f56", default-features = false }
 
 parachains-common = { default-features = false , version = "8.0.0" }
 
@@ -26,7 +26,7 @@ pallet-balances = { default-features = false, version = "29.0.1" }
 pallet-utility = { default-features = false, version = "29.0.0" }
 pallet-multisig = { default-features = false, version = "29.0.0" }
 pallet-proxy = { default-features = false, version = "29.0.0" }
-pallet-broker = { default-features = false, version = "0.7.0" }
+pallet-broker = { default-features = false, version = "0.7.1" }
 
 cumulus-primitives-core = { default-features = false , version = "0.8.0" }
 cumulus-primitives-parachain-inherent = { default-features = false , version = "0.8.0" }
