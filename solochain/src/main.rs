@@ -24,7 +24,16 @@ use std::{
     time::{Duration, Instant},
 };
 
-fn genesis(accounts: &[AccountId]) -> Storage {
+fn main() {
+    let accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
+    let genesis = generate_genesis(&accounts);
+
+    ziggy::fuzz!(|data: &[u8]| {
+        process_input(&accounts, &genesis, data);
+    });
+}
+
+fn generate_genesis(accounts: &[AccountId]) -> Storage {
     use solochain_template_runtime::{
         AuraConfig, BalancesConfig, GrandpaConfig, RuntimeGenesisConfig, SudoConfig, SystemConfig,
         TransactionPaymentConfig,
@@ -48,7 +57,67 @@ fn genesis(accounts: &[AccountId]) -> Storage {
     .unwrap()
 }
 
-fn start_block(block: u32) {
+fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
+    let mut data = data;
+    // We build the list of extrinsics we will execute
+    let extrinsics: Vec<(/* lapse */ u8, /* origin */ u8, RuntimeCall)> =
+        iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut data).ok())
+            .filter(|(_, _, x)| !matches!(x, RuntimeCall::System(_)))
+            .collect();
+    if extrinsics.is_empty() {
+        return;
+    }
+
+    let mut block: u32 = 1;
+    let mut weight: Weight = 0.into();
+    let mut elapsed: Duration = Duration::ZERO;
+
+    BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
+        let initial_total_issuance = TotalIssuance::<Runtime>::get();
+
+        initialize_block(block);
+
+        for (lapse, origin, extrinsic) in extrinsics {
+            if lapse > 0 {
+                finalize_block(elapsed);
+
+                block += u32::from(lapse) * 393; // 393 * 256 = 100608 which nearly corresponds to a week
+                weight = 0.into();
+                elapsed = Duration::ZERO;
+
+                initialize_block(block);
+            }
+
+            weight.saturating_accrue(extrinsic.get_dispatch_info().weight);
+            if weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
+                #[cfg(not(feature = "fuzzing"))]
+                println!("Extrinsic would exhaust block weight, skipping");
+                continue;
+            }
+
+            let origin = accounts[origin as usize % accounts.len()].clone();
+
+            #[cfg(not(feature = "fuzzing"))]
+            println!("\n    origin:     {origin:?}");
+            #[cfg(not(feature = "fuzzing"))]
+            println!("    call:       {extrinsic:?}");
+
+            let now = Instant::now(); // We get the current time for timing purposes.
+            #[allow(unused_variables)]
+            let res = extrinsic.dispatch(RuntimeOrigin::signed(origin));
+            elapsed += now.elapsed();
+
+            #[cfg(not(feature = "fuzzing"))]
+            println!("    result:     {res:?}");
+        }
+
+        finalize_block(elapsed);
+
+        check_invariants(block, initial_total_issuance);
+    });
+}
+
+fn initialize_block(block: u32) {
     #[cfg(not(feature = "fuzzing"))]
     println!("\ninitializing block {block}");
 
@@ -70,7 +139,7 @@ fn start_block(block: u32) {
     Timestamp::set(RuntimeOrigin::none(), u64::from(block) * SLOT_DURATION).unwrap();
 }
 
-fn end_block(elapsed: Duration) {
+fn finalize_block(elapsed: Duration) {
     #[cfg(not(feature = "fuzzing"))]
     println!("\n  time spent: {elapsed:?}");
     assert!(elapsed.as_secs() <= 2, "block execution took too much time");
@@ -80,7 +149,7 @@ fn end_block(elapsed: Duration) {
     Executive::finalize_block();
 }
 
-fn execute_invariants(block: u32, initial_total_issuance: Balance) {
+fn check_invariants(block: u32, initial_total_issuance: Balance) {
     let mut counted_free = 0;
     let mut counted_reserved = 0;
     for (account, info) in Account::<Runtime>::iter() {
@@ -115,73 +184,4 @@ fn execute_invariants(block: u32, initial_total_issuance: Balance) {
     // We run all developer-defined integrity tests
     AllPalletsWithSystem::integrity_test();
     AllPalletsWithSystem::try_state(block, TryStateSelect::All).unwrap();
-}
-
-fn run_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
-    let mut data = data;
-    // We build the list of extrinsics we will execute
-    let extrinsics: Vec<(/* lapse */ u8, /* origin */ u8, RuntimeCall)> =
-        iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut data).ok())
-            .filter(|(_, _, x)| !matches!(x, RuntimeCall::System(_)))
-            .collect();
-    if extrinsics.is_empty() {
-        return;
-    }
-
-    let mut block: u32 = 1;
-    let mut weight: Weight = 0.into();
-    let mut elapsed: Duration = Duration::ZERO;
-
-    BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
-        let initial_total_issuance = TotalIssuance::<Runtime>::get();
-
-        start_block(block);
-
-        for (lapse, origin, extrinsic) in extrinsics {
-            if lapse > 0 {
-                end_block(elapsed);
-
-                block += u32::from(lapse) * 393; // 393 * 256 = 100608 which nearly corresponds to a week
-                weight = 0.into();
-                elapsed = Duration::ZERO;
-
-                start_block(block);
-            }
-
-            weight.saturating_accrue(extrinsic.get_dispatch_info().weight);
-            if weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
-                #[cfg(not(feature = "fuzzing"))]
-                println!("Extrinsic would exhaust block weight, skipping");
-                continue;
-            }
-
-            let origin = accounts[origin as usize % accounts.len()].clone();
-
-            #[cfg(not(feature = "fuzzing"))]
-            println!("\n    origin:     {origin:?}");
-            #[cfg(not(feature = "fuzzing"))]
-            println!("    call:       {extrinsic:?}");
-
-            let now = Instant::now(); // We get the current time for timing purposes.
-            #[allow(unused_variables)]
-            let res = extrinsic.dispatch(RuntimeOrigin::signed(origin));
-            elapsed += now.elapsed();
-
-            #[cfg(not(feature = "fuzzing"))]
-            println!("    result:     {res:?}");
-        }
-
-        end_block(elapsed);
-
-        execute_invariants(block, initial_total_issuance);
-    });
-}
-
-fn main() {
-    let accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
-    let genesis = genesis(&accounts);
-
-    ziggy::fuzz!(|data: &[u8]| {
-        run_input(&accounts, &genesis, data);
-    });
 }
