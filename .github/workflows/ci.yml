@@ -12,12 +12,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - run: rustup default stable
+      - run: rustup default nightly
       - run: rustup component add rustfmt clippy
-#      - uses: Swatinem/rust-cache@v2
-      - name: Run fmt
+      - uses: Swatinem/rust-cache@v2
+      - name: Run runtimes fmt
         run: cargo fmt --check --manifest-path runtimes/Cargo.toml
+      - name: Run templates fmt
         run: cargo fmt --check --manifest-path templates/Cargo.toml
-      - name: Run clippy
+      - name: Run runtimes clippy
         run: cargo clippy -q --workspace --no-deps --manifest-path runtimes/Cargo.toml -- -D clippy::pedantic
+      - name: Run templates clippy
         run: cargo clippy -q --workspace --no-deps --manifest-path templates/Cargo.toml -- -D clippy::pedantic
