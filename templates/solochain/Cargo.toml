@@ -5,7 +5,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
-ziggy = { version = "0.8", default-features = false }
+ziggy = { version = "1.0.2", default-features = false }
 
 solochain-template-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.11.0", default-features = false }
 
@@ -24,6 +24,7 @@ pallet-grandpa = { git = "https://github.com/paritytech/polkadot-sdk.git", tag =
 
 [features]
 default = ["std", "try-runtime"]
+fuzzing = []
 std = [
     "solochain-template-runtime/std",
 	"sp-runtime/std",

@@ -5,9 +5,9 @@ edition = "2021"
 publish = false
 
 [dependencies]
-ziggy = { version = "0.8", default-features = false }
+ziggy = { version = "1.0.2", default-features = false }
 
-asset-hub-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v1.2.1", default-features = false }
+asset-hub-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v1.2.4", default-features = false }
 
 parachains-common = { default-features = false , version = "8.0.0" }
 
@@ -30,6 +30,7 @@ cumulus-test-relay-sproof-builder = { default-features = false , version = "0.8.
 
 [features]
 default = ["std", "try-runtime"]
+fuzzing = []
 std = [
     "asset-hub-kusama-runtime/std",
 	"codec/std",
