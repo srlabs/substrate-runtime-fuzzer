@@ -14,7 +14,6 @@ jobs:
       - uses: actions/checkout@v4
       - run: rustup default nightly
       - run: rustup component add rustfmt clippy
-      - uses: Swatinem/rust-cache@v2
       - name: Run runtimes fmt
         run: cargo fmt --check --manifest-path runtimes/Cargo.toml
       - name: Run templates fmt
