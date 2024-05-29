@@ -16,6 +16,8 @@ jobs:
       - run: rustup component add rustfmt clippy
 #      - uses: Swatinem/rust-cache@v2
       - name: Run fmt
-        run: cargo fmt --check
+        run: cargo fmt --check --manifest-path runtimes/Cargo.toml
+        run: cargo fmt --check --manifest-path templates/Cargo.toml
       - name: Run clippy
-        run: cargo clippy -q --workspace --no-deps -- -D clippy::pedantic
+        run: cargo clippy -q --workspace --no-deps --manifest-path runtimes/Cargo.toml -- -D clippy::pedantic
+        run: cargo clippy -q --workspace --no-deps --manifest-path templates/Cargo.toml -- -D clippy::pedantic

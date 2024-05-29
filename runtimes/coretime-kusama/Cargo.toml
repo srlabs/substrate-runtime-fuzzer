@@ -7,8 +7,8 @@ publish = false
 [dependencies]
 ziggy = { version = "1.0.2", default-features = false }
 
-coretime-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", rev = "a611c19", default-features = false }
-system-parachains-constants = { git = "https://github.com/polkadot-fellows/runtimes.git", rev = "a611c19", default-features = false }
+coretime-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v1.2.4", default-features = false }
+system-parachains-constants = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v1.2.4", default-features = false }
 
 parachains-common = { default-features = false , version = "8.0.0" }
 

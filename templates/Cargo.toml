@@ -1,5 +1,5 @@
 [package]
-name = "substrate-runtime-fuzzer"
+name = "substrate-templates-fuzzers"
 version = "0.1.0"
 edition = "2021"
 publish = false
@@ -8,8 +8,5 @@ publish = false
 resolver = "2"
 members = [
     "kitchensink",
-    "kusama",
     "solochain",
-    "asset-hub-kusama",
-    "coretime-kusama",
 ]
