@@ -29,8 +29,16 @@ use std::{
     time::{Duration, Instant},
 };
 
+fn main() {
+    let accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
+    let genesis = generate_genesis(&accounts);
+
+    ziggy::fuzz!(|data: &[u8]| {
+        process_input(&accounts, &genesis, data);
+    });
+}
 #[allow(clippy::too_many_lines)]
-fn genesis(accounts: &[AccountId]) -> Storage {
+fn generate_genesis(accounts: &[AccountId]) -> Storage {
     use kitchensink_runtime::{
         AllianceConfig, AllianceMotionConfig, AssetsConfig, AuthorityDiscoveryConfig, BabeConfig,
         BalancesConfig, BeefyConfig, CouncilConfig, DemocracyConfig, ElectionsConfig,
@@ -214,83 +222,7 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
     false
 }
 
-fn start_block(block: u32) {
-    #[cfg(not(feature = "fuzzing"))]
-    println!("\ninitializing block {block}");
-
-    let pre_digest = Digest {
-        logs: vec![DigestItem::PreRuntime(
-            BABE_ENGINE_ID,
-            PreDigest::SecondaryPlain(SecondaryPlainPreDigest {
-                slot: Slot::from(u64::from(block)),
-                authority_index: 42,
-            })
-            .encode(),
-        )],
-    };
-
-    Executive::initialize_block(&Header::new(
-        block,
-        H256::default(),
-        H256::default(),
-        H256::default(),
-        pre_digest,
-    ));
-
-    #[cfg(not(feature = "fuzzing"))]
-    println!("  setting timestamp");
-    Timestamp::set(RuntimeOrigin::none(), u64::from(block) * SLOT_DURATION).unwrap();
-}
-
-fn end_block(elapsed: Duration) {
-    #[cfg(not(feature = "fuzzing"))]
-    println!("\n  time spent: {elapsed:?}");
-    assert!(elapsed.as_secs() <= 2, "block execution took too much time");
-
-    #[cfg(not(feature = "fuzzing"))]
-    println!("\n  finalizing block");
-    Executive::finalize_block();
-}
-
-fn execute_invariants(block: u32, initial_total_issuance: Balance) {
-    // After execution of all blocks, we run invariants
-    let mut counted_free: Balance = 0;
-    let mut counted_reserved: Balance = 0;
-    for (account, info) in Account::<Runtime>::iter() {
-        let consumers = info.consumers;
-        let providers = info.providers;
-        assert!(!(consumers > 0 && providers == 0), "Invalid c/p state");
-        counted_free += info.data.free;
-        counted_reserved += info.data.reserved;
-        let max_lock: Balance = Balances::locks(&account)
-            .iter()
-            .map(|l| l.amount)
-            .max()
-            .unwrap_or_default();
-        assert_eq!(
-            max_lock, info.data.frozen,
-            "Max lock should be equal to frozen balance"
-        );
-        let sum_holds: Balance = Holds::<Runtime>::get(&account)
-            .iter()
-            .map(|l| l.amount)
-            .sum();
-        assert!(
-            sum_holds <= info.data.reserved,
-            "Sum of all holds ({sum_holds}) should be less than or equal to reserved balance {}",
-            info.data.reserved
-        );
-    }
-    let total_issuance = TotalIssuance::<Runtime>::get();
-    let counted_issuance = counted_free + counted_reserved;
-    assert_eq!(total_issuance, counted_issuance);
-    assert!(total_issuance <= initial_total_issuance);
-    // We run all developer-defined integrity tests
-    AllPalletsWithSystem::integrity_test();
-    AllPalletsWithSystem::try_state(block, TryStateSelect::All).unwrap();
-}
-
-fn run_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
+fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     // We build the list of extrinsics we will execute
     let mut extrinsic_data = data;
     // Vec<(lapse, origin, extrinsic)>
@@ -359,19 +291,19 @@ fn run_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
         let initial_total_issuance = TotalIssuance::<Runtime>::get();
 
-        start_block(block);
+        initialize_block(block);
 
         for (lapse, origin, extrinsic) in extrinsics {
             if lapse > 0 {
                 // We end the current block
-                end_block(elapsed);
+                finalize_block(elapsed);
 
                 block += u32::from(lapse) * 393; // 393 * 256 = 100608 which nearly corresponds to a week
                 weight = Weight::zero();
                 elapsed = Duration::ZERO;
 
                 // We start the next block
-                start_block(block);
+                initialize_block(block);
             }
 
             weight.saturating_accrue(extrinsic.get_dispatch_info().weight);
@@ -405,17 +337,83 @@ fn run_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
             println!("    result:     {res:?}");
         }
 
-        end_block(elapsed);
+        finalize_block(elapsed);
 
-        execute_invariants(block, initial_total_issuance);
+        check_invariants(block, initial_total_issuance);
     });
 }
+fn initialize_block(block: u32) {
+    #[cfg(not(feature = "fuzzing"))]
+    println!("\ninitializing block {block}");
 
-fn main() {
-    let accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
-    let genesis = genesis(&accounts);
+    let pre_digest = Digest {
+        logs: vec![DigestItem::PreRuntime(
+            BABE_ENGINE_ID,
+            PreDigest::SecondaryPlain(SecondaryPlainPreDigest {
+                slot: Slot::from(u64::from(block)),
+                authority_index: 42,
+            })
+            .encode(),
+        )],
+    };
 
-    ziggy::fuzz!(|data: &[u8]| {
-        run_input(&accounts, &genesis, data);
-    });
+    Executive::initialize_block(&Header::new(
+        block,
+        H256::default(),
+        H256::default(),
+        H256::default(),
+        pre_digest,
+    ));
+
+    #[cfg(not(feature = "fuzzing"))]
+    println!("  setting timestamp");
+    Timestamp::set(RuntimeOrigin::none(), u64::from(block) * SLOT_DURATION).unwrap();
+}
+
+fn finalize_block(elapsed: Duration) {
+    #[cfg(not(feature = "fuzzing"))]
+    println!("\n  time spent: {elapsed:?}");
+    assert!(elapsed.as_secs() <= 2, "block execution took too much time");
+
+    #[cfg(not(feature = "fuzzing"))]
+    println!("\n  finalizing block");
+    Executive::finalize_block();
+}
+
+fn check_invariants(block: u32, initial_total_issuance: Balance) {
+    // After execution of all blocks, we run invariants
+    let mut counted_free: Balance = 0;
+    let mut counted_reserved: Balance = 0;
+    for (account, info) in Account::<Runtime>::iter() {
+        let consumers = info.consumers;
+        let providers = info.providers;
+        assert!(!(consumers > 0 && providers == 0), "Invalid c/p state");
+        counted_free += info.data.free;
+        counted_reserved += info.data.reserved;
+        let max_lock: Balance = Balances::locks(&account)
+            .iter()
+            .map(|l| l.amount)
+            .max()
+            .unwrap_or_default();
+        assert_eq!(
+            max_lock, info.data.frozen,
+            "Max lock should be equal to frozen balance"
+        );
+        let sum_holds: Balance = Holds::<Runtime>::get(&account)
+            .iter()
+            .map(|l| l.amount)
+            .sum();
+        assert!(
+            sum_holds <= info.data.reserved,
+            "Sum of all holds ({sum_holds}) should be less than or equal to reserved balance {}",
+            info.data.reserved
+        );
+    }
+    let total_issuance = TotalIssuance::<Runtime>::get();
+    let counted_issuance = counted_free + counted_reserved;
+    assert_eq!(total_issuance, counted_issuance);
+    assert!(total_issuance <= initial_total_issuance);
+    // We run all developer-defined integrity tests
+    AllPalletsWithSystem::integrity_test();
+    AllPalletsWithSystem::try_state(block, TryStateSelect::All).unwrap();
 }

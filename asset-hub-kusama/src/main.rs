@@ -27,7 +27,16 @@ use std::{
     time::{Duration, Instant},
 };
 
-fn genesis(accounts: &[AccountId]) -> Storage {
+fn main() {
+    let accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
+    let genesis = generate_genesis(&accounts);
+
+    ziggy::fuzz!(|data: &[u8]| {
+        process_input(&accounts, &genesis, data);
+    });
+}
+
+fn generate_genesis(accounts: &[AccountId]) -> Storage {
     use asset_hub_kusama_runtime::{
         AssetsConfig, AuraConfig, AuraExtConfig, BalancesConfig, CollatorSelectionConfig,
         ForeignAssetsConfig, ParachainInfoConfig, ParachainSystemConfig, PolkadotXcmConfig,
@@ -73,7 +82,70 @@ fn genesis(accounts: &[AccountId]) -> Storage {
     .unwrap()
 }
 
-fn start_block(block: u32, prev_header: &Option<Header>) {
+fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
+    // We build the list of extrinsics we will execute
+    let mut extrinsic_data = data;
+    // Vec<(lapse, origin, extrinsic)>
+    let extrinsics: Vec<(u8, u8, RuntimeCall)> =
+        iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
+            .filter(|(_, _, x)| !matches!(x, RuntimeCall::System(_)))
+            .collect();
+    if extrinsics.is_empty() {
+        return;
+    }
+
+    let mut block: u32 = 1;
+    let mut weight: Weight = Weight::zero();
+    let mut elapsed: Duration = Duration::ZERO;
+
+    BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
+        let initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
+
+        initialize_block(block, &None);
+
+        for (lapse, origin, extrinsic) in extrinsics {
+            if lapse > 0 {
+                let prev_header = finalize_block(elapsed);
+
+                // We update our state variables
+                block += u32::from(lapse);
+                weight = Weight::zero();
+                elapsed = Duration::ZERO;
+
+                // We start the next block
+                initialize_block(block, &Some(prev_header));
+            }
+
+            weight.saturating_accrue(extrinsic.get_dispatch_info().weight);
+            if weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
+                #[cfg(not(feature = "fuzzing"))]
+                println!("Skipping because of max weight {weight}");
+                continue;
+            }
+
+            let origin = accounts[origin as usize % accounts.len()].clone();
+
+            #[cfg(not(feature = "fuzzing"))]
+            println!("\n    origin:     {origin:?}");
+            #[cfg(not(feature = "fuzzing"))]
+            println!("    call:       {extrinsic:?}");
+
+            let now = Instant::now(); // We get the current time for timing purposes.
+            #[allow(unused_variables)]
+            let res = extrinsic.dispatch(RuntimeOrigin::signed(origin));
+            elapsed += now.elapsed();
+
+            #[cfg(not(feature = "fuzzing"))]
+            println!("    result:     {res:?}");
+        }
+
+        finalize_block(elapsed);
+
+        check_invariants(block, initial_total_issuance);
+    });
+}
+
+fn initialize_block(block: u32, prev_header: &Option<Header>) {
     #[cfg(not(feature = "fuzzing"))]
     println!("\ninitializing block {block}");
 
@@ -133,7 +205,7 @@ fn start_block(block: u32, prev_header: &Option<Header>) {
     ParachainSystem::set_validation_data(RuntimeOrigin::none(), parachain_validation_data).unwrap();
 }
 
-fn end_block(elapsed: Duration) -> Header {
+fn finalize_block(elapsed: Duration) -> Header {
     #[cfg(not(feature = "fuzzing"))]
     println!("\n  time spent: {elapsed:?}");
     assert!(elapsed.as_secs() <= 2, "block execution took too much time");
@@ -143,7 +215,7 @@ fn end_block(elapsed: Duration) -> Header {
     Executive::finalize_block()
 }
 
-fn execute_invariants(block: u32, initial_total_issuance: Balance) {
+fn check_invariants(block: u32, initial_total_issuance: Balance) {
     let mut counted_free = 0;
     let mut counted_reserved = 0;
     for (account, info) in Account::<Runtime>::iter() {
@@ -180,76 +252,4 @@ fn execute_invariants(block: u32, initial_total_issuance: Balance) {
     // We run all developer-defined integrity tests
     AllPalletsWithSystem::integrity_test();
     AllPalletsWithSystem::try_state(block, TryStateSelect::All).unwrap();
-}
-
-fn run_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
-    // We build the list of extrinsics we will execute
-    let mut extrinsic_data = data;
-    // Vec<(lapse, origin, extrinsic)>
-    let extrinsics: Vec<(u8, u8, RuntimeCall)> =
-        iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
-            .filter(|(_, _, x)| !matches!(x, RuntimeCall::System(_)))
-            .collect();
-    if extrinsics.is_empty() {
-        return;
-    }
-
-    let mut block: u32 = 1;
-    let mut weight: Weight = Weight::zero();
-    let mut elapsed: Duration = Duration::ZERO;
-
-    BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
-        let initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
-
-        start_block(block, &None);
-
-        for (lapse, origin, extrinsic) in extrinsics {
-            if lapse > 0 {
-                let prev_header = end_block(elapsed);
-
-                // We update our state variables
-                block += u32::from(lapse);
-                weight = Weight::zero();
-                elapsed = Duration::ZERO;
-
-                // We start the next block
-                start_block(block, &Some(prev_header));
-            }
-
-            weight.saturating_accrue(extrinsic.get_dispatch_info().weight);
-            if weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
-                #[cfg(not(feature = "fuzzing"))]
-                println!("Skipping because of max weight {weight}");
-                continue;
-            }
-
-            let origin = accounts[origin as usize % accounts.len()].clone();
-
-            #[cfg(not(feature = "fuzzing"))]
-            println!("\n    origin:     {origin:?}");
-            #[cfg(not(feature = "fuzzing"))]
-            println!("    call:       {extrinsic:?}");
-
-            let now = Instant::now(); // We get the current time for timing purposes.
-            #[allow(unused_variables)]
-            let res = extrinsic.dispatch(RuntimeOrigin::signed(origin));
-            elapsed += now.elapsed();
-
-            #[cfg(not(feature = "fuzzing"))]
-            println!("    result:     {res:?}");
-        }
-
-        end_block(elapsed);
-
-        execute_invariants(block, initial_total_issuance);
-    });
-}
-
-fn main() {
-    let accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
-    let genesis = genesis(&accounts);
-
-    ziggy::fuzz!(|data: &[u8]| {
-        run_input(&accounts, &genesis, data);
-    });
 }
