@@ -46,7 +46,6 @@ std = [
     "staging-kusama-runtime/std",
 	"codec/std",
 	"sp-runtime/std",
-	"sp-runtime/std",
 	"frame-support/std",
 	"frame-system/std",
 	"pallet-timestamp/std",
