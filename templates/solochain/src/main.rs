@@ -24,6 +24,12 @@ use std::{
     time::{Duration, Instant},
 };
 
+mod config;
+mod genesis;
+mod seeds;
+mod state;
+mod parachain;
+
 fn main() {
     let accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
     let genesis = generate_genesis(&accounts);
