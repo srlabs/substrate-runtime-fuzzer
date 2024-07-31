@@ -46,7 +46,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         NominationPoolsConfig, PoolAssetsConfig, RuntimeGenesisConfig, SafeModeConfig,
         SessionConfig, SessionKeys, SocietyConfig, StakingConfig, SudoConfig, SystemConfig,
         TechnicalCommitteeConfig, TechnicalMembershipConfig, TransactionPaymentConfig,
-        TransactionStorageConfig, TreasuryConfig, TxPauseConfig, VestingConfig,
+        TransactionStorageConfig, TreasuryConfig, TxPauseConfig, VestingConfig, BrokerConfig,
     };
     use pallet_grandpa::AuthorityId as GrandpaId;
     use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
@@ -154,6 +154,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         safe_mode: SafeModeConfig::default(),
         tx_pause: TxPauseConfig::default(),
         mixnet: MixnetConfig::default(),
+        broker: BrokerConfig::default(),
     }
     .build_storage()
     .unwrap();
@@ -267,12 +268,12 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                             | RuntimeCall::Remark(pallet_remark::Call::store { .. })
                     )
                 // We filter out deprecated extrinsics that lead to failing TryState
-                || matches!(
-                        &call,
-                        RuntimeCall::Treasury(pallet_treasury::Call::approve_proposal { .. }
-                            | pallet_treasury::Call::reject_proposal{ .. }
-                            | pallet_treasury::Call::propose_spend{ .. })
-                    )
+                // || matches!(
+                //         &call,
+                //         RuntimeCall::Treasury(pallet_treasury::Call::approve_proposal { .. }
+                //             | pallet_treasury::Call::reject_proposal{ .. }
+                //             | pallet_treasury::Call::propose_spend{ .. })
+                //     )
                 || matches!(
                         &call,
                         RuntimeCall::NominationPools(..)
