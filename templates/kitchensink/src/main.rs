@@ -267,13 +267,6 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                         RuntimeCall::TransactionStorage(pallet_transaction_storage::Call::store { .. })
                             | RuntimeCall::Remark(pallet_remark::Call::store { .. })
                     )
-                // We filter out deprecated extrinsics that lead to failing TryState
-                // || matches!(
-                //         &call,
-                //         RuntimeCall::Treasury(pallet_treasury::Call::approve_proposal { .. }
-                //             | pallet_treasury::Call::reject_proposal{ .. }
-                //             | pallet_treasury::Call::propose_spend{ .. })
-                //     )
                 || matches!(
                         &call,
                         RuntimeCall::NominationPools(..)
