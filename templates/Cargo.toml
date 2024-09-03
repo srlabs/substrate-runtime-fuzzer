@@ -7,6 +7,7 @@ publish = false
 [workspace]
 resolver = "2"
 members = [
-    "kitchensink",
-    "solochain",
+    #"kitchensink",
+    #"solochain",
+    "asset-hub-rococo",
 ]
