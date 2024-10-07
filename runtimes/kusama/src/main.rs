@@ -7,7 +7,9 @@ use frame_support::{
     weights::constants::WEIGHT_REF_TIME_PER_SECOND,
 };
 use frame_system::Account;
-use kusama_runtime_constants::{currency::UNITS, time::SLOT_DURATION};
+//use kusama_runtime_constants::{currency::UNITS, time::SLOT_DURATION};
+const UNITS: u128 = 1;
+const SLOT_DURATION: u64 = 1;
 use pallet_balances::{Holds, TotalIssuance};
 use pallet_grandpa::AuthorityId as GrandpaId;
 use pallet_staking::StakerStatus;
@@ -26,8 +28,8 @@ use sp_runtime::{
 };
 use sp_state_machine::BasicExternalities;
 use staging_kusama_runtime::{
-    AllPalletsWithSystem, Balances, Executive, Identity, ParaInherent, Runtime, RuntimeCall,
-    RuntimeOrigin, Timestamp,
+    AllPalletsWithSystem, Balances, Executive, ParaInherent, Runtime, RuntimeCall, RuntimeOrigin,
+    Timestamp,
 };
 use std::{
     iter,
@@ -85,7 +87,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
             ..Default::default()
         },
         babe: kusama::BabeConfig {
-            epoch_config: Some(kusama::BABE_GENESIS_EPOCH_CONFIG),
+            epoch_config: kusama::BABE_GENESIS_EPOCH_CONFIG,
             ..Default::default()
         },
         grandpa: kusama::GrandpaConfig::default(),
@@ -113,7 +115,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
     .build_storage()
     .unwrap();
     BasicExternalities::execute_with_storage(&mut storage, || {
-        Identity::add_registrar(RuntimeOrigin::root(), accounts[0].clone().into()).unwrap();
+        // Identity::add_registrar(RuntimeOrigin::root(), accounts[0].clone().into()).unwrap();
     });
     storage
 }

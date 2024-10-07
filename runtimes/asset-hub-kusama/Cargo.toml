@@ -5,39 +5,47 @@ edition = "2021"
 publish = false
 
 [dependencies]
-ziggy = { version = "1.0.2", default-features = false }
+ziggy = { version = "1.2.1", default-features = false }
 
-asset-hub-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v1.2.4", default-features = false }
+asset-hub-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v1.3.3", default-features = false }
 
-parachains-common = { default-features = false , version = "8.0.0" }
+parachains-common = { default-features = false , version = "15.0.0" }
 
-codec = { package = "parity-scale-codec", version = "3.6.9", default-features = false, features = ["derive", "max-encoded-len"] }
+codec = { package = "parity-scale-codec", version = "3.6.12", default-features = false, features = ["derive", "max-encoded-len"] }
 
-frame-support = { default-features = false, version = "29.0.2" }
-frame-system = { default-features = false, version = "29.0.0" }
+frame-support = { default-features = false, version = "36.0.0" }
+frame-system = { default-features = false, version = "36.0.1" }
 
-sp-runtime = { default-features = false, version = "32.0.0" }
-sp-state-machine = { default-features = false, version = "0.36.0" }
-sp-consensus-aura = { default-features = false, version = "0.33.0" }
+sp-runtime = { default-features = false, version = "38.0.0" }
+sp-state-machine = { default-features = false, version = "0.42.0" }
+sp-consensus-aura = { default-features = false, version = "0.39.0" }
 
-pallet-timestamp = { default-features = false, version = "28.0.0" }
-pallet-balances = { default-features = false, version = "29.0.1" }
+pallet-timestamp = { default-features = false, version = "35.0.0" }
+pallet-balances = { default-features = false, version = "37.0.0" }
 
-cumulus-primitives-core = { default-features = false , version = "0.8.0" }
-cumulus-primitives-parachain-inherent = { default-features = false , version = "0.8.0" }
-cumulus-pallet-parachain-system = { default-features = false, features = ["parameterized-consensus-hook",] , version = "0.8.1" }
-cumulus-test-relay-sproof-builder = { default-features = false , version = "0.8.0" }
+cumulus-primitives-core = { default-features = false , version = "0.14.0" }
+cumulus-primitives-parachain-inherent = { default-features = false , version = "0.14.0" }
+cumulus-pallet-parachain-system = { default-features = false, version = "0.15.0" }
+cumulus-test-relay-sproof-builder = { default-features = false , version = "0.14.0" }
 
 [features]
 default = ["std", "try-runtime"]
 fuzzing = []
 std = [
     "asset-hub-kusama-runtime/std",
+	"parachains-common/std",
 	"codec/std",
-	"sp-runtime/std",
 	"frame-support/std",
-	"pallet-timestamp/std",
+	"frame-system/std",
+	"sp-runtime/std",
+	"sp-state-machine/std",
 	"sp-consensus-aura/std",
+	"pallet-timestamp/std",
+	"pallet-balances/std",
+	"cumulus-primitives-core/std",
+	"cumulus-primitives-parachain-inherent/std",
+	"cumulus-pallet-parachain-system/std",
+	"cumulus-test-relay-sproof-builder/std",
 ]
 try-runtime = [
     "asset-hub-kusama-runtime/try-runtime",

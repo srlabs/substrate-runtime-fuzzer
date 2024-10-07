@@ -39,14 +39,14 @@ fn main() {
 }
 
 fn generate_genesis(accounts: &[AccountId]) -> Storage {
+    use coretime_kusama_runtime::BuildStorage;
     use coretime_kusama_runtime::{
-        AuraConfig, AuraExtConfig, BalancesConfig, CollatorSelectionConfig, ParachainInfoConfig,
-        ParachainSystemConfig, PolkadotXcmConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys,
-        SystemConfig, TransactionPaymentConfig,
+        AuraConfig, AuraExtConfig, BalancesConfig, BrokerConfig, CollatorSelectionConfig,
+        ParachainInfoConfig, ParachainSystemConfig, PolkadotXcmConfig, RuntimeGenesisConfig,
+        SessionConfig, SessionKeys, SystemConfig, TransactionPaymentConfig,
     };
+    use sp_application_crypto::ByteArray;
     use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-    use sp_runtime::app_crypto::ByteArray;
-    use sp_runtime::BuildStorage;
 
     let initial_authorities: Vec<(AccountId, AuraId)> =
         vec![([0; 32].into(), AuraId::from_slice(&[0; 32]).unwrap())];
@@ -58,6 +58,9 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
             balances: accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
         },
         aura: AuraConfig::default(),
+        broker: BrokerConfig {
+            _config: Default::default(),
+        },
         session: SessionConfig {
             keys: initial_authorities
                 .iter()
