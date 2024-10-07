@@ -41,12 +41,12 @@ fn main() {
 fn generate_genesis(accounts: &[AccountId]) -> Storage {
     use kitchensink_runtime::{
         AllianceConfig, AllianceMotionConfig, AssetsConfig, AuthorityDiscoveryConfig, BabeConfig,
-        BalancesConfig, BeefyConfig, CouncilConfig, DemocracyConfig, ElectionsConfig,
+        BalancesConfig, BeefyConfig, BrokerConfig, CouncilConfig, DemocracyConfig, ElectionsConfig,
         GluttonConfig, GrandpaConfig, ImOnlineConfig, IndicesConfig, MixnetConfig,
         NominationPoolsConfig, PoolAssetsConfig, RuntimeGenesisConfig, SafeModeConfig,
         SessionConfig, SessionKeys, SocietyConfig, StakingConfig, SudoConfig, SystemConfig,
         TechnicalCommitteeConfig, TechnicalMembershipConfig, TransactionPaymentConfig,
-        TransactionStorageConfig, TreasuryConfig, TxPauseConfig, VestingConfig, BrokerConfig,
+        TransactionStorageConfig, TreasuryConfig, TxPauseConfig, VestingConfig,
     };
     use pallet_grandpa::AuthorityId as GrandpaId;
     use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
@@ -89,6 +89,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
                     mixnet: MixnetId::from_slice(&[0; 32]).unwrap().into(),
                 },
             )],
+            non_authority_keys: vec![],
         },
         beefy: BeefyConfig::default(),
         staking: StakingConfig {
@@ -257,6 +258,14 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                             pallet_contracts::Call::upload_code { .. } |
                             pallet_contracts::Call::instantiate_with_code_old_weight { .. } |
                             pallet_contracts::Call::migrate { .. }
+                        )
+                    )
+                || matches!(
+                        &call,
+                        RuntimeCall::Revive(
+                            pallet_revive::Call::instantiate_with_code { .. } |
+                            pallet_revive::Call::upload_code { .. } |
+                            pallet_revive::Call::migrate { .. }
                         )
                     )
                 // We filter out safe_mode calls, as they block timestamps from being set.
