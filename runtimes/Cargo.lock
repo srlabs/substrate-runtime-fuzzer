@@ -2428,6 +2428,7 @@ version = "0.1.0"
 dependencies = [
  "frame-support",
  "frame-system",
+ "kusama-runtime-constants",
  "pallet-balances",
  "pallet-bounties",
  "pallet-grandpa",

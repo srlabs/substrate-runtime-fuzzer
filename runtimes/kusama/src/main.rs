@@ -7,9 +7,7 @@ use frame_support::{
     weights::constants::WEIGHT_REF_TIME_PER_SECOND,
 };
 use frame_system::Account;
-//use kusama_runtime_constants::{currency::UNITS, time::SLOT_DURATION};
-const UNITS: u128 = 1;
-const SLOT_DURATION: u64 = 1;
+use kusama_runtime_constants::{currency::UNITS, time::SLOT_DURATION};
 use pallet_balances::{Holds, TotalIssuance};
 use pallet_grandpa::AuthorityId as GrandpaId;
 use pallet_staking::StakerStatus;

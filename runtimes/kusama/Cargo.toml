@@ -10,7 +10,7 @@ ziggy = { version = "1.2.1", default-features = false }
 staging-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v1.3.3", default-features = false }
 staging-xcm = { default-features = false , version = "14.1.0" }
 
-#kusama-runtime-constants = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v1.3.3", default-features = false }
+kusama-runtime-constants = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v1.3.3", default-features = false }
 
 polkadot-primitives = { version = "14.0.0", default-features = false }
 polkadot-runtime-parachains = { version = "15.0.2", default-features = false }
