@@ -41,7 +41,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         AssetsConfig, AuraConfig, AuraExtConfig, BalancesConfig, CollatorSelectionConfig,
         ForeignAssetsConfig, ParachainInfoConfig, ParachainSystemConfig, PolkadotXcmConfig,
         PoolAssetsConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys, SystemConfig,
-        TransactionPaymentConfig, VestingConfig
+        TransactionPaymentConfig, VestingConfig,
     };
     use sp_consensus_aura::sr25519::AuthorityId as AuraId;
     use sp_runtime::app_crypto::ByteArray;

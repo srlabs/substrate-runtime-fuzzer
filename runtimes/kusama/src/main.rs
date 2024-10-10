@@ -26,8 +26,8 @@ use sp_runtime::{
 };
 use sp_state_machine::BasicExternalities;
 use staging_kusama_runtime::{
-    AllPalletsWithSystem, Balances, Executive, Identity, ParaInherent, Runtime, RuntimeCall,
-    RuntimeOrigin, Timestamp,
+    AllPalletsWithSystem, Balances, Executive, ParaInherent, Runtime, RuntimeCall, RuntimeOrigin,
+    Timestamp,
 };
 use std::{
     iter,
@@ -85,7 +85,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
             ..Default::default()
         },
         babe: kusama::BabeConfig {
-            epoch_config: Some(kusama::BABE_GENESIS_EPOCH_CONFIG),
+            epoch_config: kusama::BABE_GENESIS_EPOCH_CONFIG,
             ..Default::default()
         },
         grandpa: kusama::GrandpaConfig::default(),
@@ -113,7 +113,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
     .build_storage()
     .unwrap();
     BasicExternalities::execute_with_storage(&mut storage, || {
-        Identity::add_registrar(RuntimeOrigin::root(), accounts[0].clone().into()).unwrap();
+        // Identity::add_registrar(RuntimeOrigin::root(), accounts[0].clone().into()).unwrap();
     });
     storage
 }
@@ -153,9 +153,9 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
             !recursively_find_call(x.clone(), |call| {
                 // We filter out calls with Fungible(0) as they cause a debug crash
                 matches!(call.clone(), RuntimeCall::XcmPallet(pallet_xcm::Call::execute { message, .. })
-                    if matches!(message.as_ref(), staging_xcm::VersionedXcm::V2(staging_xcm::v2::Xcm(msg))
-                        if msg.iter().any(|m| matches!(m, staging_xcm::opaque::v2::prelude::BuyExecution { fees: staging_xcm::v2::MultiAsset { fun, .. }, .. }
-                            if fun == &staging_xcm::v2::Fungibility::Fungible(0)
+                    if matches!(message.as_ref(), staging_xcm::VersionedXcm::V3(staging_xcm::v3::Xcm(msg))
+                        if msg.iter().any(|m| matches!(m, staging_xcm::opaque::v3::prelude::BuyExecution { fees: staging_xcm::v3::MultiAsset { fun, .. }, .. }
+                            if fun == &staging_xcm::v3::Fungibility::Fungible(0)
                         ))
                     )
                 )
