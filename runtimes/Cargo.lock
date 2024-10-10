@@ -919,6 +919,7 @@ dependencies = [
  "pallet-proxy",
  "pallet-timestamp",
  "pallet-utility",
+ "pallet-xcm",
  "parachains-common",
  "parity-scale-codec",
  "sp-application-crypto",
