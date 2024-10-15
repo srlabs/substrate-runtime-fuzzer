@@ -270,12 +270,17 @@ dependencies = [
  "frame-support",
  "frame-system",
  "pallet-balances",
+ "pallet-multisig",
+ "pallet-proxy",
  "pallet-timestamp",
+ "pallet-utility",
+ "pallet-xcm",
  "parachains-common",
  "parity-scale-codec",
  "sp-consensus-aura",
  "sp-runtime",
  "sp-state-machine",
+ "staging-xcm",
  "ziggy",
 ]
 
