@@ -85,18 +85,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         initialize_block(1, &None);
         Broker::configure(RuntimeOrigin::root(), new_config()).unwrap();
         Broker::start_sales(RuntimeOrigin::root(), 10 * UNITS, 1).unwrap();
-        // We have to send 1 DOT to the coretime burn address because of a defensive assertion that cannot be
-        // reached in a real-world environment.
-        use sp_runtime::traits::AccountIdConversion;
-        let coretime_burn_account: AccountId =
-            frame_support::PalletId(*b"py/ctbrn").into_account_truncating();
-        let coretime_burn_address = coretime_burn_account.into();
-        Balances::transfer_keep_alive(
-            RuntimeOrigin::signed(accounts[0].clone()),
-            coretime_burn_address,
-            1 * UNITS,
-        )
-        .unwrap();
+
         initialize_block(2, &Some(finalize_block(Duration::ZERO)));
     });
 
@@ -264,6 +253,19 @@ fn initialize_block(block: u32, prev_header: &Option<Header>) {
         }
     };
     ParachainSystem::set_validation_data(RuntimeOrigin::none(), parachain_validation_data).unwrap();
+
+    // We have to send 1 DOT to the coretime burn address because of a defensive assertion that cannot be
+    // reached in a real-world environment.
+    use sp_runtime::traits::AccountIdConversion;
+    let coretime_burn_account: AccountId =
+        frame_support::PalletId(*b"py/ctbrn").into_account_truncating();
+    let coretime_burn_address = coretime_burn_account.into();
+    Balances::transfer_keep_alive(
+        RuntimeOrigin::signed([0; 32].into()),
+        coretime_burn_address,
+        1 * UNITS,
+    )
+    .unwrap();
 }
 
 fn finalize_block(elapsed: Duration) -> Header {

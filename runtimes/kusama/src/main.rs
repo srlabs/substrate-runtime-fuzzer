@@ -3,7 +3,7 @@ use codec::{DecodeLimit, Encode};
 use frame_support::{
     dispatch::GetDispatchInfo,
     pallet_prelude::Weight,
-    traits::{IntegrityTest, TryState, TryStateSelect},
+    traits::{IntegrityTest, OriginTrait, TryState, TryStateSelect},
     weights::constants::WEIGHT_REF_TIME_PER_SECOND,
 };
 use frame_system::Account;
@@ -143,6 +143,7 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
     false
 }
 
+#[allow(deprecated)]
 fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     let mut extrinsic_data = data;
     // We build the list of extrinsics we will execute
@@ -153,13 +154,20 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
             !recursively_find_call(x.clone(), |call| {
                 // We filter out calls with Fungible(0) as they cause a debug crash
                 matches!(call.clone(), RuntimeCall::XcmPallet(pallet_xcm::Call::execute { message, .. })
-                    if matches!(message.as_ref(), staging_xcm::VersionedXcm::V3(staging_xcm::v3::Xcm(msg))
-                        if msg.iter().any(|m| matches!(m, staging_xcm::opaque::v3::prelude::BuyExecution { fees: staging_xcm::v3::MultiAsset { fun, .. }, .. }
-                            if fun == &staging_xcm::v3::Fungibility::Fungible(0)
+                    if matches!(message.as_ref(), staging_xcm::VersionedXcm::V2(staging_xcm::v2::Xcm(msg))
+                        if msg.iter().any(|m| matches!(m, staging_xcm::opaque::v2::prelude::BuyExecution { fees: staging_xcm::v2::MultiAsset { fun, .. }, .. }
+                            if fun == &staging_xcm::v2::Fungibility::Fungible(0)
                         ))
                     )
                 )
                 || matches!(call.clone(), RuntimeCall::System(_))
+                || matches!(
+                    &call,
+                    RuntimeCall::Referenda(pallet_referenda::Call::submit {
+                        proposal_origin: matching_origin,
+                        ..
+                    }) if RuntimeOrigin::from(*matching_origin.clone()).caller() == RuntimeOrigin::root().caller()
+                )
             })
         })
         .collect();

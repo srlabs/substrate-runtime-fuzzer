@@ -2436,6 +2436,7 @@ dependencies = [
  "pallet-identity",
  "pallet-multisig",
  "pallet-proxy",
+ "pallet-referenda",
  "pallet-society",
  "pallet-staking",
  "pallet-timestamp",
