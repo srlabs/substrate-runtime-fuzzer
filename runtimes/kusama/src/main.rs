@@ -141,7 +141,7 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
         return true;
     }
     false
-}
+}   
 
 fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     let mut extrinsic_data = data;
@@ -159,6 +159,12 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                             if fun == &staging_xcm::v2::Fungibility::Fungible(0)
                         ))
                     )
+                )
+                || matches!(call.clone(), RuntimeCall::XcmPallet(pallet_xcm::Call::transfer_assets_using_type_and_then { assets, ..})
+                    if staging_xcm::v2::MultiAssets::try_from(*assets.clone())
+                        .map(|assets| assets.inner().iter().any(|a| matches!(a, staging_xcm::v2::MultiAsset { fun, .. }
+                            if fun == &staging_xcm::v2::Fungibility::Fungible(0)
+                        ))).unwrap_or(false)
                 )
                 || matches!(call.clone(), RuntimeCall::System(_))
                 || matches!(
