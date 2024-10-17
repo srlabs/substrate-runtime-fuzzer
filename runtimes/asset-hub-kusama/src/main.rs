@@ -123,7 +123,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                             if fun == &staging_xcm::v2::Fungibility::Fungible(0)
                         ))
                     )
-                ) || !matches!(call.clone(), RuntimeCall::System(_))
+                ) || matches!(call.clone(), RuntimeCall::System(_))
             })
         }).collect();
 
