@@ -15,12 +15,13 @@ cargo install ziggy cargo-afl honggfuzz grcov
 rustup target add wasm32-unknown-unknown
 git clone https://github.com/srlabs/substrate-runtime-fuzzer
 cd substrate-runtime-fuzzer/templates/solochain/
-cargo ziggy fuzz -t 20
+SKIP_WASM_BUILD=1 cargo ziggy fuzz
 ```
 
-The `-t 20` option defines a 20 seconds timeout before the fuzzer classifies an input as a "hang".
+You can use the the `-j n` flag to run $n$ jobs in parallel.
+We also recommend using `--no-honggfuzz` if running for a long time with many cores, as honggfuzz will have a tendency to slow things down and bloat the corpus in this situation.
 
-You can also pass ziggy the `-j n` flag to run $n$ jobs in parallel.
+`SKIP_WASM_BUILD=1` will reduce compilation time and the binary's size. We are not fuzzing the wasm runtime.
 
 ### What is "ziggy"?
 
