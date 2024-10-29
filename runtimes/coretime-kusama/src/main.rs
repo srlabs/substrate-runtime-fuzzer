@@ -18,7 +18,7 @@ use parachains_common::{AccountId, Balance, SLOT_DURATION};
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_runtime::{
     testing::H256,
-    traits::{Dispatchable, Header as _},
+    traits::{AccountIdConversion, Dispatchable, Header as _},
     Digest, DigestItem, Perbill, Storage,
 };
 use sp_state_machine::BasicExternalities;
@@ -58,9 +58,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
             balances: accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
         },
         aura: AuraConfig::default(),
-        broker: BrokerConfig {
-            _config: Default::default(),
-        },
+        broker: BrokerConfig::default(),
         session: SessionConfig {
             keys: initial_authorities
                 .iter()
@@ -256,14 +254,13 @@ fn initialize_block(block: u32, prev_header: &Option<Header>) {
 
     // We have to send 1 DOT to the coretime burn address because of a defensive assertion that cannot be
     // reached in a real-world environment.
-    use sp_runtime::traits::AccountIdConversion;
     let coretime_burn_account: AccountId =
         frame_support::PalletId(*b"py/ctbrn").into_account_truncating();
     let coretime_burn_address = coretime_burn_account.into();
     Balances::transfer_keep_alive(
         RuntimeOrigin::signed([0; 32].into()),
         coretime_burn_address,
-        1 * UNITS,
+        UNITS,
     )
     .unwrap();
 }
