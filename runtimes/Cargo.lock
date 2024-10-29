@@ -274,6 +274,7 @@ dependencies = [
  "pallet-proxy",
  "pallet-timestamp",
  "pallet-utility",
+ "pallet-vesting",
  "pallet-xcm",
  "parachains-common",
  "parity-scale-codec",

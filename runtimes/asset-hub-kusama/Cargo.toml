@@ -27,6 +27,7 @@ pallet-xcm = { default-features = false, version = "15.0.0" }
 pallet-utility = { default-features = false, version = "36.0.0" }
 pallet-proxy = { default-features = false, version = "36.0.0" }
 pallet-multisig = { default-features = false, version = "36.0.0" }
+pallet-vesting = { default-features = false, version = "36.0.0" }
 
 cumulus-primitives-core = { default-features = false , version = "0.14.0" }
 cumulus-primitives-parachain-inherent = { default-features = false , version = "0.14.0" }

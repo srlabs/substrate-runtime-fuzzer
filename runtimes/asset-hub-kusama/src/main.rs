@@ -124,6 +124,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                         ))
                     )
                 ) || matches!(call.clone(), RuntimeCall::System(_))
+                || matches!(call.clone(), RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. }))
             })
         }).collect();
 
