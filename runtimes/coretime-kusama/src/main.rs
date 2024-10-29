@@ -18,7 +18,7 @@ use parachains_common::{AccountId, Balance, SLOT_DURATION};
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_runtime::{
     testing::H256,
-    traits::{Dispatchable, Header as _},
+    traits::{AccountIdConversion, Dispatchable, Header as _},
     Digest, DigestItem, Perbill, Storage,
 };
 use sp_state_machine::BasicExternalities;
@@ -39,14 +39,14 @@ fn main() {
 }
 
 fn generate_genesis(accounts: &[AccountId]) -> Storage {
+    use coretime_kusama_runtime::BuildStorage;
     use coretime_kusama_runtime::{
-        AuraConfig, AuraExtConfig, BalancesConfig, CollatorSelectionConfig, ParachainInfoConfig,
-        ParachainSystemConfig, PolkadotXcmConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys,
-        SystemConfig, TransactionPaymentConfig,
+        AuraConfig, AuraExtConfig, BalancesConfig, BrokerConfig, CollatorSelectionConfig,
+        ParachainInfoConfig, ParachainSystemConfig, PolkadotXcmConfig, RuntimeGenesisConfig,
+        SessionConfig, SessionKeys, SystemConfig, TransactionPaymentConfig,
     };
+    use sp_application_crypto::ByteArray;
     use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-    use sp_runtime::app_crypto::ByteArray;
-    use sp_runtime::BuildStorage;
 
     let initial_authorities: Vec<(AccountId, AuraId)> =
         vec![([0; 32].into(), AuraId::from_slice(&[0; 32]).unwrap())];
@@ -58,6 +58,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
             balances: accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
         },
         aura: AuraConfig::default(),
+        broker: BrokerConfig::default(),
         session: SessionConfig {
             keys: initial_authorities
                 .iter()
@@ -82,6 +83,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         initialize_block(1, &None);
         Broker::configure(RuntimeOrigin::root(), new_config()).unwrap();
         Broker::start_sales(RuntimeOrigin::root(), 10 * UNITS, 1).unwrap();
+
         initialize_block(2, &Some(finalize_block(Duration::ZERO)));
     });
 
@@ -90,14 +92,14 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
 
 fn new_config() -> ConfigRecordOf<Runtime> {
     ConfigRecord {
-        advance_notice: 2,
+        advance_notice: 1,
         interlude_length: 1,
-        leadin_length: 1,
-        ideal_bulk_proportion: Perbill::default(),
+        leadin_length: 2,
+        ideal_bulk_proportion: Perbill::from_percent(100),
         limit_cores_offered: None,
         region_length: 3,
-        renewal_bump: Perbill::from_percent(10),
-        contribution_timeout: 5,
+        renewal_bump: Perbill::from_percent(3),
+        contribution_timeout: 1,
     }
 }
 
@@ -129,17 +131,18 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
 fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     // We build the list of extrinsics we will execute
     let mut extrinsic_data = data;
-    let extrinsics: Vec<(/* lapse */ u8, /* origin */ u8, RuntimeCall)> = iter::from_fn(|| {
-        DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok()
-    })
-    .filter(|(_, _, x): &(_, _, RuntimeCall)| {
-        !recursively_find_call(x.clone(), |call| {
-            matches!(call.clone(), RuntimeCall::Broker(pallet_broker::Call::drop_history { when })
-                    if when > 4_000_000_000)
-                || matches!(call.clone(), RuntimeCall::System(_))
-        })
-    })
-    .collect();
+    let extrinsics: Vec<(/* lapse */ u8, /* origin */ u8, RuntimeCall)> =
+        iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
+            .filter(|(_, _, x): &(_, _, RuntimeCall)| {
+                !recursively_find_call(x.clone(), |call| {
+                    matches!(call.clone(), RuntimeCall::System(_))
+                        || matches!(
+                            call.clone(),
+                            RuntimeCall::PolkadotXcm(pallet_xcm::Call::execute { .. })
+                        )
+                })
+            })
+            .collect();
     if extrinsics.is_empty() {
         return;
     }
@@ -248,6 +251,18 @@ fn initialize_block(block: u32, prev_header: &Option<Header>) {
         }
     };
     ParachainSystem::set_validation_data(RuntimeOrigin::none(), parachain_validation_data).unwrap();
+
+    // We have to send 1 DOT to the coretime burn address because of a defensive assertion that cannot be
+    // reached in a real-world environment.
+    let coretime_burn_account: AccountId =
+        frame_support::PalletId(*b"py/ctbrn").into_account_truncating();
+    let coretime_burn_address = coretime_burn_account.into();
+    Balances::transfer_keep_alive(
+        RuntimeOrigin::signed([0; 32].into()),
+        coretime_burn_address,
+        UNITS,
+    )
+    .unwrap();
 }
 
 fn finalize_block(elapsed: Duration) -> Header {

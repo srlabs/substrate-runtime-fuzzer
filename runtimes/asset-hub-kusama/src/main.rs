@@ -41,7 +41,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         AssetsConfig, AuraConfig, AuraExtConfig, BalancesConfig, CollatorSelectionConfig,
         ForeignAssetsConfig, ParachainInfoConfig, ParachainSystemConfig, PolkadotXcmConfig,
         PoolAssetsConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys, SystemConfig,
-        TransactionPaymentConfig, VestingConfig
+        TransactionPaymentConfig, VestingConfig,
     };
     use sp_consensus_aura::sr25519::AuthorityId as AuraId;
     use sp_runtime::app_crypto::ByteArray;
@@ -82,14 +82,52 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
     .unwrap()
 }
 
+fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool) -> bool {
+    if let RuntimeCall::Utility(
+        pallet_utility::Call::batch { calls }
+        | pallet_utility::Call::force_batch { calls }
+        | pallet_utility::Call::batch_all { calls },
+    ) = call
+    {
+        for call in calls {
+            if recursively_find_call(call.clone(), matches_on) {
+                return true;
+            }
+        }
+    } else if let RuntimeCall::Multisig(pallet_multisig::Call::as_multi_threshold_1 {
+        call, ..
+    })
+    | RuntimeCall::Utility(pallet_utility::Call::as_derivative { call, .. })
+    | RuntimeCall::Proxy(pallet_proxy::Call::proxy { call, .. }) = call
+    {
+        return recursively_find_call(*call.clone(), matches_on);
+    } else if matches_on(call) {
+        return true;
+    }
+    false
+}
+
 fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     // We build the list of extrinsics we will execute
     let mut extrinsic_data = data;
     // Vec<(lapse, origin, extrinsic)>
+    #[allow(deprecated)]
     let extrinsics: Vec<(u8, u8, RuntimeCall)> =
         iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
-            .filter(|(_, _, x)| !matches!(x, RuntimeCall::System(_)))
-            .collect();
+            .filter(|(_, _, x): &(_, _, RuntimeCall)| {
+            !recursively_find_call(x.clone(), |call| {
+                // We filter out calls with Fungible(0) as they cause a debug crash
+                matches!(call.clone(), RuntimeCall::PolkadotXcm(pallet_xcm::Call::execute { message, .. })
+                    if matches!(message.as_ref(), staging_xcm::VersionedXcm::V2(staging_xcm::v2::Xcm(msg))
+                        if msg.iter().any(|m| matches!(m, staging_xcm::opaque::v2::prelude::BuyExecution { fees: staging_xcm::v2::MultiAsset { fun, .. }, .. }
+                            if fun == &staging_xcm::v2::Fungibility::Fungible(0)
+                        ))
+                    )
+                ) || matches!(call.clone(), RuntimeCall::System(_))
+                || matches!(call.clone(), RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. }))
+            })
+        }).collect();
+
     if extrinsics.is_empty() {
         return;
     }

@@ -3,7 +3,7 @@ use codec::{DecodeLimit, Encode};
 use frame_support::{
     dispatch::GetDispatchInfo,
     pallet_prelude::Weight,
-    traits::{IntegrityTest, TryState, TryStateSelect},
+    traits::{IntegrityTest, OriginTrait, TryState, TryStateSelect},
     weights::constants::WEIGHT_REF_TIME_PER_SECOND,
 };
 use frame_system::Account;
@@ -26,8 +26,8 @@ use sp_runtime::{
 };
 use sp_state_machine::BasicExternalities;
 use staging_kusama_runtime::{
-    AllPalletsWithSystem, Balances, Executive, Identity, ParaInherent, Runtime, RuntimeCall,
-    RuntimeOrigin, Timestamp,
+    AllPalletsWithSystem, Balances, Executive, ParaInherent, Runtime, RuntimeCall, RuntimeOrigin,
+    Timestamp,
 };
 use std::{
     iter,
@@ -85,7 +85,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
             ..Default::default()
         },
         babe: kusama::BabeConfig {
-            epoch_config: Some(kusama::BABE_GENESIS_EPOCH_CONFIG),
+            epoch_config: kusama::BABE_GENESIS_EPOCH_CONFIG,
             ..Default::default()
         },
         grandpa: kusama::GrandpaConfig::default(),
@@ -113,7 +113,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
     .build_storage()
     .unwrap();
     BasicExternalities::execute_with_storage(&mut storage, || {
-        Identity::add_registrar(RuntimeOrigin::root(), accounts[0].clone().into()).unwrap();
+        // Identity::add_registrar(RuntimeOrigin::root(), accounts[0].clone().into()).unwrap();
     });
     storage
 }
@@ -146,6 +146,7 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
 fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     let mut extrinsic_data = data;
     // We build the list of extrinsics we will execute
+    #[allow(deprecated)]
     let extrinsics: Vec<(/* lapse */ u8, /* origin */ u8, RuntimeCall)> = iter::from_fn(|| {
             DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok()
         })
@@ -156,10 +157,27 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                     if matches!(message.as_ref(), staging_xcm::VersionedXcm::V2(staging_xcm::v2::Xcm(msg))
                         if msg.iter().any(|m| matches!(m, staging_xcm::opaque::v2::prelude::BuyExecution { fees: staging_xcm::v2::MultiAsset { fun, .. }, .. }
                             if fun == &staging_xcm::v2::Fungibility::Fungible(0)
+                        )
+                    )) || matches!(message.as_ref(), staging_xcm::VersionedXcm::V3(staging_xcm::v3::Xcm(msg))
+                        if msg.iter().any(|m| matches!(m, staging_xcm::opaque::v3::prelude::BuyExecution { weight_limit: staging_xcm::opaque::v3::WeightLimit::Limited(weight), .. }
+                            if weight.ref_time() <= 1
                         ))
                     )
                 )
+                || matches!(call.clone(), RuntimeCall::XcmPallet(pallet_xcm::Call::transfer_assets_using_type_and_then { assets, ..})
+                    if staging_xcm::v2::MultiAssets::try_from(*assets.clone())
+                        .map(|assets| assets.inner().iter().any(|a| matches!(a, staging_xcm::v2::MultiAsset { fun, .. }
+                            if fun == &staging_xcm::v2::Fungibility::Fungible(0)
+                        ))).unwrap_or(false)
+                )
                 || matches!(call.clone(), RuntimeCall::System(_))
+                || matches!(
+                    &call,
+                    RuntimeCall::Referenda(pallet_referenda::Call::submit {
+                        proposal_origin: matching_origin,
+                        ..
+                    }) if RuntimeOrigin::from(*matching_origin.clone()).caller() == RuntimeOrigin::root().caller()
+                )
             })
         })
         .collect();
