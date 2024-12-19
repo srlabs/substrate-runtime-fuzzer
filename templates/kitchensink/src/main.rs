@@ -264,8 +264,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                         &call,
                         RuntimeCall::Revive(
                             pallet_revive::Call::instantiate_with_code { .. } |
-                            pallet_revive::Call::upload_code { .. } |
-                            pallet_revive::Call::migrate { .. }
+                            pallet_revive::Call::upload_code { .. }
                         )
                     )
                 // We filter out safe_mode calls, as they block timestamps from being set.
@@ -309,7 +308,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                 initialize_block(block);
             }
 
-            weight.saturating_accrue(extrinsic.get_dispatch_info().weight);
+            weight.saturating_accrue(extrinsic.get_dispatch_info().call_weight);
             if weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
                 #[cfg(not(feature = "fuzzing"))]
                 println!("Extrinsic would exhaust block weight, skipping");
