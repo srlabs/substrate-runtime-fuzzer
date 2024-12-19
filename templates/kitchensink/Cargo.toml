@@ -43,9 +43,6 @@ pallet-proxy = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "
 pallet-broker = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2412", default-features = false }
 pallet-revive = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2412", default-features = false }
 
-#ethereum-types = { git = "https://github.com/paritytech/parity-common", rev = "d54ac84", default-features = false }
-#primitive-types = { git = "https://github.com/paritytech/parity-common", rev = "d54ac84", default-features = false }
-
 [features]
 default = ["std", "try-runtime"]
 fuzzing = []
