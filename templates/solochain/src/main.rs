@@ -88,7 +88,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                 initialize_block(block);
             }
 
-            weight.saturating_accrue(extrinsic.get_dispatch_info().weight);
+            weight.saturating_accrue(extrinsic.get_dispatch_info().call_weight);
             if weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
                 #[cfg(not(feature = "fuzzing"))]
                 println!("Extrinsic would exhaust block weight, skipping");
