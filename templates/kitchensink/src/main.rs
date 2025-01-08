@@ -213,6 +213,7 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
     })
     | RuntimeCall::Utility(pallet_utility::Call::as_derivative { call, .. })
     | RuntimeCall::Proxy(pallet_proxy::Call::proxy { call, .. })
+    | RuntimeCall::Revive(pallet_revive::Call::dispatch_as_fallback_account { call })
     | RuntimeCall::Council(pallet_collective::Call::propose {
         proposal: call, ..
     }) = call
