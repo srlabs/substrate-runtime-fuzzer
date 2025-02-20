@@ -64,6 +64,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
                 .iter()
                 .map(|x| (x.0.clone(), x.0.clone(), SessionKeys { aura: x.1.clone() }))
                 .collect::<Vec<_>>(),
+            non_authority_keys: vec![],
         },
         collator_selection: CollatorSelectionConfig {
             invulnerables: initial_authorities.iter().map(|x| (x.0.clone())).collect(),
@@ -257,12 +258,13 @@ fn initialize_block(block: u32, prev_header: &Option<Header>) {
     let coretime_burn_account: AccountId =
         frame_support::PalletId(*b"py/ctbrn").into_account_truncating();
     let coretime_burn_address = coretime_burn_account.into();
-    Balances::transfer_keep_alive(
+    // The transfer may result an error if there are insufficient funds in the account, 
+    // but in that case, we just don't transfer to coretime burn address
+    let _ = Balances::transfer_keep_alive(
         RuntimeOrigin::signed([0; 32].into()),
         coretime_burn_address,
         UNITS,
-    )
-    .unwrap();
+    );
 }
 
 fn finalize_block(elapsed: Duration) -> Header {

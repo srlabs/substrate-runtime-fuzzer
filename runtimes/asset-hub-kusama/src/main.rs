@@ -62,6 +62,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
                 .iter()
                 .map(|x| (x.0.clone(), x.0.clone(), SessionKeys { aura: x.1.clone() }))
                 .collect::<Vec<_>>(),
+            non_authority_keys: vec![],
         },
         collator_selection: CollatorSelectionConfig {
             invulnerables: initial_authorities.iter().map(|x| (x.0.clone())).collect(),
@@ -221,7 +222,7 @@ fn initialize_block(block: u32, prev_header: &Option<Header>) {
         );
         let sproof_builder = RelayStateSproofBuilder {
             para_id: 100.into(),
-            current_slot: Slot::from(2 * u64::from(block)),
+            current_slot: cumulus_primitives_core::relay_chain::Slot::from(2 * u64::from(block)),
             included_para_head: Some(parent_head.clone()),
             ..Default::default()
         };
@@ -229,7 +230,7 @@ fn initialize_block(block: u32, prev_header: &Option<Header>) {
         let (relay_parent_storage_root, relay_chain_state) =
             sproof_builder.into_state_root_and_proof();
         ParachainInherentData {
-            validation_data: PersistedValidationData {
+            validation_data: polkadot_primitives::PersistedValidationData {
                 parent_head,
                 relay_parent_number: block,
                 relay_parent_storage_root,

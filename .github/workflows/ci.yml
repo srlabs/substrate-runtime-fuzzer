@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: rustup default nightly
-      - run: rustup component add rustfmt clippy
+      - run: rustup component add rustfmt clippy rust-src
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: "runtimes -> runtimes/target\ntemplates -> templates/target"
