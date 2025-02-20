@@ -18,7 +18,8 @@ use sp_consensus_babe::{
     digests::{PreDigest, SecondaryPlainPreDigest},
     Slot, BABE_ENGINE_ID,
 };
-use sp_runtime::{app_crypto::ByteArray, BuildStorage, Perbill};
+use sp_core::crypto::ByteArray;
+use sp_runtime::{app_crypto::ByteArray as _, BuildStorage, Perbill};
 use sp_runtime::{
     testing::H256,
     traits::{Dispatchable, Header as _},
@@ -74,6 +75,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         indices: kusama::IndicesConfig { indices: vec![] },
         session: kusama::SessionConfig {
             keys: vec![([0; 32].into(), [0; 32].into(), initial_authority)],
+            non_authority_keys: vec![],
         },
         beefy: kusama::BeefyConfig::default(),
         staking: kusama::StakingConfig {
