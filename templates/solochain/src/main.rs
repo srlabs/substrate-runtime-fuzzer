@@ -47,7 +47,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
 
     RuntimeGenesisConfig {
         system: SystemConfig::default(),
-        balances: BalancesConfig { balances },
+        balances: BalancesConfig { balances, dev_accounts: None },
         aura: AuraConfig { authorities },
         grandpa: GrandpaConfig::default(),
         sudo: SudoConfig { key: None }, // Assign no network admin rights.

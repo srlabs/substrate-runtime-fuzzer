@@ -74,6 +74,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         system: SystemConfig::default(),
         balances: BalancesConfig {
             balances: accounts.iter().cloned().map(|x| (x, ENDOWMENT)).collect(),
+            dev_accounts: None,
         },
         indices: IndicesConfig { indices: vec![] },
         session: SessionConfig {
