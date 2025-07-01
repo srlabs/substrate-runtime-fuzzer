@@ -56,6 +56,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         balances: BalancesConfig {
             // Configure endowed accounts with initial balance of 1 << 60.
             balances: accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
+            dev_accounts: None,
         },
         aura: AuraConfig::default(),
         broker: BrokerConfig::default(),
@@ -167,7 +168,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                 initialize_block(block, &Some(prev_header));
             }
 
-            weight.saturating_accrue(extrinsic.get_dispatch_info().weight);
+            weight.saturating_accrue(extrinsic.get_dispatch_info().call_weight);
             if weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
                 #[cfg(not(feature = "fuzzing"))]
                 println!("Extrinsic would exhaust block weight, skipping");

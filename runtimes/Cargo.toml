@@ -8,6 +8,6 @@ publish = false
 resolver = "2"
 members = [
     "kusama",
-    #"asset-hub-kusama",
-    #"coretime-kusama",
+    "asset-hub-kusama",
+    "coretime-kusama",
 ]

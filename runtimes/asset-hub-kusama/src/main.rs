@@ -55,6 +55,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         balances: BalancesConfig {
             // Configure endowed accounts with initial balance of 1 << 60.
             balances: accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
+            dev_accounts: None,
         },
         aura: AuraConfig::default(),
         session: SessionConfig {
@@ -119,9 +120,9 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
             !recursively_find_call(x.clone(), |call| {
                 // We filter out calls with Fungible(0) as they cause a debug crash
                 matches!(call.clone(), RuntimeCall::PolkadotXcm(pallet_xcm::Call::execute { message, .. })
-                    if matches!(message.as_ref(), staging_xcm::VersionedXcm::V2(staging_xcm::v2::Xcm(msg))
-                        if msg.iter().any(|m| matches!(m, staging_xcm::opaque::v2::prelude::BuyExecution { fees: staging_xcm::v2::MultiAsset { fun, .. }, .. }
-                            if fun == &staging_xcm::v2::Fungibility::Fungible(0)
+                    if matches!(message.as_ref(), staging_xcm::VersionedXcm::V3(staging_xcm::v3::Xcm(msg))
+                        if msg.iter().any(|m| matches!(m, staging_xcm::opaque::v3::prelude::BuyExecution { fees: staging_xcm::v3::MultiAsset { fun, .. }, .. }
+                            if *fun == staging_xcm::v3::Fungibility::Fungible(0)
                         ))
                     )
                 ) || matches!(call.clone(), RuntimeCall::System(_))
@@ -155,7 +156,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                 initialize_block(block, &Some(prev_header));
             }
 
-            weight.saturating_accrue(extrinsic.get_dispatch_info().weight);
+            weight.saturating_accrue(extrinsic.get_dispatch_info().call_weight);
             if weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
                 #[cfg(not(feature = "fuzzing"))]
                 println!("Skipping because of max weight {weight}");
@@ -210,7 +211,7 @@ fn initialize_block(block: u32, prev_header: &Option<Header>) {
     #[cfg(not(feature = "fuzzing"))]
     println!("  setting parachain validation data");
     let parachain_validation_data = {
-        use cumulus_primitives_core::{relay_chain::HeadData, PersistedValidationData};
+        use cumulus_primitives_core::relay_chain::HeadData;
         use cumulus_primitives_parachain_inherent::ParachainInherentData;
         use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 
