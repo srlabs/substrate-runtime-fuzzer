@@ -105,7 +105,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         elections: ElectionsConfig {
             members: accounts
                 .iter()
-                .take((num_endowed_accounts + 1) / 2)
+                .take(num_endowed_accounts.div_ceil(2))
                 .cloned()
                 .map(|member| (member, STASH))
                 .collect(),
@@ -114,7 +114,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         technical_committee: TechnicalCommitteeConfig {
             members: accounts
                 .iter()
-                .take((num_endowed_accounts + 1) / 2)
+                .take((num_endowed_accounts.div_ceil(2))
                 .cloned()
                 .collect(),
             ..Default::default()
