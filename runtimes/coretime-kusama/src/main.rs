@@ -82,11 +82,11 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
     .unwrap();
 
     BasicExternalities::execute_with_storage(&mut storage, || {
-        initialize_block(1, &None);
+        initialize_block(1, None);
         Broker::configure(RuntimeOrigin::root(), new_config()).unwrap();
         Broker::start_sales(RuntimeOrigin::root(), 10 * UNITS, 1).unwrap();
 
-        initialize_block(2, &Some(finalize_block(Duration::ZERO)));
+        initialize_block(2, Some(&finalize_block(Duration::ZERO)));
     });
 
     storage
@@ -165,7 +165,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                 weight = Weight::zero();
                 elapsed = Duration::ZERO;
 
-                initialize_block(block, &Some(prev_header));
+                initialize_block(block, Some(&prev_header));
             }
 
             weight.saturating_accrue(extrinsic.get_dispatch_info().call_weight);
@@ -197,7 +197,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     });
 }
 
-fn initialize_block(block: u32, prev_header: &Option<Header>) {
+fn initialize_block(block: u32, prev_header: Option<&Header>) {
     #[cfg(not(feature = "fuzzing"))]
     println!("\ninitializing block {block}");
 
@@ -211,7 +211,7 @@ fn initialize_block(block: u32, prev_header: &Option<Header>) {
         block,
         H256::default(),
         H256::default(),
-        prev_header.clone().map(|h| h.hash()).unwrap_or_default(),
+        prev_header.map(Header::hash).unwrap_or_default(),
         pre_digest,
     );
 
@@ -225,12 +225,7 @@ fn initialize_block(block: u32, prev_header: &Option<Header>) {
         use cumulus_primitives_parachain_inherent::ParachainInherentData;
         use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 
-        let parent_head = HeadData(
-            prev_header
-                .clone()
-                .unwrap_or(parent_header.clone())
-                .encode(),
-        );
+        let parent_head = HeadData(prev_header.unwrap_or(&parent_header).encode());
         let sproof_builder = RelayStateSproofBuilder {
             para_id: 100.into(),
             current_slot: Slot::from(2 * u64::from(block)),
@@ -259,7 +254,7 @@ fn initialize_block(block: u32, prev_header: &Option<Header>) {
     let coretime_burn_account: AccountId =
         frame_support::PalletId(*b"py/ctbrn").into_account_truncating();
     let coretime_burn_address = coretime_burn_account.into();
-    // The transfer may result an error if there are insufficient funds in the account, 
+    // The transfer may result an error if there are insufficient funds in the account,
     // but in that case, we just don't transfer to coretime burn address
     let _ = Balances::transfer_keep_alive(
         RuntimeOrigin::signed([0; 32].into()),

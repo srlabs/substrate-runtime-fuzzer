@@ -28,6 +28,6 @@ jobs:
       - name: Run templates fmt
         run: cargo fmt --check --manifest-path templates/Cargo.toml
       - name: Run runtimes clippy
-        run: cargo clippy -q --workspace --no-deps --manifest-path runtimes/Cargo.toml -- -D clippy::pedantic
+        run: cargo clippy -q --workspace --no-deps --manifest-path runtimes/Cargo.toml -- -D clippy::pedantic -D warnings
       - name: Run templates clippy
-        run: cargo clippy -q --workspace --no-deps --manifest-path templates/Cargo.toml -- -D clippy::pedantic
+        run: cargo clippy -q --workspace --no-deps --manifest-path templates/Cargo.toml -- -D clippy::pedantic -D warnings

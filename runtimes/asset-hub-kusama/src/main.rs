@@ -141,7 +141,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
         let initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
 
-        initialize_block(block, &None);
+        initialize_block(block, None);
 
         for (lapse, origin, extrinsic) in extrinsics {
             if lapse > 0 {
@@ -153,7 +153,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                 elapsed = Duration::ZERO;
 
                 // We start the next block
-                initialize_block(block, &Some(prev_header));
+                initialize_block(block, Some(&prev_header));
             }
 
             weight.saturating_accrue(extrinsic.get_dispatch_info().call_weight);
@@ -185,7 +185,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     });
 }
 
-fn initialize_block(block: u32, prev_header: &Option<Header>) {
+fn initialize_block(block: u32, prev_header: Option<&Header>) {
     #[cfg(not(feature = "fuzzing"))]
     println!("\ninitializing block {block}");
 
@@ -199,7 +199,7 @@ fn initialize_block(block: u32, prev_header: &Option<Header>) {
         block,
         H256::default(),
         H256::default(),
-        prev_header.clone().map(|x| x.hash()).unwrap_or_default(),
+        prev_header.map(Header::hash).unwrap_or_default(),
         pre_digest,
     );
     Executive::initialize_block(parent_header);
@@ -215,12 +215,7 @@ fn initialize_block(block: u32, prev_header: &Option<Header>) {
         use cumulus_primitives_parachain_inherent::ParachainInherentData;
         use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 
-        let parent_head = HeadData(
-            prev_header
-                .clone()
-                .unwrap_or(parent_header.clone())
-                .encode(),
-        );
+        let parent_head = HeadData(prev_header.unwrap_or(parent_header).encode());
         let sproof_builder = RelayStateSproofBuilder {
             para_id: 100.into(),
             current_slot: cumulus_primitives_core::relay_chain::Slot::from(2 * u64::from(block)),
