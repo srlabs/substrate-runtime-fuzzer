@@ -20,13 +20,10 @@ jobs:
       - uses: actions/checkout@v4
       - run: rustup default nightly
       - run: rustup component add rustfmt clippy rust-src
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: "runtimes -> runtimes/target\ntemplates -> templates/target"
       - name: Run runtimes fmt
-        run: cargo fmt --check --manifest-path runtimes/Cargo.toml
+        run: cargo fmt --all --check --manifest-path runtimes/Cargo.toml
       - name: Run templates fmt
-        run: cargo fmt --check --manifest-path templates/Cargo.toml
+        run: cargo fmt --all --check --manifest-path templates/Cargo.toml
       - name: Run runtimes clippy
         run: cargo clippy -q --workspace --no-deps --manifest-path runtimes/Cargo.toml -- -D clippy::pedantic -D warnings
       - name: Run templates clippy
