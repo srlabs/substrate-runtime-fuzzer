@@ -114,7 +114,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         technical_committee: TechnicalCommitteeConfig {
             members: accounts
                 .iter()
-                .take((num_endowed_accounts.div_ceil(2))
+                .take(num_endowed_accounts.div_ceil(2))
                 .cloned()
                 .collect(),
             ..Default::default()
