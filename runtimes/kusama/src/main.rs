@@ -18,7 +18,7 @@ use sp_consensus_babe::{
     digests::{PreDigest, SecondaryPlainPreDigest},
     Slot, BABE_ENGINE_ID,
 };
-use sp_core::crypto::ByteArray;
+// use sp_core::crypto::ByteArray;
 use sp_runtime::{app_crypto::ByteArray as _, BuildStorage, Perbill};
 use sp_runtime::{
     testing::H256,
@@ -71,6 +71,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         balances: kusama::BalancesConfig {
             // Configure endowed accounts with initial balance of 1 << 60.
             balances: accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
+            dev_accounts: None,
         },
         indices: kusama::IndicesConfig { indices: vec![] },
         session: kusama::SessionConfig {
@@ -155,6 +156,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
         .filter(|(_, _, x): &(_, _, RuntimeCall)| {
             !recursively_find_call(x.clone(), |call| {
                 // We filter out calls with Fungible(0) as they cause a debug crash
+                /*
                 matches!(call.clone(), RuntimeCall::XcmPallet(pallet_xcm::Call::execute { message, .. })
                     if matches!(message.as_ref(), staging_xcm::VersionedXcm::V2(staging_xcm::v2::Xcm(msg))
                         if msg.iter().any(|m| matches!(m, staging_xcm::opaque::v2::prelude::BuyExecution { fees: staging_xcm::v2::MultiAsset { fun, .. }, .. }
@@ -166,13 +168,13 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                         ))
                     )
                 )
-                || matches!(call.clone(), RuntimeCall::XcmPallet(pallet_xcm::Call::transfer_assets_using_type_and_then { assets, ..})
+                || */ /* matches!(call.clone(), RuntimeCall::XcmPallet(pallet_xcm::Call::transfer_assets_using_type_and_then { assets, ..})
                     if staging_xcm::v2::MultiAssets::try_from(*assets.clone())
                         .map(|assets| assets.inner().iter().any(|a| matches!(a, staging_xcm::v2::MultiAsset { fun, .. }
                             if fun == &staging_xcm::v2::Fungibility::Fungible(0)
                         ))).unwrap_or(false)
                 )
-                || matches!(call.clone(), RuntimeCall::System(_))
+                || */ matches!(call.clone(), RuntimeCall::System(_))
                 || matches!(
                     &call,
                     RuntimeCall::Referenda(pallet_referenda::Call::submit {
@@ -207,7 +209,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                 initialize_block(block);
             }
 
-            weight.saturating_accrue(extrinsic.get_dispatch_info().weight);
+            weight.saturating_accrue(extrinsic.get_dispatch_info().call_weight);
             if weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
                 #[cfg(not(feature = "fuzzing"))]
                 println!("Extrinsic would exhaust block weight, skipping");
@@ -288,7 +290,7 @@ fn initialize_block(block: u32) {
     println!("  setting bitfields");
     ParaInherent::enter(
         RuntimeOrigin::none(),
-        polkadot_primitives::InherentData {
+        polkadot_primitives::vstaging::InherentData {
             parent_header: grandparent_header,
             backed_candidates: Vec::default(),
             bitfields: Vec::default(),
