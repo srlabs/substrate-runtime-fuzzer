@@ -196,7 +196,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
     storage
 }
 
-fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool) -> bool {
+fn recursively_find_call(call: RuntimeCall, matches_on: fn(&RuntimeCall) -> bool) -> bool {
     if let RuntimeCall::Utility(
         pallet_utility::Call::batch { calls }
         | pallet_utility::Call::force_batch { calls }
@@ -208,6 +208,9 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
                 return true;
             }
         }
+    } else if let RuntimeCall::Utility(pallet_utility::Call::if_else { main, fallback }) = call {
+        return recursively_find_call(*main.clone(), matches_on)
+            || recursively_find_call(*fallback.clone(), matches_on);
     } else if let RuntimeCall::Lottery(pallet_lottery::Call::buy_ticket { call })
     | RuntimeCall::Multisig(pallet_multisig::Call::as_multi_threshold_1 {
         call, ..
@@ -219,71 +222,80 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
         proposal: call, ..
     }) = call
     {
-        return recursively_find_call(*call.clone(), matches_on);
-    } else if matches_on(call) {
+        return recursively_find_call(*call, matches_on);
+    } else if matches_on(&call) {
         return true;
     }
     false
+}
+
+fn call_filter(call: &RuntimeCall) -> bool {
+    // We disallow referenda calls with root origin
+    matches!(
+        &call,
+        RuntimeCall::Referenda(pallet_referenda::Call::submit {
+            proposal_origin: matching_origin,
+            ..
+        }) | RuntimeCall::RankedPolls(pallet_referenda::Call::submit {
+            proposal_origin: matching_origin,
+            ..
+        }) if RuntimeOrigin::from(*matching_origin.clone()).caller() == RuntimeOrigin::root().caller()
+    )
+    // We disallow batches of referenda
+    // See https://github.com/paritytech/srlabs_findings/issues/296
+    || matches!(
+            &call,
+            RuntimeCall::Referenda(pallet_referenda::Call::submit { .. })
+        )
+    // We filter out contracts call that will take too long because of fuzzer instrumentation
+    || matches!(
+            &call,
+            RuntimeCall::Contracts(
+                pallet_contracts::Call::instantiate_with_code { .. } |
+                pallet_contracts::Call::upload_code { .. } |
+                pallet_contracts::Call::instantiate_with_code_old_weight { .. } |
+                pallet_contracts::Call::migrate { .. }
+            )
+        )
+    || matches!(
+            &call,
+            RuntimeCall::Revive(
+                pallet_revive::Call::instantiate_with_code { .. } |
+                pallet_revive::Call::upload_code { .. }
+            )
+        )
+    // We filter out safe_mode calls, as they block timestamps from being set.
+    || matches!(&call, RuntimeCall::SafeMode(..))
+    // We filter out store extrinsics because BasicExternalities does not support them.
+    || matches!(
+            &call,
+            RuntimeCall::TransactionStorage(pallet_transaction_storage::Call::store { .. })
+                | RuntimeCall::Remark(pallet_remark::Call::store { .. })
+        )
+    || matches!(
+            &call,
+            RuntimeCall::NominationPools(..)
+    )
+    || matches!(
+            &call,
+            RuntimeCall::MetaTx(pallet_meta_tx::Call::dispatch { .. })
+    )
+    || matches!(
+            &call,
+            RuntimeCall::AssetRewards(pallet_asset_rewards::Call::create_pool { .. })
+    )
 }
 
 fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     // We build the list of extrinsics we will execute
     let mut extrinsic_data = data;
     // Vec<(lapse, origin, extrinsic)>
-    let extrinsics: Vec<(u8, u8, RuntimeCall)> = iter::from_fn(|| {
-            DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok()
-        })
-        .filter(|(_, _, x): &(_, _, RuntimeCall)| {
-            !recursively_find_call(x.clone(), |call| {
-                // We disallow referenda calls with root origin
-                matches!(
-                    &call,
-                    RuntimeCall::Referenda(pallet_referenda::Call::submit {
-                        proposal_origin: matching_origin,
-                        ..
-                    }) | RuntimeCall::RankedPolls(pallet_referenda::Call::submit {
-                        proposal_origin: matching_origin,
-                        ..
-                    }) if RuntimeOrigin::from(*matching_origin.clone()).caller() == RuntimeOrigin::root().caller()
-                )
-                // We disallow batches of referenda
-                // See https://github.com/paritytech/srlabs_findings/issues/296
-                || matches!(
-                        &call,
-                        RuntimeCall::Referenda(pallet_referenda::Call::submit { .. })
-                    )
-                // We filter out contracts call that will take too long because of fuzzer instrumentation
-                || matches!(
-                        &call,
-                        RuntimeCall::Contracts(
-                            pallet_contracts::Call::instantiate_with_code { .. } |
-                            pallet_contracts::Call::upload_code { .. } |
-                            pallet_contracts::Call::instantiate_with_code_old_weight { .. } |
-                            pallet_contracts::Call::migrate { .. }
-                        )
-                    )
-                || matches!(
-                        &call,
-                        RuntimeCall::Revive(
-                            pallet_revive::Call::instantiate_with_code { .. } |
-                            pallet_revive::Call::upload_code { .. }
-                        )
-                    )
-                // We filter out safe_mode calls, as they block timestamps from being set.
-                || matches!(&call, RuntimeCall::SafeMode(..))
-                // We filter out store extrinsics because BasicExternalities does not support them.
-                || matches!(
-                        &call,
-                        RuntimeCall::TransactionStorage(pallet_transaction_storage::Call::store { .. })
-                            | RuntimeCall::Remark(pallet_remark::Call::store { .. })
-                    )
-                || matches!(
-                        &call,
-                        RuntimeCall::NominationPools(..)
-                )
+    let extrinsics: Vec<(u8, u8, RuntimeCall)> =
+        iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
+            .filter(|(_, _, x): &(_, _, RuntimeCall)| {
+                !recursively_find_call(x.clone(), call_filter)
             })
-        })
-        .collect();
+            .collect();
     if extrinsics.is_empty() {
         return;
     }
@@ -324,7 +336,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
             if account.data.free == 0 {
                 #[cfg(not(feature = "fuzzing"))]
                 println!("\n    origin {origin:?} does not have free balance, skipping");
-                return;
+                continue;
             }
 
             #[cfg(not(feature = "fuzzing"))]
