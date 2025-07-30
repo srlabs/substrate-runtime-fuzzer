@@ -43,10 +43,11 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         AllianceConfig, AllianceMotionConfig, AssetsConfig, AuthorityDiscoveryConfig, BabeConfig,
         BalancesConfig, BeefyConfig, BrokerConfig, CouncilConfig, DemocracyConfig, ElectionsConfig,
         GluttonConfig, GrandpaConfig, ImOnlineConfig, IndicesConfig, MixnetConfig,
-        NominationPoolsConfig, PoolAssetsConfig, RuntimeGenesisConfig, SafeModeConfig,
-        SessionConfig, SessionKeys, SocietyConfig, StakingConfig, SudoConfig, SystemConfig,
-        TechnicalCommitteeConfig, TechnicalMembershipConfig, TransactionPaymentConfig,
-        TransactionStorageConfig, TreasuryConfig, TxPauseConfig, VestingConfig,
+        NominationPoolsConfig, PoolAssetsConfig, ReviveConfig, RuntimeGenesisConfig,
+        SafeModeConfig, SessionConfig, SessionKeys, SocietyConfig, StakingConfig, SudoConfig,
+        SystemConfig, TechnicalCommitteeConfig, TechnicalMembershipConfig,
+        TransactionPaymentConfig, TransactionStorageConfig, TreasuryConfig, TxPauseConfig,
+        VestingConfig,
     };
     use pallet_grandpa::AuthorityId as GrandpaId;
     use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
@@ -157,6 +158,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         tx_pause: TxPauseConfig::default(),
         mixnet: MixnetConfig::default(),
         broker: BrokerConfig::default(),
+        revive: ReviveConfig::default(),
     }
     .build_storage()
     .unwrap();
