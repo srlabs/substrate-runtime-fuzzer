@@ -22,7 +22,6 @@ use sp_runtime::{
 };
 use sp_state_machine::BasicExternalities;
 use std::{
-    collections::BTreeMap,
     iter,
     time::{Duration, Instant},
 };
@@ -41,7 +40,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         AssetsConfig, AuraConfig, AuraExtConfig, BalancesConfig, CollatorSelectionConfig,
         ForeignAssetsConfig, ParachainInfoConfig, ParachainSystemConfig, PolkadotXcmConfig,
         PoolAssetsConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys, SystemConfig,
-        TransactionPaymentConfig, VestingConfig,
+        TransactionPaymentConfig, VestingConfig, ReviveConfig
     };
     use sp_consensus_aura::sr25519::AuthorityId as AuraId;
     use sp_runtime::app_crypto::ByteArray;
@@ -66,7 +65,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
             non_authority_keys: vec![],
         },
         collator_selection: CollatorSelectionConfig {
-            invulnerables: initial_authorities.iter().map(|x| (x.0.clone())).collect(),
+            invulnerables: initial_authorities.iter().map(|x| x.0.clone()).collect(),
             candidacy_bond: 1 << 57,
             desired_candidates: 1,
         },
@@ -79,6 +78,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         pool_assets: PoolAssetsConfig::default(),
         transaction_payment: TransactionPaymentConfig::default(),
         vesting: VestingConfig::default(),
+        revive: ReviveConfig::default(),
     }
     .build_storage()
     .unwrap()
@@ -212,7 +212,8 @@ fn initialize_block(block: u32, prev_header: Option<&Header>) {
     println!("  setting parachain validation data");
     let parachain_validation_data = {
         use cumulus_primitives_core::relay_chain::HeadData;
-        use cumulus_primitives_parachain_inherent::ParachainInherentData;
+        // use cumulus_primitives_parachain_inherent::ParachainInherentData;
+        use cumulus_pallet_parachain_system::parachain_inherent::BasicParachainInherentData;
         use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 
         let parent_head = HeadData(prev_header.unwrap_or(parent_header).encode());
@@ -225,7 +226,7 @@ fn initialize_block(block: u32, prev_header: Option<&Header>) {
 
         let (relay_parent_storage_root, relay_chain_state) =
             sproof_builder.into_state_root_and_proof();
-        ParachainInherentData {
+        BasicParachainInherentData {
             validation_data: polkadot_primitives::PersistedValidationData {
                 parent_head,
                 relay_parent_number: block,
@@ -233,11 +234,15 @@ fn initialize_block(block: u32, prev_header: Option<&Header>) {
                 max_pov_size: 1000,
             },
             relay_chain_state,
-            downward_messages: Vec::default(),
-            horizontal_messages: BTreeMap::default(),
+            collator_peer_id: None,
+            relay_parent_descendants: vec![],
         }
     };
-    ParachainSystem::set_validation_data(RuntimeOrigin::none(), parachain_validation_data).unwrap();
+    let inbound_message_data = {
+        use cumulus_pallet_parachain_system::parachain_inherent::{AbridgedInboundMessagesCollection, InboundMessagesData};
+        InboundMessagesData::new(AbridgedInboundMessagesCollection::default(), AbridgedInboundMessagesCollection::default())
+    };
+    ParachainSystem::set_validation_data(RuntimeOrigin::none(), parachain_validation_data, inbound_message_data).unwrap();
 }
 
 fn finalize_block(elapsed: Duration) -> Header {
