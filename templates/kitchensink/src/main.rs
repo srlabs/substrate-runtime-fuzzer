@@ -221,19 +221,23 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(&RuntimeCall) -> bool
     | RuntimeCall::Utility(pallet_utility::Call::with_weight { call, .. })
     | RuntimeCall::Sudo(pallet_sudo::Call::sudo { call, .. })
     | RuntimeCall::Sudo(pallet_sudo::Call::sudo_unchecked_weight { call, .. })
-    | RuntimeCall::Whitelist(pallet_whitelist::Call::dispatch_whitelisted_call_with_preimage { call, .. })
+    | RuntimeCall::Whitelist(
+        pallet_whitelist::Call::dispatch_whitelisted_call_with_preimage { call, .. },
+    )
     | RuntimeCall::Proxy(pallet_proxy::Call::proxy { call, .. })
     | RuntimeCall::Revive(pallet_revive::Call::dispatch_as_fallback_account { call })
-    | RuntimeCall::Council(pallet_collective::Call::propose {
-        proposal: call, ..
-    } | pallet_collective::Call::execute { proposal: call, .. })
-    | RuntimeCall::AllianceMotion(pallet_collective::Call::propose {
-        proposal: call, ..
-    } | pallet_collective::Call::execute { proposal: call, .. })
-    | RuntimeCall::TechnicalCommittee(pallet_collective::Call::propose {
-        proposal: call, ..
-    } | pallet_collective::Call::execute { proposal: call, .. })
-    = call
+    | RuntimeCall::Council(
+        pallet_collective::Call::propose { proposal: call, .. }
+        | pallet_collective::Call::execute { proposal: call, .. },
+    )
+    | RuntimeCall::AllianceMotion(
+        pallet_collective::Call::propose { proposal: call, .. }
+        | pallet_collective::Call::execute { proposal: call, .. },
+    )
+    | RuntimeCall::TechnicalCommittee(
+        pallet_collective::Call::propose { proposal: call, .. }
+        | pallet_collective::Call::execute { proposal: call, .. },
+    ) = call
     {
         return recursively_find_call(*call, matches_on);
     } else if matches_on(&call) {
