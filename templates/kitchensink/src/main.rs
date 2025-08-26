@@ -217,10 +217,14 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(&RuntimeCall) -> bool
     | RuntimeCall::Multisig(pallet_multisig::Call::as_multi_threshold_1 {
         call, ..
     })
-    | RuntimeCall::Utility(pallet_utility::Call::as_derivative { call, .. })
-    | RuntimeCall::Utility(pallet_utility::Call::with_weight { call, .. })
-    | RuntimeCall::Sudo(pallet_sudo::Call::sudo { call, .. })
-    | RuntimeCall::Sudo(pallet_sudo::Call::sudo_unchecked_weight { call, .. })
+    | RuntimeCall::Utility(
+        pallet_utility::Call::as_derivative { call, .. }
+        | pallet_utility::Call::with_weight { call, .. },
+    )
+    | RuntimeCall::Sudo(
+        pallet_sudo::Call::sudo { call, .. }
+        | pallet_sudo::Call::sudo_unchecked_weight { call, .. },
+    )
     | RuntimeCall::Whitelist(
         pallet_whitelist::Call::dispatch_whitelisted_call_with_preimage { call, .. },
     )
