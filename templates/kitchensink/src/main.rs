@@ -218,11 +218,22 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(&RuntimeCall) -> bool
         call, ..
     })
     | RuntimeCall::Utility(pallet_utility::Call::as_derivative { call, .. })
+    | RuntimeCall::Utility(pallet_utility::Call::with_weight { call, .. })
+    | RuntimeCall::Sudo(pallet_sudo::Call::sudo { call, .. })
+    | RuntimeCall::Sudo(pallet_sudo::Call::sudo_unchecked_weight { call, .. })
+    | RuntimeCall::Whitelist(pallet_whitelist::Call::dispatch_whitelisted_call_with_preimage { call, .. })
     | RuntimeCall::Proxy(pallet_proxy::Call::proxy { call, .. })
     | RuntimeCall::Revive(pallet_revive::Call::dispatch_as_fallback_account { call })
     | RuntimeCall::Council(pallet_collective::Call::propose {
         proposal: call, ..
-    }) = call
+    } | pallet_collective::Call::execute { proposal: call, .. })
+    | RuntimeCall::AllianceMotion(pallet_collective::Call::propose {
+        proposal: call, ..
+    } | pallet_collective::Call::execute { proposal: call, .. })
+    | RuntimeCall::TechnicalCommittee(pallet_collective::Call::propose {
+        proposal: call, ..
+    } | pallet_collective::Call::execute { proposal: call, .. })
+    = call
     {
         return recursively_find_call(*call, matches_on);
     } else if matches_on(&call) {
@@ -286,6 +297,10 @@ fn call_filter(call: &RuntimeCall) -> bool {
             &call,
             RuntimeCall::AssetRewards(pallet_asset_rewards::Call::create_pool { .. })
     )
+    || matches!(
+            &call,
+            RuntimeCall::VoterList(pallet_bags_list::Call::rebag {  .. })
+    )
 }
 
 fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
@@ -324,13 +339,6 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                 initialize_block(block);
             }
 
-            weight.saturating_accrue(extrinsic.get_dispatch_info().call_weight);
-            if weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
-                #[cfg(not(feature = "fuzzing"))]
-                println!("Extrinsic would exhaust block weight, skipping");
-                continue;
-            }
-
             let origin = accounts[origin as usize % accounts.len()].clone();
 
             // We do not continue if the origin account does not have a free balance
@@ -345,6 +353,13 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
             println!("\n    origin:     {origin:?}");
             #[cfg(not(feature = "fuzzing"))]
             println!("    call:       {extrinsic:?}");
+
+            weight.saturating_accrue(extrinsic.get_dispatch_info().call_weight);
+            if weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
+                #[cfg(not(feature = "fuzzing"))]
+                println!("Extrinsic would exhaust block weight, skipping");
+                continue;
+            }
 
             let now = Instant::now(); // We get the current time for timing purposes.
             #[allow(unused_variables)]
