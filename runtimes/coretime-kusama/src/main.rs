@@ -68,7 +68,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
             non_authority_keys: vec![],
         },
         collator_selection: CollatorSelectionConfig {
-            invulnerables: initial_authorities.iter().map(|x| (x.0.clone())).collect(),
+            invulnerables: initial_authorities.iter().map(|x| x.0.clone()).collect(),
             candidacy_bond: 1 << 57,
             desired_candidates: 1,
         },
