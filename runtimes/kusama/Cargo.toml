@@ -14,6 +14,7 @@ kusama-runtime-constants = { git = "https://github.com/polkadot-fellows/runtimes
 
 polkadot-primitives = { version = "20.0.0", default-features = false }
 polkadot-runtime-parachains = { version = "21.0.0", default-features = false }
+polkadot-runtime-common = { version = "21.0.0", default-features = false }
 
 codec = { version = "3.7.5", features = ["derive", "max-encoded-len"], default-features = false, package = "parity-scale-codec" }
 
@@ -40,6 +41,7 @@ pallet-staking = { default-features = false , version = "42.0.0" }
 pallet-timestamp = { default-features = false , version = "41.0.0" }
 pallet-xcm = { default-features = false , version = "22.0.0" }
 pallet-referenda = { default-features = false , version = "42.0.0" }
+pallet-bags-list = { default-features = false , version = "41.0.0" }
 
 [features]
 default = ["std", "try-runtime"]

@@ -12,24 +12,25 @@ use pallet_balances::{Holds, TotalIssuance};
 use pallet_grandpa::AuthorityId as GrandpaId;
 use pallet_staking::StakerStatus;
 use polkadot_primitives::{AccountId, AssignmentId, Balance, Header, ValidatorId};
+use polkadot_runtime_common::impls::VersionedLocatableAsset;
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use sp_consensus_babe::AuthorityId as BabeId;
 use sp_consensus_babe::{
     digests::{PreDigest, SecondaryPlainPreDigest},
     Slot, BABE_ENGINE_ID,
 };
-// use sp_core::crypto::ByteArray;
-use sp_runtime::{app_crypto::ByteArray as _, BuildStorage, Perbill};
 use sp_runtime::{
+    app_crypto::ByteArray as _,
     testing::H256,
     traits::{Dispatchable, Header as _},
-    Digest, DigestItem, Storage,
+    BuildStorage, Digest, DigestItem, Perbill, Storage,
 };
 use sp_state_machine::BasicExternalities;
 use staging_kusama_runtime::{
     AllPalletsWithSystem, Balances, Executive, ParaInherent, Runtime, RuntimeCall, RuntimeOrigin,
     Timestamp,
 };
+use staging_xcm::opaque::latest::{Junctions::Here, Location};
 use std::{
     iter,
     time::{Duration, Instant},
@@ -116,7 +117,22 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
     .build_storage()
     .unwrap();
     BasicExternalities::execute_with_storage(&mut storage, || {
-        // Identity::add_registrar(RuntimeOrigin::root(), accounts[0].clone().into()).unwrap();
+        kusama::AssetRate::create(
+            RuntimeOrigin::root(),
+            Box::new(VersionedLocatableAsset::V5 {
+                location: Location {
+                    parents: 0,
+                    interior: Here,
+                },
+                asset_id: Location {
+                    parents: 0,
+                    interior: Here,
+                }
+                .into(),
+            }),
+            1.into(),
+        )
+        .unwrap();
     });
     storage
 }
@@ -155,26 +171,8 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
         })
         .filter(|(_, _, x): &(_, _, RuntimeCall)| {
             !recursively_find_call(x.clone(), |call| {
-                // We filter out calls with Fungible(0) as they cause a debug crash
-                /*
-                matches!(call.clone(), RuntimeCall::XcmPallet(pallet_xcm::Call::execute { message, .. })
-                    if matches!(message.as_ref(), staging_xcm::VersionedXcm::V2(staging_xcm::v2::Xcm(msg))
-                        if msg.iter().any(|m| matches!(m, staging_xcm::opaque::v2::prelude::BuyExecution { fees: staging_xcm::v2::MultiAsset { fun, .. }, .. }
-                            if fun == &staging_xcm::v2::Fungibility::Fungible(0)
-                        )
-                    )) || matches!(message.as_ref(), staging_xcm::VersionedXcm::V3(staging_xcm::v3::Xcm(msg))
-                        if msg.iter().any(|m| matches!(m, staging_xcm::opaque::v3::prelude::BuyExecution { weight_limit: staging_xcm::opaque::v3::WeightLimit::Limited(weight), .. }
-                            if weight.ref_time() <= 1
-                        ))
-                    )
-                )
-                || */ /* matches!(call.clone(), RuntimeCall::XcmPallet(pallet_xcm::Call::transfer_assets_using_type_and_then { assets, ..})
-                    if staging_xcm::v2::MultiAssets::try_from(*assets.clone())
-                        .map(|assets| assets.inner().iter().any(|a| matches!(a, staging_xcm::v2::MultiAsset { fun, .. }
-                            if fun == &staging_xcm::v2::Fungibility::Fungible(0)
-                        ))).unwrap_or(false)
-                )
-                || */ matches!(call.clone(), RuntimeCall::System(_))
+                matches!(call.clone(), RuntimeCall::System(_))
+                || matches!(call.clone(), RuntimeCall::VoterList(pallet_bags_list::Call::rebag { .. }))
                 || matches!(
                     &call,
                     RuntimeCall::Referenda(pallet_referenda::Call::submit {
