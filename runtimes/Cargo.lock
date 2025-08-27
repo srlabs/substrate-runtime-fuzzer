@@ -3423,6 +3423,7 @@ dependencies = [
  "pallet-society",
  "pallet-staking",
  "pallet-timestamp",
+ "pallet-treasury",
  "pallet-utility",
  "pallet-xcm",
  "parity-scale-codec",

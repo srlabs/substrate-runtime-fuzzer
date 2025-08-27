@@ -42,6 +42,7 @@ pallet-timestamp = { default-features = false , version = "41.0.0" }
 pallet-xcm = { default-features = false , version = "22.0.0" }
 pallet-referenda = { default-features = false , version = "42.0.0" }
 pallet-bags-list = { default-features = false , version = "41.0.0" }
+pallet-treasury = { default-features = false , version = "41.0.0" }
 
 [features]
 default = ["std", "try-runtime"]

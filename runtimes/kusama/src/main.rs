@@ -220,6 +220,8 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                     pallet_bounties::Call::approve_bounty { .. }
                         | pallet_bounties::Call::propose_curator { .. }
                         | pallet_bounties::Call::close_bounty { .. }
+                ) | RuntimeCall::Treasury(
+                    pallet_treasury::Call::spend_local { .. } | pallet_treasury::Call::spend { .. }
                 )
             ) {
                 RuntimeOrigin::root()
