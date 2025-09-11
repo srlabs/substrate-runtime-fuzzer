@@ -39,8 +39,8 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
     use asset_hub_kusama_runtime::{
         AssetsConfig, AuraConfig, AuraExtConfig, BalancesConfig, CollatorSelectionConfig,
         ForeignAssetsConfig, ParachainInfoConfig, ParachainSystemConfig, PolkadotXcmConfig,
-        PoolAssetsConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys, SystemConfig,
-        TransactionPaymentConfig, VestingConfig, ReviveConfig
+        PoolAssetsConfig, ReviveConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys,
+        SystemConfig, TransactionPaymentConfig, VestingConfig,
     };
     use sp_consensus_aura::sr25519::AuthorityId as AuraId;
     use sp_runtime::app_crypto::ByteArray;
@@ -239,10 +239,20 @@ fn initialize_block(block: u32, prev_header: Option<&Header>) {
         }
     };
     let inbound_message_data = {
-        use cumulus_pallet_parachain_system::parachain_inherent::{AbridgedInboundMessagesCollection, InboundMessagesData};
-        InboundMessagesData::new(AbridgedInboundMessagesCollection::default(), AbridgedInboundMessagesCollection::default())
+        use cumulus_pallet_parachain_system::parachain_inherent::{
+            AbridgedInboundMessagesCollection, InboundMessagesData,
+        };
+        InboundMessagesData::new(
+            AbridgedInboundMessagesCollection::default(),
+            AbridgedInboundMessagesCollection::default(),
+        )
     };
-    ParachainSystem::set_validation_data(RuntimeOrigin::none(), parachain_validation_data, inbound_message_data).unwrap();
+    ParachainSystem::set_validation_data(
+        RuntimeOrigin::none(),
+        parachain_validation_data,
+        inbound_message_data,
+    )
+    .unwrap();
 }
 
 fn finalize_block(elapsed: Duration) -> Header {

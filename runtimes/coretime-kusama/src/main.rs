@@ -249,10 +249,20 @@ fn initialize_block(block: u32, prev_header: Option<&Header>) {
         }
     };
     let inbound_message_data = {
-        use cumulus_pallet_parachain_system::parachain_inherent::{AbridgedInboundMessagesCollection, InboundMessagesData};
-        InboundMessagesData::new(AbridgedInboundMessagesCollection::default(), AbridgedInboundMessagesCollection::default())
+        use cumulus_pallet_parachain_system::parachain_inherent::{
+            AbridgedInboundMessagesCollection, InboundMessagesData,
+        };
+        InboundMessagesData::new(
+            AbridgedInboundMessagesCollection::default(),
+            AbridgedInboundMessagesCollection::default(),
+        )
     };
-    ParachainSystem::set_validation_data(RuntimeOrigin::none(), parachain_validation_data, inbound_message_data).unwrap();
+    ParachainSystem::set_validation_data(
+        RuntimeOrigin::none(),
+        parachain_validation_data,
+        inbound_message_data,
+    )
+    .unwrap();
 
     // We have to send 1 DOT to the coretime burn address because of a defensive assertion that cannot be
     // reached in a real-world environment.
