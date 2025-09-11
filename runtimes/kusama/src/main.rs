@@ -149,6 +149,8 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
                 return true;
             }
         }
+    } else if let RuntimeCall::Utility(pallet_utility::Call::if_else { main, fallback }) = call {
+        return recursively_find_call(*main, matches_on) || recursively_find_call(*fallback, matches_on);
     } else if let RuntimeCall::Multisig(pallet_multisig::Call::as_multi_threshold_1 {
         call, ..
     })
@@ -172,7 +174,9 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
         .filter(|(_, _, x): &(_, _, RuntimeCall)| {
             !recursively_find_call(x.clone(), |call| {
                 matches!(call.clone(), RuntimeCall::System(_))
+                || matches!(call.clone(), RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. }))
                 || matches!(call.clone(), RuntimeCall::VoterList(pallet_bags_list::Call::rebag { .. }))
+                || matches!(call.clone(), RuntimeCall::Treasury(pallet_treasury::Call::spend { valid_from, .. }) if valid_from.unwrap_or(0) >= 4200000000)
                 || matches!(
                     &call,
                     RuntimeCall::Referenda(pallet_referenda::Call::submit {
@@ -352,5 +356,6 @@ fn check_invariants(block: u32, initial_total_issuance: Balance) {
     );
     // We run all developer-defined integrity tests
     AllPalletsWithSystem::integrity_test();
+    staging_kusama_runtime::Treasury::try_state(block, TryStateSelect::All).unwrap();
     AllPalletsWithSystem::try_state(block, TryStateSelect::All).unwrap();
 }

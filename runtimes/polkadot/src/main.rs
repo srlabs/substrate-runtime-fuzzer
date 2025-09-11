@@ -147,6 +147,9 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
                 return true;
             }
         }
+    } else if let RuntimeCall::Utility(pallet_utility::Call::if_else { main, fallback }) = call {
+        return recursively_find_call(*main.clone(), matches_on)
+            || recursively_find_call(*fallback.clone(), matches_on);
     } else if let RuntimeCall::Multisig(pallet_multisig::Call::as_multi_threshold_1 {
         call, ..
     })
@@ -171,6 +174,8 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
             !recursively_find_call(x.clone(), |call| {
                 matches!(call.clone(), RuntimeCall::System(_))
                 || matches!(call.clone(), RuntimeCall::VoterList(pallet_bags_list::Call::rebag { .. }))
+                || matches!(call.clone(), RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. }))
+                || matches!(call.clone(), RuntimeCall::Treasury(pallet_treasury::Call::spend { valid_from, .. }) if valid_from.unwrap_or(0) >= 4200000000)
                 || matches!(
                     &call,
                     RuntimeCall::Referenda(pallet_referenda::Call::submit {
@@ -195,7 +200,6 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
         initialize_block(block);
 
         for (lapse, origin, extrinsic) in extrinsics {
-            /*
             if lapse > 0 {
                 finalize_block(elapsed);
 
@@ -205,7 +209,6 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
 
                 initialize_block(block);
             }
-            */
 
             weight.saturating_accrue(extrinsic.get_dispatch_info().call_weight);
             if weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
