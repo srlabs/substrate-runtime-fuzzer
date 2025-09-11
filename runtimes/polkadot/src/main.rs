@@ -7,12 +7,16 @@ use frame_support::{
     weights::constants::WEIGHT_REF_TIME_PER_SECOND,
 };
 use frame_system::Account;
-use kusama_runtime_constants::{currency::UNITS, time::SLOT_DURATION};
 use pallet_balances::{Holds, TotalIssuance};
 use pallet_grandpa::AuthorityId as GrandpaId;
 use pallet_staking::StakerStatus;
 use polkadot_primitives::{AccountId, AssignmentId, Balance, Header, ValidatorId};
+use polkadot_runtime::{
+    AllPalletsWithSystem, Balances, Executive, ParaInherent, Runtime, RuntimeCall, RuntimeOrigin,
+    Timestamp,
+};
 use polkadot_runtime_common::impls::VersionedLocatableAsset;
+use polkadot_runtime_constants::{currency::UNITS, time::SLOT_DURATION};
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use sp_consensus_babe::AuthorityId as BabeId;
 use sp_consensus_babe::{
@@ -26,10 +30,6 @@ use sp_runtime::{
     BuildStorage, Digest, DigestItem, Perbill, Storage,
 };
 use sp_state_machine::BasicExternalities;
-use staging_kusama_runtime::{
-    AllPalletsWithSystem, Balances, Executive, ParaInherent, Runtime, RuntimeCall, RuntimeOrigin,
-    Timestamp,
-};
 use staging_xcm::opaque::latest::{Junctions::Here, Location};
 use std::{
     iter,
@@ -46,12 +46,12 @@ fn main() {
 }
 
 fn generate_genesis(accounts: &[AccountId]) -> Storage {
-    use staging_kusama_runtime as kusama;
+    use polkadot_runtime as polkadot;
 
     const ENDOWMENT: Balance = 10_000_000 * UNITS;
     const STASH: Balance = ENDOWMENT / 1000;
 
-    let initial_authority = kusama::SessionKeys {
+    let initial_authority = polkadot::SessionKeys {
         grandpa: GrandpaId::from_slice(&[0; 32]).unwrap(),
         babe: BabeId::from_slice(&[0; 32]).unwrap(),
         beefy: sp_application_crypto::ecdsa::Public::from_raw([0u8; 33]).into(),
@@ -67,20 +67,20 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         StakerStatus::Validator,
     )];
 
-    let mut storage = kusama::RuntimeGenesisConfig {
-        system: kusama::SystemConfig::default(),
-        balances: kusama::BalancesConfig {
+    let mut storage = polkadot::RuntimeGenesisConfig {
+        system: polkadot::SystemConfig::default(),
+        balances: polkadot::BalancesConfig {
             // Configure endowed accounts with initial balance of 1 << 60.
             balances: accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
             dev_accounts: None,
         },
-        indices: kusama::IndicesConfig { indices: vec![] },
-        session: kusama::SessionConfig {
+        indices: polkadot::IndicesConfig { indices: vec![] },
+        session: polkadot::SessionConfig {
             keys: vec![([0; 32].into(), [0; 32].into(), initial_authority)],
             non_authority_keys: vec![],
         },
-        beefy: kusama::BeefyConfig::default(),
-        staking: kusama::StakingConfig {
+        beefy: polkadot::BeefyConfig::default(),
+        staking: polkadot::StakingConfig {
             validator_count: 1,
             minimum_validator_count: 1,
             invulnerables: vec![[0; 32].into()],
@@ -88,36 +88,34 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
             stakers,
             ..Default::default()
         },
-        babe: kusama::BabeConfig {
-            epoch_config: kusama::BABE_GENESIS_EPOCH_CONFIG,
+        babe: polkadot::BabeConfig {
+            epoch_config: polkadot::BABE_GENESIS_EPOCH_CONFIG,
             ..Default::default()
         },
-        grandpa: kusama::GrandpaConfig::default(),
-        authority_discovery: kusama::AuthorityDiscoveryConfig::default(),
-        claims: kusama::ClaimsConfig {
+        grandpa: polkadot::GrandpaConfig::default(),
+        authority_discovery: polkadot::AuthorityDiscoveryConfig::default(),
+        claims: polkadot::ClaimsConfig {
             claims: vec![],
             vesting: vec![],
         },
-        vesting: kusama::VestingConfig { vesting: vec![] },
-        treasury: kusama::TreasuryConfig::default(),
-        hrmp: kusama::HrmpConfig::default(),
-        configuration: kusama::ConfigurationConfig::default(),
-        paras: kusama::ParasConfig::default(),
-        xcm_pallet: kusama::XcmPalletConfig::default(),
-        nomination_pools: kusama::NominationPoolsConfig {
+        vesting: polkadot::VestingConfig { vesting: vec![] },
+        treasury: polkadot::TreasuryConfig::default(),
+        hrmp: polkadot::HrmpConfig::default(),
+        configuration: polkadot::ConfigurationConfig::default(),
+        paras: polkadot::ParasConfig::default(),
+        xcm_pallet: polkadot::XcmPalletConfig::default(),
+        nomination_pools: polkadot::NominationPoolsConfig {
             min_create_bond: 1 << 43,
             min_join_bond: 1 << 42,
             ..Default::default()
         },
-        nis_counterpart_balances: kusama::NisCounterpartBalancesConfig::default(),
-        registrar: kusama::RegistrarConfig::default(),
-        society: kusama::SocietyConfig::default(),
-        transaction_payment: kusama::TransactionPaymentConfig::default(),
+        registrar: polkadot::RegistrarConfig::default(),
+        transaction_payment: polkadot::TransactionPaymentConfig::default(),
     }
     .build_storage()
     .unwrap();
     BasicExternalities::execute_with_storage(&mut storage, || {
-        kusama::AssetRate::create(
+        polkadot::AssetRate::create(
             RuntimeOrigin::root(),
             Box::new(VersionedLocatableAsset::V5 {
                 location: Location {
@@ -150,8 +148,8 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
             }
         }
     } else if let RuntimeCall::Utility(pallet_utility::Call::if_else { main, fallback }) = call {
-        return recursively_find_call(*main, matches_on)
-            || recursively_find_call(*fallback, matches_on);
+        return recursively_find_call(*main.clone(), matches_on)
+            || recursively_find_call(*fallback.clone(), matches_on);
     } else if let RuntimeCall::Multisig(pallet_multisig::Call::as_multi_threshold_1 {
         call, ..
     })
@@ -175,8 +173,8 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
         .filter(|(_, _, x): &(_, _, RuntimeCall)| {
             !recursively_find_call(x.clone(), |call| {
                 matches!(call.clone(), RuntimeCall::System(_))
-                || matches!(call.clone(), RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. }))
                 || matches!(call.clone(), RuntimeCall::VoterList(pallet_bags_list::Call::rebag { .. }))
+                || matches!(call.clone(), RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. }))
                 || matches!(call.clone(), RuntimeCall::Treasury(pallet_treasury::Call::spend { valid_from, .. }) if valid_from.unwrap_or(0) >= 4_200_000_000)
                 || matches!(
                     &call,
@@ -357,6 +355,5 @@ fn check_invariants(block: u32, initial_total_issuance: Balance) {
     );
     // We run all developer-defined integrity tests
     AllPalletsWithSystem::integrity_test();
-    staging_kusama_runtime::Treasury::try_state(block, TryStateSelect::All).unwrap();
     AllPalletsWithSystem::try_state(block, TryStateSelect::All).unwrap();
 }

@@ -1,5 +1,5 @@
 [package]
-name = "kusama-fuzzer"
+name = "polkadot-fuzzer"
 version = "0.1.0"
 edition = "2021"
 publish = false
@@ -7,10 +7,10 @@ publish = false
 [dependencies]
 ziggy = { version = "1.3.2", default-features = false }
 
-staging-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v1.7.0", default-features = false }
+polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v1.7.0", default-features = false }
 staging-xcm = { default-features = false , version = "18.0.0" }
 
-kusama-runtime-constants = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v1.7.0", default-features = false }
+polkadot-runtime-constants = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v1.7.0", default-features = false }
 
 polkadot-primitives = { version = "20.0.0", default-features = false }
 polkadot-runtime-parachains = { version = "21.0.0", default-features = false }
@@ -49,7 +49,7 @@ pallet-vesting = { default-features = false , version = "42.0.0" }
 default = ["std", "try-runtime"]
 fuzzing = []
 std = [
-    "staging-kusama-runtime/std",
+    "polkadot-runtime/std",
 	"codec/std",
 	"sp-runtime/std",
 	"frame-support/std",
@@ -58,13 +58,14 @@ std = [
 	"pallet-grandpa/std",
 	"pallet-balances/std",
 	"pallet-staking/std",
+	"pallet-society/std",
 	"sp-consensus-babe/std",
 	"polkadot-primitives/std",
 	"polkadot-runtime-parachains/std",
 	"sp-authority-discovery/std",
 ]
 try-runtime = [
-    "staging-kusama-runtime/try-runtime",
+    "polkadot-runtime/try-runtime",
 	"frame-support/try-runtime",
 	"frame-system/try-runtime",
 	"sp-runtime/try-runtime",
