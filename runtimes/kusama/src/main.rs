@@ -177,7 +177,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                 matches!(call.clone(), RuntimeCall::System(_))
                 || matches!(call.clone(), RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. }))
                 || matches!(call.clone(), RuntimeCall::VoterList(pallet_bags_list::Call::rebag { .. }))
-                || matches!(call.clone(), RuntimeCall::Treasury(pallet_treasury::Call::spend { valid_from, .. }) if valid_from.unwrap_or(0) >= 4200000000)
+                || matches!(call.clone(), RuntimeCall::Treasury(pallet_treasury::Call::spend { valid_from, .. }) if valid_from.unwrap_or(0) >= 4_200_000_000)
                 || matches!(
                     &call,
                     RuntimeCall::Referenda(pallet_referenda::Call::submit {
