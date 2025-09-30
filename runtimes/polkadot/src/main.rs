@@ -210,7 +210,8 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                 initialize_block(block);
             }
 
-            weight.saturating_accrue(extrinsic.get_dispatch_info().call_weight);
+            let pre_weight = extrinsic.get_dispatch_info().call_weight;
+            weight.saturating_accrue(pre_weight);
             if weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
                 #[cfg(not(feature = "fuzzing"))]
                 println!("Extrinsic would exhaust block weight, skipping");
@@ -238,12 +239,16 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
             println!("    call:       {extrinsic:?}");
 
             let now = Instant::now(); // We get the current time for timing purposes.
-            #[allow(unused_variables)]
             let res = extrinsic.clone().dispatch(origin);
             elapsed += now.elapsed();
 
             #[cfg(not(feature = "fuzzing"))]
             println!("    result:     {res:?}");
+
+            let actual_weight = res.unwrap_or_else(|e| e.post_info).actual_weight;
+            let post_weight = actual_weight.unwrap_or_default();
+            assert!(pre_weight.ref_time() >= post_weight.ref_time(), "Pre-dispatch weight ref time ({}) is smaller than post-dispatch weight ref time ({})", pre_weight.ref_time(), post_weight.ref_time());
+            assert!(pre_weight.proof_size() >= post_weight.proof_size(), "Pre-dispatch weight proof size ({}) is smaller than post-dispatch weight proof size ({})", pre_weight.proof_size(), post_weight.proof_size());
         }
 
         finalize_block(elapsed);
