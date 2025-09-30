@@ -211,12 +211,13 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
             }
 
             let pre_weight = extrinsic.get_dispatch_info().call_weight;
-            weight.saturating_accrue(pre_weight);
-            if weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
+            let cumulative_weight = weight.saturating_add(pre_weight);
+            if cumulative_weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
                 #[cfg(not(feature = "fuzzing"))]
                 println!("Extrinsic would exhaust block weight, skipping");
                 continue;
             }
+            weight = cumulative_weight;
 
             let origin = if matches!(
                 extrinsic,
