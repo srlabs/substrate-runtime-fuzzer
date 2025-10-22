@@ -10,12 +10,13 @@ use frame_system::Account;
 use pallet_balances::{Holds, TotalIssuance};
 use solochain_template_runtime::{
     AccountId, AllPalletsWithSystem, Balance, Balances, Executive, Runtime, RuntimeCall,
-    RuntimeOrigin, Timestamp, SLOT_DURATION,
+    RuntimeOrigin, Timestamp, TxExtension, SLOT_DURATION,
 };
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_runtime::{
     testing::H256,
-    traits::{Dispatchable, Header},
+    traits::{Dispatchable, Header, TransactionExtension, TxBaseImplication},
+    transaction_validity::TransactionSource,
     Digest, DigestItem, Storage,
 };
 use sp_state_machine::BasicExternalities;
@@ -105,13 +106,64 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
             #[cfg(not(feature = "fuzzing"))]
             println!("    call:       {extrinsic:?}");
 
-            let now = Instant::now(); // We get the current time for timing purposes.
-            #[allow(unused_variables)]
-            let res = extrinsic.dispatch(RuntimeOrigin::signed(origin));
-            elapsed += now.elapsed();
+            let ext: TxExtension = (
+                frame_system::AuthorizeCall::<Runtime>::new(),
+                frame_system::CheckNonZeroSender::<Runtime>::new(),
+                frame_system::CheckSpecVersion::<Runtime>::new(),
+                frame_system::CheckTxVersion::<Runtime>::new(),
+                frame_system::CheckGenesis::<Runtime>::new(),
+                frame_system::CheckEra::<Runtime>::from(sp_runtime::generic::Era::immortal()), // TODO MORTAL
+                frame_system::CheckNonce::<Runtime>::from(0),
+                frame_system::CheckWeight::<Runtime>::new(),
+                pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(1000),
+                frame_metadata_hash_extension::CheckMetadataHash::<Runtime>::new(true),
+                frame_system::WeightReclaim::<Runtime>::new(),
+            );
 
-            #[cfg(not(feature = "fuzzing"))]
-            println!("    result:     {res:?}");
+            let maybe_validation = ext.validate(
+                RuntimeOrigin::signed(origin.clone()),
+                &extrinsic,
+                &Default::default(), // TODO Check if we can do better than default
+                100,                 // TODO Put actual length of extrinsic
+                Default::default(),  // TODO Check if we can do better than default
+                &TxBaseImplication(0), // TODO Check if we can do better
+                TransactionSource::Local,
+            );
+
+            if let Ok((_, validation, origin)) = maybe_validation {
+                let preparation = ext
+                    .prepare(
+                        validation,
+                        &origin.clone(),
+                        &extrinsic,
+                        &Default::default(),
+                        100,
+                    )
+                    .expect("Transaction validated, should also prepare correctly");
+
+                let now = Instant::now(); // We get the current time for timing purposes.
+                let res = extrinsic.dispatch(origin);
+                elapsed += now.elapsed();
+
+                #[cfg(not(feature = "fuzzing"))]
+                println!("    result:     {res:?}");
+
+                let mut post_info = match res {
+                    Ok(p) => p,
+                    Err(p) => p.post_info,
+                };
+
+                let result = res.map(|_| ()).map_err(|e| e.error);
+
+                TxExtension::post_dispatch(
+                    preparation,
+                    &Default::default(), // TODO Check if we can do better than default
+                    &mut post_info,
+                    100, // TODO put actual extrisic length
+                    &result,
+                )
+                .expect("Post-dispatch should never fail");
+            }
         }
 
         finalize_block(elapsed);

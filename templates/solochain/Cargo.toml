@@ -13,6 +13,7 @@ codec = { version = "3.7.4", features = ["derive", "max-encoded-len"], default-f
 
 frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", rev = "fb451c76bc64a13c41b65d2c044d3f07e598e69f", default-features = false }
 frame-system = { git = "https://github.com/paritytech/polkadot-sdk.git", rev = "fb451c76bc64a13c41b65d2c044d3f07e598e69f", default-features = false }
+frame-metadata-hash-extension = { git = "https://github.com/paritytech/polkadot-sdk.git", rev = "fb451c76bc64a13c41b65d2c044d3f07e598e69f", default-features = false }
 
 sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", rev = "fb451c76bc64a13c41b65d2c044d3f07e598e69f", default-features = false }
 sp-state-machine = { git = "https://github.com/paritytech/polkadot-sdk.git", rev = "fb451c76bc64a13c41b65d2c044d3f07e598e69f", default-features = false }
@@ -21,6 +22,7 @@ sp-consensus-aura = { git = "https://github.com/paritytech/polkadot-sdk.git", re
 pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk.git", rev = "fb451c76bc64a13c41b65d2c044d3f07e598e69f", default-features = false }
 pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk.git", rev = "fb451c76bc64a13c41b65d2c044d3f07e598e69f", default-features = false }
 pallet-grandpa = { git = "https://github.com/paritytech/polkadot-sdk.git", rev = "fb451c76bc64a13c41b65d2c044d3f07e598e69f", default-features = false }
+pallet-transaction-payment = { git = "https://github.com/paritytech/polkadot-sdk.git", rev = "fb451c76bc64a13c41b65d2c044d3f07e598e69f", default-features = false }
 
 [features]
 default = ["std", "try-runtime"]
