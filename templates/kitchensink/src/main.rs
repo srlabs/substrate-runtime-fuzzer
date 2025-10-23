@@ -1,7 +1,7 @@
 #![warn(clippy::pedantic)]
 use codec::{DecodeLimit, Encode};
 use frame_support::{
-    dispatch::GetDispatchInfo,
+    dispatch::{DispatchInfo, GetDispatchInfo},
     pallet_prelude::Weight,
     traits::{IntegrityTest, OriginTrait, TryState, TryStateSelect},
     weights::constants::WEIGHT_REF_TIME_PER_SECOND,
@@ -10,7 +10,7 @@ use frame_system::Account;
 use kitchensink_runtime::{
     constants::{currency::DOLLARS, time::SLOT_DURATION},
     AccountId, AllPalletsWithSystem, Balances, Broker, Executive, Runtime, RuntimeCall,
-    RuntimeOrigin, Timestamp,
+    RuntimeOrigin, Timestamp, TxExtension,
 };
 use node_primitives::Balance;
 use pallet_balances::{Holds, TotalIssuance};
@@ -18,9 +18,10 @@ use sp_consensus_babe::{
     digests::{PreDigest, SecondaryPlainPreDigest},
     Slot, BABE_ENGINE_ID,
 };
+use sp_runtime::transaction_validity::TransactionSource;
 use sp_runtime::{
     testing::H256,
-    traits::{Dispatchable, Header},
+    traits::{Dispatchable, Header, TransactionExtension, TxBaseImplication},
     Digest, DigestItem, FixedU64, Perbill, Storage,
 };
 use sp_state_machine::BasicExternalities;
@@ -347,35 +348,83 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                 initialize_block(block);
             }
 
-            let origin = accounts[origin as usize % accounts.len()].clone();
+            let origin_account = accounts[origin as usize % accounts.len()].clone();
 
             // We do not continue if the origin account does not have a free balance
-            let account = Account::<Runtime>::get(&origin);
+            let account = Account::<Runtime>::get(&origin_account);
             if account.data.free == 0 {
                 #[cfg(not(feature = "fuzzing"))]
-                println!("\n    origin {origin:?} does not have free balance, skipping");
+                println!("\n    origin {origin_account:?} does not have free balance, skipping");
                 continue;
             }
 
             #[cfg(not(feature = "fuzzing"))]
-            println!("\n    origin:     {origin:?}");
+            println!("\n    origin:     {origin_account:?}");
             #[cfg(not(feature = "fuzzing"))]
             println!("    call:       {extrinsic:?}");
 
-            weight.saturating_accrue(extrinsic.get_dispatch_info().call_weight);
+            let dispatch_info = extrinsic.get_dispatch_info();
+            weight.saturating_accrue(dispatch_info.call_weight);
             if weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
                 #[cfg(not(feature = "fuzzing"))]
                 println!("Extrinsic would exhaust block weight, skipping");
                 continue;
             }
 
-            let now = Instant::now(); // We get the current time for timing purposes.
-            #[allow(unused_variables)]
-            let res = extrinsic.dispatch(RuntimeOrigin::signed(origin));
-            elapsed += now.elapsed();
+            let ext: TxExtension = (
+                frame_system::AuthorizeCall::<Runtime>::new(),
+                frame_system::CheckNonZeroSender::<Runtime>::new(),
+                frame_system::CheckSpecVersion::<Runtime>::new(),
+                frame_system::CheckTxVersion::<Runtime>::new(),
+                frame_system::CheckGenesis::<Runtime>::new(),
+                frame_system::CheckEra::<Runtime>::from(sp_runtime::generic::Era::immortal()), // TODO MORTAL
+                frame_system::CheckNonce::<Runtime>::from(0),
+                frame_system::CheckWeight::<Runtime>::new(),
+                pallet_skip_feeless_payment::SkipCheckIfFeeless::from(
+                    pallet_asset_conversion_tx_payment::ChargeAssetTxPayment::from(0, None),
+                ),
+                frame_metadata_hash_extension::CheckMetadataHash::<Runtime>::new(true),
+                frame_system::WeightReclaim::<Runtime>::new(),
+            );
 
-            #[cfg(not(feature = "fuzzing"))]
-            println!("    result:     {res:?}");
+            let maybe_validation = ext.validate(
+                RuntimeOrigin::signed(origin_account.clone()),
+                &extrinsic,
+                &dispatch_info,        // TODO Check if we can do better than default
+                100,                   // TODO Put actual length of extrinsic
+                Default::default(),    // TODO Check if we can do better than default
+                &TxBaseImplication(0), // TODO Check if we can do better
+                TransactionSource::Local,
+            );
+
+            if let Ok((_, validation, origin)) = maybe_validation {
+                let preparation = ext
+                    .prepare(validation, &origin.clone(), &extrinsic, &dispatch_info, 100)
+                    .expect("Transaction validated, should also prepare correctly");
+
+                let now = Instant::now(); // We get the current time for timing purposes.
+                let res = extrinsic.dispatch(origin);
+                elapsed += now.elapsed();
+
+                #[cfg(not(feature = "fuzzing"))]
+                println!("    result:     {res:?}");
+
+                let mut post_info = match res {
+                    Ok(p) => p,
+                    Err(p) => p.post_info,
+                };
+
+                let result = res.map(|_| ()).map_err(|e| e.error);
+
+                TxExtension::post_dispatch(
+                    preparation,
+                    &DispatchInfo::default(), // TODO Check if we can do better than default
+                    &mut post_info,
+                    100, // TODO put actual extrisic length
+                    &result,
+                )
+                .expect("Post-dispatch should never fail");
+            }
         }
 
         finalize_block(elapsed);

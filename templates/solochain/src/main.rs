@@ -1,7 +1,7 @@
 #![warn(clippy::pedantic)]
 use codec::{DecodeLimit, Encode};
 use frame_support::{
-    dispatch::GetDispatchInfo,
+    dispatch::{DispatchInfo, GetDispatchInfo},
     pallet_prelude::Weight,
     traits::{IntegrityTest, TryState, TryStateSelect},
     weights::constants::WEIGHT_REF_TIME_PER_SECOND,
@@ -123,10 +123,10 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
             let maybe_validation = ext.validate(
                 RuntimeOrigin::signed(origin.clone()),
                 &extrinsic,
-                &Default::default(), // TODO Check if we can do better than default
-                100,                 // TODO Put actual length of extrinsic
-                Default::default(),  // TODO Check if we can do better than default
-                &TxBaseImplication(0), // TODO Check if we can do better
+                &DispatchInfo::default(), // TODO Check if we can do better than default
+                100,                      // TODO Put actual length of extrinsic
+                Default::default(),       // TODO Check if we can do better than default
+                &TxBaseImplication(0),    // TODO Check if we can do better
                 TransactionSource::Local,
             );
 
@@ -136,7 +136,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                         validation,
                         &origin.clone(),
                         &extrinsic,
-                        &Default::default(),
+                        &DispatchInfo::default(),
                         100,
                     )
                     .expect("Transaction validated, should also prepare correctly");
@@ -157,7 +157,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
 
                 TxExtension::post_dispatch(
                     preparation,
-                    &Default::default(), // TODO Check if we can do better than default
+                    &DispatchInfo::default(), // TODO Check if we can do better than default
                     &mut post_info,
                     100, // TODO put actual extrisic length
                     &result,

@@ -6227,10 +6227,12 @@ checksum = "c33070833c9ee02266356de0c43f723152bd38bd96ddf52c82b3af10c9138b28"
 name = "kitchensink-fuzzer"
 version = "0.1.0"
 dependencies = [
+ "frame-metadata-hash-extension",
  "frame-support",
  "frame-system",
  "kitchensink-runtime",
  "node-primitives",
+ "pallet-asset-conversion-tx-payment",
  "pallet-asset-rewards",
  "pallet-bags-list",
  "pallet-balances",
@@ -6246,10 +6248,12 @@ dependencies = [
  "pallet-referenda",
  "pallet-remark",
  "pallet-revive",
+ "pallet-skip-feeless-payment",
  "pallet-society",
  "pallet-staking",
  "pallet-sudo",
  "pallet-timestamp",
+ "pallet-transaction-payment",
  "pallet-transaction-storage",
  "pallet-treasury",
  "pallet-utility",
