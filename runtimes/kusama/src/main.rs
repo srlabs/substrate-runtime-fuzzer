@@ -113,9 +113,9 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         society: kusama::SocietyConfig::default(),
         transaction_payment: kusama::TransactionPaymentConfig::default(),
         staking_ah_client: kusama::StakingAhClientConfig {
-			operating_mode: pallet_staking_async_ah_client::OperatingMode::Active,
+            operating_mode: pallet_staking_async_ah_client::OperatingMode::Active,
             ..Default::default()
-		},
+        },
     }
     .build_storage()
     .unwrap();
