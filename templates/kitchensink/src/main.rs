@@ -219,7 +219,9 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(&RuntimeCall) -> bool
     })
     | RuntimeCall::Utility(
         pallet_utility::Call::as_derivative { call, .. }
-        | pallet_utility::Call::with_weight { call, .. },
+        | pallet_utility::Call::with_weight { call, .. }
+        | pallet_utility::Call::dispatch_as_fallible { call, .. }
+        | pallet_utility::Call::dispatch_as { call, .. },
     )
     | RuntimeCall::Sudo(
         pallet_sudo::Call::sudo { call, .. }
@@ -228,7 +230,9 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(&RuntimeCall) -> bool
     | RuntimeCall::Whitelist(
         pallet_whitelist::Call::dispatch_whitelisted_call_with_preimage { call, .. },
     )
-    | RuntimeCall::Proxy(pallet_proxy::Call::proxy { call, .. })
+    | RuntimeCall::Proxy(
+        pallet_proxy::Call::proxy { call, .. } | pallet_proxy::Call::proxy_announced { call, .. },
+    )
     | RuntimeCall::Revive(pallet_revive::Call::dispatch_as_fallback_account { call })
     | RuntimeCall::Council(
         pallet_collective::Call::propose { proposal: call, .. }
@@ -339,7 +343,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                 // We end the current block
                 finalize_block(elapsed);
 
-                block += u32::from(lapse) * 393; // 393 * 256 = 100608 which nearly corresponds to a week
+                block += u32::from(lapse); // * 393; // 393 * 256 = 100608 which nearly corresponds to a week
                 weight = Weight::zero();
                 elapsed = Duration::ZERO;
 
