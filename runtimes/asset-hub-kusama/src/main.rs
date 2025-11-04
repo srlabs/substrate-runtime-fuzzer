@@ -37,10 +37,12 @@ fn main() {
 
 fn generate_genesis(accounts: &[AccountId]) -> Storage {
     use asset_hub_kusama_runtime::{
-        AssetsConfig, AuraConfig, AuraExtConfig, BalancesConfig, CollatorSelectionConfig,
-        ForeignAssetsConfig, ParachainInfoConfig, ParachainSystemConfig, PolkadotXcmConfig,
-        PoolAssetsConfig, ReviveConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys,
-        SystemConfig, TransactionPaymentConfig, VestingConfig,
+        AssetsConfig, AuraConfig, AuraExtConfig, BalancesConfig, ClaimsConfig,
+        CollatorSelectionConfig, ForeignAssetsConfig, IndicesConfig,
+        MultiBlockElectionVerifierConfig, NominationPoolsConfig, ParachainInfoConfig,
+        ParachainSystemConfig, PolkadotXcmConfig, PoolAssetsConfig, ReviveConfig,
+        RuntimeGenesisConfig, SessionConfig, SessionKeys, SocietyConfig, StakingConfig,
+        SystemConfig, TransactionPaymentConfig, TreasuryConfig, VestingConfig,
     };
     use sp_consensus_aura::sr25519::AuthorityId as AuraId;
     use sp_runtime::app_crypto::ByteArray;
@@ -79,6 +81,13 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         transaction_payment: TransactionPaymentConfig::default(),
         vesting: VestingConfig::default(),
         revive: ReviveConfig::default(),
+        claims: ClaimsConfig::default(),
+        indices: IndicesConfig::default(),
+        multi_block_election_verifier: MultiBlockElectionVerifierConfig::default(),
+        nomination_pools: NominationPoolsConfig::default(),
+        society: SocietyConfig::default(),
+        staking: StakingConfig::default(),
+        treasury: TreasuryConfig::default(),
     }
     .build_storage()
     .unwrap()

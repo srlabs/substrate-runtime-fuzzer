@@ -111,6 +111,10 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         },
         registrar: polkadot::RegistrarConfig::default(),
         transaction_payment: polkadot::TransactionPaymentConfig::default(),
+        staking_ah_client: polkadot::StakingAhClientConfig {
+			operating_mode: pallet_staking_async_ah_client::OperatingMode::Active,
+            ..Default::default()
+		},
     }
     .build_storage()
     .unwrap();

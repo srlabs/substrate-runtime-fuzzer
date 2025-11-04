@@ -44,6 +44,7 @@ pallet-referenda = { default-features = false , version = "42.0.0" }
 pallet-bags-list = { default-features = false , version = "41.0.0" }
 pallet-treasury = { default-features = false , version = "41.0.0" }
 pallet-vesting = { default-features = false , version = "42.0.0" }
+pallet-staking-async-ah-client = { default-features = false, version = "0.5.0" }
 
 [features]
 default = ["std", "try-runtime"]

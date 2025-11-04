@@ -37,10 +37,12 @@ fn main() {
 
 fn generate_genesis(accounts: &[AccountId]) -> Storage {
     use asset_hub_polkadot_runtime::{
-        AssetsConfig, AuraConfig, AuraExtConfig, BalancesConfig, CollatorSelectionConfig,
-        ForeignAssetsConfig, ParachainInfoConfig, ParachainSystemConfig, PolkadotXcmConfig,
-        PoolAssetsConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys,
-        SystemConfig, TransactionPaymentConfig, VestingConfig,
+        AssetsConfig, AuraConfig, AuraExtConfig, BalancesConfig, ClaimsConfig,
+        CollatorSelectionConfig, ForeignAssetsConfig, IndicesConfig,
+        MultiBlockElectionVerifierConfig, NominationPoolsConfig, ParachainInfoConfig,
+        ParachainSystemConfig, PolkadotXcmConfig, PoolAssetsConfig, RuntimeGenesisConfig,
+        SessionConfig, SessionKeys, StakingConfig, SystemConfig, TransactionPaymentConfig,
+        TreasuryConfig, VestingConfig,
     };
     use sp_consensus_aura::ed25519::AuthorityId as AuraId;
     use sp_runtime::app_crypto::ByteArray;
@@ -78,12 +80,12 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         pool_assets: PoolAssetsConfig::default(),
         transaction_payment: TransactionPaymentConfig::default(),
         vesting: VestingConfig::default(),
-        claims: Default::default(),
-        indices: Default::default(),
-        multi_block_election_verifier: Default::default(),
-        nomination_pools: Default::default(),
-        staking: Default::default(),
-        treasury: Default::default(),
+        claims: ClaimsConfig::default(),
+        indices: IndicesConfig::default(),
+        multi_block_election_verifier: MultiBlockElectionVerifierConfig::default(),
+        nomination_pools: NominationPoolsConfig::default(),
+        staking: StakingConfig::default(),
+        treasury: TreasuryConfig::default(),
     }
     .build_storage()
     .unwrap()
