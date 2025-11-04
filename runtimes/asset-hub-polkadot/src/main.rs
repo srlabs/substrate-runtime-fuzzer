@@ -1,5 +1,5 @@
 #![warn(clippy::pedantic)]
-use asset_hub_kusama_runtime::{
+use asset_hub_polkadot_runtime::{
     AllPalletsWithSystem, Balances, Executive, ParachainSystem, Runtime, RuntimeCall,
     RuntimeOrigin, Timestamp,
 };
@@ -36,13 +36,13 @@ fn main() {
 }
 
 fn generate_genesis(accounts: &[AccountId]) -> Storage {
-    use asset_hub_kusama_runtime::{
+    use asset_hub_polkadot_runtime::{
         AssetsConfig, AuraConfig, AuraExtConfig, BalancesConfig, CollatorSelectionConfig,
         ForeignAssetsConfig, ParachainInfoConfig, ParachainSystemConfig, PolkadotXcmConfig,
-        PoolAssetsConfig, ReviveConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys,
+        PoolAssetsConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys,
         SystemConfig, TransactionPaymentConfig, VestingConfig,
     };
-    use sp_consensus_aura::sr25519::AuthorityId as AuraId;
+    use sp_consensus_aura::ed25519::AuthorityId as AuraId;
     use sp_runtime::app_crypto::ByteArray;
     use sp_runtime::BuildStorage;
 
@@ -78,7 +78,12 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         pool_assets: PoolAssetsConfig::default(),
         transaction_payment: TransactionPaymentConfig::default(),
         vesting: VestingConfig::default(),
-        revive: ReviveConfig::default(),
+        claims: Default::default(),
+        indices: Default::default(),
+        multi_block_election_verifier: Default::default(),
+        nomination_pools: Default::default(),
+        staking: Default::default(),
+        treasury: Default::default(),
     }
     .build_storage()
     .unwrap()
