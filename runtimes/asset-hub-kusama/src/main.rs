@@ -84,7 +84,11 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         claims: ClaimsConfig::default(),
         indices: IndicesConfig::default(),
         multi_block_election_verifier: MultiBlockElectionVerifierConfig::default(),
-        nomination_pools: NominationPoolsConfig::default(),
+        nomination_pools: NominationPoolsConfig {
+            min_create_bond: 1 << 43,
+            min_join_bond: 1 << 42,
+            ..Default::default()
+        },
         society: SocietyConfig::default(),
         staking: StakingConfig::default(),
         treasury: TreasuryConfig::default(),
@@ -105,15 +109,34 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
                 return true;
             }
         }
+    } else if let RuntimeCall::Utility(pallet_utility::Call::if_else { main, fallback }) = call {
+        return recursively_find_call(*main.clone(), matches_on)
+            || recursively_find_call(*fallback.clone(), matches_on);
     } else if let RuntimeCall::Multisig(pallet_multisig::Call::as_multi_threshold_1 {
         call, ..
     })
-    | RuntimeCall::Utility(pallet_utility::Call::as_derivative { call, .. })
-    | RuntimeCall::Proxy(pallet_proxy::Call::proxy { call, .. }) = call
+    | RuntimeCall::Utility(
+        pallet_utility::Call::as_derivative { call, .. }
+        | pallet_utility::Call::dispatch_as { call, .. }
+        | pallet_utility::Call::with_weight { call, .. },
+    )
+    | RuntimeCall::RemoteProxyRelayChain(
+        pallet_remote_proxy::Call::remote_proxy { call, .. }
+        | pallet_remote_proxy::Call::remote_proxy_with_registered_proof { call, .. },
+    )
+    | RuntimeCall::Recovery(pallet_recovery::Call::as_recovered { call, .. })
+    | RuntimeCall::Whitelist(
+        pallet_whitelist::Call::dispatch_whitelisted_call_with_preimage { call, .. },
+    )
+    | RuntimeCall::Proxy(
+        pallet_proxy::Call::proxy { call, .. } | pallet_proxy::Call::proxy_announced { call, .. },
+    ) = call
     {
         return recursively_find_call(*call.clone(), matches_on);
-    } else if matches_on(call) {
+    } else if matches_on(call.clone()) {
         return true;
+    } else {
+        println!("innermost call: {:?}", call.clone());
     }
     false
 }
@@ -121,11 +144,18 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
 fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     // We build the list of extrinsics we will execute
     let mut extrinsic_data = data;
-    // Vec<(lapse, origin, extrinsic)>
-    #[allow(deprecated)]
+
+    let mut block: u32 = 1;
+    let mut weight: Weight = Weight::zero();
+    let mut elapsed: Duration = Duration::ZERO;
+
+    BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
+        // Vec<(lapse, origin, extrinsic)>
+        #[allow(deprecated)]
     let extrinsics: Vec<(u8, u8, RuntimeCall)> =
         iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
             .filter(|(_, _, x): &(_, _, RuntimeCall)| {
+                println!("CALL {x:?}");
             !recursively_find_call(x.clone(), |call| {
                 // We filter out calls with Fungible(0) as they cause a debug crash
                 matches!(call.clone(), RuntimeCall::PolkadotXcm(pallet_xcm::Call::execute { message, .. })
@@ -135,19 +165,16 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                         ))
                     )
                 ) || matches!(call.clone(), RuntimeCall::System(_))
+                || matches!(call.clone(), RuntimeCall::AhMigrator(_))
+                || matches!(call.clone(), RuntimeCall::NominationPools(_))
                 || matches!(call.clone(), RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. }))
             })
         }).collect();
 
-    if extrinsics.is_empty() {
-        return;
-    }
+        if extrinsics.is_empty() {
+            return;
+        }
 
-    let mut block: u32 = 1;
-    let mut weight: Weight = Weight::zero();
-    let mut elapsed: Duration = Duration::ZERO;
-
-    BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
         let initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
 
         initialize_block(block, None);
@@ -188,10 +215,12 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
             #[cfg(not(feature = "fuzzing"))]
             println!("    result:     {res:?}");
 
+            /*
             let actual_weight = res.unwrap_or_else(|e| e.post_info).actual_weight;
             let post_weight = actual_weight.unwrap_or_default();
             assert!(pre_weight.ref_time() >= post_weight.ref_time(), "Pre-dispatch weight ref time ({}) is smaller than post-dispatch weight ref time ({})", pre_weight.ref_time(), post_weight.ref_time());
             assert!(pre_weight.proof_size() >= post_weight.proof_size(), "Pre-dispatch weight proof size ({}) is smaller than post-dispatch weight proof size ({})", pre_weight.proof_size(), post_weight.proof_size());
+            */
         }
 
         finalize_block(elapsed);

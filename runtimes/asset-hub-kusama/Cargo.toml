@@ -7,7 +7,7 @@ publish = false
 [dependencies]
 ziggy = { version = "1.3.2", default-features = false }
 
-asset-hub-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.0", default-features = false }
+asset-hub-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
 staging-xcm = { default-features = false , version = "18.0.0" }
 
 parachains-common = { default-features = false , version = "24.0.0" }
@@ -30,6 +30,9 @@ pallet-utility = { default-features = false, version = "42.0.0" }
 pallet-proxy = { default-features = false, version = "42.0.0" }
 pallet-multisig = { default-features = false, version = "42.0.0" }
 pallet-vesting = { default-features = false, version = "42.0.0" }
+pallet-remote-proxy = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
+pallet-recovery = { default-features = false, version = "42.0.0" }
+pallet-whitelist = { default-features = false, version = "41.0.0" }
 
 cumulus-primitives-core = { default-features = false , version = "0.20.0" }
 cumulus-primitives-parachain-inherent = { default-features = false , version = "0.20.0" }

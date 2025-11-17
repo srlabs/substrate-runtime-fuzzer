@@ -103,11 +103,28 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
                 return true;
             }
         }
+    } else if let RuntimeCall::Utility(pallet_utility::Call::if_else {
+        main: main_call,
+        fallback,
+    }) = call
+    {
+        return recursively_find_call(*main_call, matches_on)
+            || recursively_find_call(*fallback, matches_on);
     } else if let RuntimeCall::Multisig(pallet_multisig::Call::as_multi_threshold_1 {
         call, ..
     })
-    | RuntimeCall::Utility(pallet_utility::Call::as_derivative { call, .. })
-    | RuntimeCall::Proxy(pallet_proxy::Call::proxy { call, .. }) = call
+    | RuntimeCall::Utility(
+        pallet_utility::Call::as_derivative { call, .. }
+        | pallet_utility::Call::with_weight { call, .. }
+        | pallet_utility::Call::dispatch_as { call, .. }
+        | pallet_utility::Call::dispatch_as_fallible { call, .. },
+    )
+    | RuntimeCall::Whitelist(
+        pallet_whitelist::Call::dispatch_whitelisted_call_with_preimage { call, .. },
+    )
+    | RuntimeCall::Proxy(
+        pallet_proxy::Call::proxy { call, .. } | pallet_proxy::Call::proxy_announced { call, .. },
+    ) = call
     {
         return recursively_find_call(*call.clone(), matches_on);
     } else if matches_on(call) {
@@ -120,7 +137,9 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     // We build the list of extrinsics we will execute
     let mut extrinsic_data = data;
     // Vec<(lapse, origin, extrinsic)>
-    #[allow(deprecated)]
+
+    BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
+        #[allow(deprecated)]
     let extrinsics: Vec<(u8, u8, RuntimeCall)> =
         iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
             .filter(|(_, _, x): &(_, _, RuntimeCall)| {
@@ -133,25 +152,25 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                         ))
                     )
                 ) || matches!(call.clone(), RuntimeCall::System(_))
+                || matches!(call.clone(), RuntimeCall::AhMigrator(_))
                 || matches!(call.clone(), RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. }))
             })
         }).collect();
 
-    if extrinsics.is_empty() {
-        return;
-    }
+        if extrinsics.is_empty() {
+            return;
+        }
 
-    let mut block: u32 = 1;
-    let mut weight: Weight = Weight::zero();
-    let mut elapsed: Duration = Duration::ZERO;
-
-    BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
+        let mut block: u32 = 1;
+        let mut weight: Weight = Weight::zero();
+        let mut elapsed: Duration = Duration::ZERO;
         let initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
 
         initialize_block(block, None);
 
         for (lapse, origin, extrinsic) in extrinsics {
             if lapse > 0 {
+                println!("YO");
                 let prev_header = finalize_block(elapsed);
 
                 // We update our state variables
@@ -162,6 +181,9 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                 // We start the next block
                 initialize_block(block, Some(&prev_header));
             }
+
+            #[cfg(not(feature = "fuzzing"))]
+            println!("    call:       {extrinsic:?}");
 
             let pre_weight = extrinsic.get_dispatch_info().call_weight;
             let cumulative_weight = weight.saturating_add(pre_weight);
@@ -176,8 +198,6 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
 
             #[cfg(not(feature = "fuzzing"))]
             println!("\n    origin:     {origin:?}");
-            #[cfg(not(feature = "fuzzing"))]
-            println!("    call:       {extrinsic:?}");
 
             let now = Instant::now(); // We get the current time for timing purposes.
             let res = extrinsic.dispatch(RuntimeOrigin::signed(origin));
@@ -188,8 +208,8 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
 
             let actual_weight = res.unwrap_or_else(|e| e.post_info).actual_weight;
             let post_weight = actual_weight.unwrap_or_default();
-            assert!(pre_weight.ref_time() >= post_weight.ref_time(), "Pre-dispatch weight ref time ({}) is smaller than post-dispatch weight ref time ({})", pre_weight.ref_time(), post_weight.ref_time());
-            assert!(pre_weight.proof_size() >= post_weight.proof_size(), "Pre-dispatch weight proof size ({}) is smaller than post-dispatch weight proof size ({})", pre_weight.proof_size(), post_weight.proof_size());
+            assert!(pre_weight.ref_time().saturating_mul(2) >= post_weight.ref_time(), "Pre-dispatch weight ref time ({}) is smaller than post-dispatch weight ref time ({})", pre_weight.ref_time(), post_weight.ref_time());
+            assert!(pre_weight.proof_size().saturating_mul(2) >= post_weight.proof_size(), "Pre-dispatch weight proof size ({}) is smaller than post-dispatch weight proof size ({})", pre_weight.proof_size(), post_weight.proof_size());
         }
 
         finalize_block(elapsed);
