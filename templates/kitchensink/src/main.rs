@@ -318,8 +318,8 @@ fn call_filter(call: &RuntimeCall) -> bool {
 fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     // We build the list of extrinsics we will execute
     let mut extrinsic_data = data;
-    // Vec<(lapse, origin, extrinsic)>
-    let extrinsics: Vec<(u8, u8, RuntimeCall)> =
+    // Vec<(next_block, origin, extrinsic)>
+    let extrinsics: Vec<(bool, u8, RuntimeCall)> =
         iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
             .filter(|(_, _, x): &(_, _, RuntimeCall)| {
                 !recursively_find_call(x.clone(), call_filter)
@@ -338,12 +338,12 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
 
         initialize_block(block);
 
-        for (lapse, origin, extrinsic) in extrinsics {
-            if lapse > 0 {
+        for (next_block, origin, extrinsic) in extrinsics {
+            if next_block {
                 // We end the current block
                 finalize_block(elapsed);
 
-                block += u32::from(lapse); // * 393; // 393 * 256 = 100608 which nearly corresponds to a week
+                block += 1;
                 weight = Weight::zero();
                 elapsed = Duration::ZERO;
 
