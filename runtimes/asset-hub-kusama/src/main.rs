@@ -151,25 +151,19 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
 
     BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
         // Vec<(lapse, origin, extrinsic)>
-        #[allow(deprecated)]
-    let extrinsics: Vec<(u8, u8, RuntimeCall)> =
-        iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
-            .filter(|(_, _, x): &(_, _, RuntimeCall)| {
-                println!("CALL {x:?}");
-            !recursively_find_call(x.clone(), |call| {
-                // We filter out calls with Fungible(0) as they cause a debug crash
-                matches!(call.clone(), RuntimeCall::PolkadotXcm(pallet_xcm::Call::execute { message, .. })
-                    if matches!(message.as_ref(), staging_xcm::VersionedXcm::V3(staging_xcm::v3::Xcm(msg))
-                        if msg.iter().any(|m| matches!(m, staging_xcm::opaque::v3::prelude::BuyExecution { fees: staging_xcm::v3::MultiAsset { fun, .. }, .. }
-                            if *fun == staging_xcm::v3::Fungibility::Fungible(0)
-                        ))
-                    )
-                ) || matches!(call.clone(), RuntimeCall::System(_))
-                || matches!(call.clone(), RuntimeCall::AhMigrator(_))
-                || matches!(call.clone(), RuntimeCall::NominationPools(_))
-                || matches!(call.clone(), RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. }))
-            })
-        }).collect();
+        let extrinsics: Vec<(u8, u8, RuntimeCall)> =
+            iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
+                .filter(|(_, _, x): &(_, _, RuntimeCall)| {
+                    !recursively_find_call(x.clone(), |call| {
+                        matches!(call.clone(), RuntimeCall::AhMigrator(_))
+                            || matches!(call.clone(), RuntimeCall::NominationPools(_))
+                            || matches!(
+                                call.clone(),
+                                RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
+                            )
+                    })
+                })
+                .collect();
 
         if extrinsics.is_empty() {
             return;
