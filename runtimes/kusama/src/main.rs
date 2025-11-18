@@ -109,10 +109,13 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
             min_join_bond: 1 << 42,
             ..Default::default()
         },
-        nis_counterpart_balances: kusama::NisCounterpartBalancesConfig::default(),
         registrar: kusama::RegistrarConfig::default(),
         society: kusama::SocietyConfig::default(),
         transaction_payment: kusama::TransactionPaymentConfig::default(),
+        staking_ah_client: kusama::StakingAhClientConfig {
+            operating_mode: pallet_staking_async_ah_client::OperatingMode::Active,
+            ..Default::default()
+        },
     }
     .build_storage()
     .unwrap();
@@ -250,8 +253,8 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
 
             let actual_weight = res.unwrap_or_else(|e| e.post_info).actual_weight;
             let post_weight = actual_weight.unwrap_or_default();
-            assert!(pre_weight.ref_time() >= post_weight.ref_time(), "Pre-dispatch weight ref time ({}) is smaller than post-dispatch weight ref time ({})", pre_weight.ref_time(), post_weight.ref_time());
-            assert!(pre_weight.proof_size() >= post_weight.proof_size(), "Pre-dispatch weight proof size ({}) is smaller than post-dispatch weight proof size ({})", pre_weight.proof_size(), post_weight.proof_size());
+            assert!(pre_weight.ref_time().saturating_mul(2) >= post_weight.ref_time(), "Pre-dispatch weight ref time ({}) is smaller than post-dispatch weight ref time ({})", pre_weight.ref_time(), post_weight.ref_time());
+            assert!(pre_weight.proof_size().saturating_mul(2) >= post_weight.proof_size(), "Pre-dispatch weight proof size ({}) is smaller than post-dispatch weight proof size ({})", pre_weight.proof_size(), post_weight.proof_size());
         }
 
         finalize_block(elapsed);

@@ -1,5 +1,5 @@
 #![warn(clippy::pedantic)]
-use asset_hub_kusama_runtime::{
+use asset_hub_polkadot_runtime::{
     AllPalletsWithSystem, Balances, Executive, ParachainSystem, Runtime, RuntimeCall,
     RuntimeOrigin, Timestamp,
 };
@@ -36,15 +36,15 @@ fn main() {
 }
 
 fn generate_genesis(accounts: &[AccountId]) -> Storage {
-    use asset_hub_kusama_runtime::{
+    use asset_hub_polkadot_runtime::{
         AssetsConfig, AuraConfig, AuraExtConfig, BalancesConfig, ClaimsConfig,
         CollatorSelectionConfig, ForeignAssetsConfig, IndicesConfig,
         MultiBlockElectionVerifierConfig, NominationPoolsConfig, ParachainInfoConfig,
-        ParachainSystemConfig, PolkadotXcmConfig, PoolAssetsConfig, ReviveConfig,
-        RuntimeGenesisConfig, SessionConfig, SessionKeys, SocietyConfig, StakingConfig,
-        SystemConfig, TransactionPaymentConfig, TreasuryConfig, VestingConfig,
+        ParachainSystemConfig, PolkadotXcmConfig, PoolAssetsConfig, RuntimeGenesisConfig,
+        SessionConfig, SessionKeys, StakingConfig, SystemConfig, TransactionPaymentConfig,
+        TreasuryConfig, VestingConfig,
     };
-    use sp_consensus_aura::sr25519::AuthorityId as AuraId;
+    use sp_consensus_aura::ed25519::AuthorityId as AuraId;
     use sp_runtime::app_crypto::ByteArray;
     use sp_runtime::BuildStorage;
 
@@ -80,16 +80,10 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         pool_assets: PoolAssetsConfig::default(),
         transaction_payment: TransactionPaymentConfig::default(),
         vesting: VestingConfig::default(),
-        revive: ReviveConfig::default(),
         claims: ClaimsConfig::default(),
         indices: IndicesConfig::default(),
         multi_block_election_verifier: MultiBlockElectionVerifierConfig::default(),
-        nomination_pools: NominationPoolsConfig {
-            min_create_bond: 1 << 43,
-            min_join_bond: 1 << 42,
-            ..Default::default()
-        },
-        society: SocietyConfig::default(),
+        nomination_pools: NominationPoolsConfig::default(),
         staking: StakingConfig::default(),
         treasury: TreasuryConfig::default(),
     }
@@ -109,22 +103,22 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
                 return true;
             }
         }
-    } else if let RuntimeCall::Utility(pallet_utility::Call::if_else { main, fallback }) = call {
-        return recursively_find_call(*main.clone(), matches_on)
-            || recursively_find_call(*fallback.clone(), matches_on);
+    } else if let RuntimeCall::Utility(pallet_utility::Call::if_else {
+        main: main_call,
+        fallback,
+    }) = call
+    {
+        return recursively_find_call(*main_call, matches_on)
+            || recursively_find_call(*fallback, matches_on);
     } else if let RuntimeCall::Multisig(pallet_multisig::Call::as_multi_threshold_1 {
         call, ..
     })
     | RuntimeCall::Utility(
         pallet_utility::Call::as_derivative { call, .. }
+        | pallet_utility::Call::with_weight { call, .. }
         | pallet_utility::Call::dispatch_as { call, .. }
-        | pallet_utility::Call::with_weight { call, .. },
+        | pallet_utility::Call::dispatch_as_fallible { call, .. },
     )
-    | RuntimeCall::RemoteProxyRelayChain(
-        pallet_remote_proxy::Call::remote_proxy { call, .. }
-        | pallet_remote_proxy::Call::remote_proxy_with_registered_proof { call, .. },
-    )
-    | RuntimeCall::Recovery(pallet_recovery::Call::as_recovered { call, .. })
     | RuntimeCall::Whitelist(
         pallet_whitelist::Call::dispatch_whitelisted_call_with_preimage { call, .. },
     )
@@ -133,10 +127,8 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
     ) = call
     {
         return recursively_find_call(*call.clone(), matches_on);
-    } else if matches_on(call.clone()) {
+    } else if matches_on(call) {
         return true;
-    } else {
-        println!("innermost call: {:?}", call.clone());
     }
     false
 }
@@ -144,18 +136,13 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
 fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     // We build the list of extrinsics we will execute
     let mut extrinsic_data = data;
-
-    let mut block: u32 = 1;
-    let mut weight: Weight = Weight::zero();
-    let mut elapsed: Duration = Duration::ZERO;
+    // Vec<(lapse, origin, extrinsic)>
 
     BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
-        // Vec<(lapse, origin, extrinsic)>
         #[allow(deprecated)]
     let extrinsics: Vec<(u8, u8, RuntimeCall)> =
         iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
             .filter(|(_, _, x): &(_, _, RuntimeCall)| {
-                println!("CALL {x:?}");
             !recursively_find_call(x.clone(), |call| {
                 // We filter out calls with Fungible(0) as they cause a debug crash
                 matches!(call.clone(), RuntimeCall::PolkadotXcm(pallet_xcm::Call::execute { message, .. })
@@ -166,7 +153,6 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                     )
                 ) || matches!(call.clone(), RuntimeCall::System(_))
                 || matches!(call.clone(), RuntimeCall::AhMigrator(_))
-                || matches!(call.clone(), RuntimeCall::NominationPools(_))
                 || matches!(call.clone(), RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. }))
             })
         }).collect();
@@ -175,12 +161,16 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
             return;
         }
 
+        let mut block: u32 = 1;
+        let mut weight: Weight = Weight::zero();
+        let mut elapsed: Duration = Duration::ZERO;
         let initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
 
         initialize_block(block, None);
 
         for (lapse, origin, extrinsic) in extrinsics {
             if lapse > 0 {
+                println!("YO");
                 let prev_header = finalize_block(elapsed);
 
                 // We update our state variables
@@ -191,6 +181,9 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                 // We start the next block
                 initialize_block(block, Some(&prev_header));
             }
+
+            #[cfg(not(feature = "fuzzing"))]
+            println!("    call:       {extrinsic:?}");
 
             let pre_weight = extrinsic.get_dispatch_info().call_weight;
             let cumulative_weight = weight.saturating_add(pre_weight);
@@ -205,8 +198,6 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
 
             #[cfg(not(feature = "fuzzing"))]
             println!("\n    origin:     {origin:?}");
-            #[cfg(not(feature = "fuzzing"))]
-            println!("    call:       {extrinsic:?}");
 
             let now = Instant::now(); // We get the current time for timing purposes.
             let res = extrinsic.dispatch(RuntimeOrigin::signed(origin));

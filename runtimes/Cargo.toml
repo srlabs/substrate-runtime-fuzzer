@@ -9,6 +9,7 @@ resolver = "2"
 members = [
     "kusama",
     "asset-hub-kusama",
+    "asset-hub-polkadot",
     "coretime-kusama",
     "polkadot",
 ]
