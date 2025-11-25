@@ -12,7 +12,13 @@ fn main() {
             println!("Found extrinsic: {extrinsic:?}");
             let original_extrinsic_data = &data[..data.len() - extrinsic_data.len()];
             let re_encoding = Encode::encode(&extrinsic);
-            assert_eq!(original_extrinsic_data, re_encoding);
+            if original_extrinsic_data != re_encoding {
+                #[cfg(not(feature = "fuzzing"))]
+                println!("Original  : {}", hex::encode((original_extrinsic_data));
+                #[cfg(not(feature = "fuzzing"))]
+                println!("Reencoding: {}", hex::encode((re_encoding));
+                panic!("Original encoding does not match re-encoding:")
+            }
             #[cfg(not(feature = "fuzzing"))]
             println!("Original encoding matches re-encoding");
         }

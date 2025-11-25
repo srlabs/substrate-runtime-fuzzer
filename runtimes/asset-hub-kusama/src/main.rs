@@ -156,7 +156,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                 .filter(|(_, _, x): &(_, _, RuntimeCall)| {
                     !recursively_find_call(x.clone(), |call| {
                         matches!(call.clone(), RuntimeCall::AhMigrator(_))
-                            || matches!(call.clone(), RuntimeCall::NominationPools(_))
+                            // || matches!(call.clone(), RuntimeCall::NominationPools(_))
                             || matches!(
                                 call.clone(),
                                 RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })

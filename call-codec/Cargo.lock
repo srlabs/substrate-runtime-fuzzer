@@ -1644,6 +1644,7 @@ dependencies = [
 name = "call-codec"
 version = "0.1.0"
 dependencies = [
+ "hex",
  "kitchensink-runtime",
  "parity-scale-codec",
  "ziggy",
