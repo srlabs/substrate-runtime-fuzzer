@@ -4,17 +4,18 @@ use polkadot_runtime::RuntimeCall;
 
 // for kitchensink
 // const BLOCKLIST: [[u8; 2]; 1] = [[0x0b, 0x04]];
+// for polkadot
+const BLOCKLIST: [[u8; 2]; 2] = [[0x07, 0x04], [0x36, 0x00]];
+
 
 fn main() {
     ziggy::fuzz!(|data: &[u8]| {
         if data.len() < 2 {
             return;
         }
-        /*
         if BLOCKLIST.iter().any(|b| data.windows(2).any(|w| w == b)) {
             return;
         }
-        */
         let mut extrinsic_data = data;
         // TODO Try to remove the depth limit
         let maybe_extrinsic: Result<RuntimeCall, codec::Error> =
