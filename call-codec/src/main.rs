@@ -1,12 +1,14 @@
 use codec::{DecodeLimit, Encode};
 // use kitchensink_runtime::RuntimeCall;
-use polkadot_runtime::RuntimeCall;
+// use polkadot_runtime::RuntimeCall;
+use staging_kusama_runtime::RuntimeCall;
 
 // for kitchensink
 // const BLOCKLIST: [[u8; 2]; 1] = [[0x0b, 0x04]];
 // for polkadot
-const BLOCKLIST: [[u8; 2]; 2] = [[0x07, 0x04], [0x36, 0x00]];
-
+// const BLOCKLIST: [[u8; 2]; 2] = [[0x07, 0x04], [0x36, 0x00]];
+// for kusama
+const BLOCKLIST: [[u8; 2]; 1] = [[0x06, 0x04]];
 
 fn main() {
     ziggy::fuzz!(|data: &[u8]| {
