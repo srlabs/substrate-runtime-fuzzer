@@ -1,0 +1,50 @@
+[package]
+name = "runtime-call-fuzzer"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+
+ziggy = { workspace = true }
+
+codec = { workspace = true }
+
+polkadot-runtime = { workspace = true }
+asset-hub-polkadot-runtime = { workspace = true }
+# bridge-hub-polkadot-runtime = { workspace = true }
+collectives-polkadot-runtime = { workspace = true }
+coretime-polkadot-runtime = { workspace = true }
+people-polkadot-runtime = { workspace = true }
+
+staging-kusama-runtime = { workspace = true }
+asset-hub-kusama-runtime = { workspace = true }
+# bridge-hub-kusama-runtime = { workspace = true }
+coretime-kusama-runtime = { workspace = true }
+# encointer-kusama-runtime = { workspace = true }
+glutton-kusama-runtime = { workspace = true }
+people-kusama-runtime = { workspace = true }
+
+sp-state-machine = { workspace = true }
+# sp-io = { workspace = true }
+
+hex = { workspace = true }
+
+[features]
+default = ["std"]
+fuzzing = []
+std = [
+    "polkadot-runtime/std",
+    "asset-hub-polkadot-runtime/std",
+    # "bridge-hub-polkadot-runtime/std",
+    "collectives-polkadot-runtime/std",
+    "coretime-polkadot-runtime/std",
+    "people-polkadot-runtime/std",
+    "staging-kusama-runtime/std",
+    "asset-hub-kusama-runtime/std",
+    # "bridge-hub-kusama-runtime/std",
+    "coretime-kusama-runtime/std",
+    # "encointer-kusama-runtime/std",
+    "glutton-kusama-runtime/std",
+    "people-kusama-runtime/std",
+	"codec/std",
+]

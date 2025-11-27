@@ -12,4 +12,30 @@ members = [
     "asset-hub-polkadot",
     "coretime-kusama",
     "polkadot",
+    "runtime-call",
 ]
+
+[workspace.dependencies]
+
+ziggy = { version = "1.3.5", default-features = false }
+
+polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
+asset-hub-polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
+# bridge-hub-polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
+collectives-polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
+coretime-polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
+people-polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
+
+staging-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
+asset-hub-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
+# bridge-hub-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
+coretime-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
+# encointer-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
+glutton-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
+people-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
+
+sp-state-machine = { version = "0.47.0", default-features = false }
+# sp-io = { version = "42.0.0", default-features = false }
+
+codec = { version = "3.7.5", features = ["derive"], default-features = false, package = "parity-scale-codec" }
+hex = "0.4.3"
