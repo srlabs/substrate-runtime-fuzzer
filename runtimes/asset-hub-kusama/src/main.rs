@@ -151,17 +151,19 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
 
     BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
         // Vec<(lapse, origin, extrinsic)>
-        #[allow(deprecated)]
-    let extrinsics: Vec<(u8, u8, RuntimeCall)> =
-        iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
-            .filter(|(_, _, x): &(_, _, RuntimeCall)| {
-                println!("CALL {x:?}");
-            !recursively_find_call(x.clone(), |call| {
-                matches!(call.clone(), RuntimeCall::NominationPools(_))
-                || matches!(call.clone(), RuntimeCall::AhMigrator(_))
-                || matches!(call.clone(), RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. }))
-            })
-        }).collect();
+        let extrinsics: Vec<(u8, u8, RuntimeCall)> =
+            iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
+                .filter(|(_, _, x): &(_, _, RuntimeCall)| {
+                    !recursively_find_call(x.clone(), |call| {
+                        matches!(call.clone(), RuntimeCall::AhMigrator(_))
+                            || matches!(call.clone(), RuntimeCall::NominationPools(_))
+                            || matches!(
+                                call.clone(),
+                                RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
+                            )
+                    })
+                })
+                .collect();
 
         if extrinsics.is_empty() {
             return;
