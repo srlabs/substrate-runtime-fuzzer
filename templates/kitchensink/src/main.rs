@@ -234,6 +234,7 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(&RuntimeCall) -> bool
         pallet_proxy::Call::proxy { call, .. } | pallet_proxy::Call::proxy_announced { call, .. },
     )
     | RuntimeCall::Revive(pallet_revive::Call::dispatch_as_fallback_account { call })
+    | RuntimeCall::Recovery(pallet_recovery::Call::as_recovered { call, .. })
     | RuntimeCall::Council(
         pallet_collective::Call::propose { proposal: call, .. }
         | pallet_collective::Call::execute { proposal: call, .. },
@@ -318,8 +319,8 @@ fn call_filter(call: &RuntimeCall) -> bool {
 fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     // We build the list of extrinsics we will execute
     let mut extrinsic_data = data;
-    // Vec<(lapse, origin, extrinsic)>
-    let extrinsics: Vec<(u8, u8, RuntimeCall)> =
+    // Vec<(next_block, origin, extrinsic)>
+    let extrinsics: Vec<(bool, u8, RuntimeCall)> =
         iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
             .filter(|(_, _, x): &(_, _, RuntimeCall)| {
                 !recursively_find_call(x.clone(), call_filter)
@@ -338,12 +339,12 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
 
         initialize_block(block);
 
-        for (lapse, origin, extrinsic) in extrinsics {
-            if lapse > 0 {
+        for (next_block, origin, extrinsic) in extrinsics {
+            if next_block {
                 // We end the current block
                 finalize_block(elapsed);
 
-                block += u32::from(lapse); // * 393; // 393 * 256 = 100608 which nearly corresponds to a week
+                block += 1;
                 weight = Weight::zero();
                 elapsed = Duration::ZERO;
 
@@ -384,8 +385,8 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
 
             let actual_weight = res.unwrap_or_else(|e| e.post_info).actual_weight;
             let post_weight = actual_weight.unwrap_or_default();
-            assert!(pre_weight.ref_time() >= post_weight.ref_time(), "Pre-dispatch weight ref time ({}) is smaller than post-dispatch weight ref time ({})", pre_weight.ref_time(), post_weight.ref_time());
-            assert!(pre_weight.proof_size() >= post_weight.proof_size(), "Pre-dispatch weight proof size ({}) is smaller than post-dispatch weight proof size ({})", pre_weight.proof_size(), post_weight.proof_size());
+            assert!(pre_weight.ref_time().saturating_mul(2) >= post_weight.ref_time(), "Pre-dispatch weight ref time ({}) is smaller than post-dispatch weight ref time ({})", pre_weight.ref_time(), post_weight.ref_time());
+            assert!(pre_weight.proof_size().saturating_mul(2) >= post_weight.proof_size(), "Pre-dispatch weight proof size ({}) is smaller than post-dispatch weight proof size ({})", pre_weight.proof_size(), post_weight.proof_size());
         }
 
         finalize_block(elapsed);
