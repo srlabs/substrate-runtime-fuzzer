@@ -806,6 +806,7 @@ dependencies = [
  "parity-scale-codec",
  "polkadot-parachain-primitives",
  "polkadot-primitives",
+ "polkadot-runtime-constants",
  "sp-consensus-aura",
  "sp-core",
  "sp-runtime",

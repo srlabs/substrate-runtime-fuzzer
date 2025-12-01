@@ -5,42 +5,43 @@ edition = "2021"
 publish = false
 
 [dependencies]
-ziggy = { version = "1.3.2", default-features = false }
+ziggy = { workspace = true }
 
-asset-hub-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
-staging-xcm = { default-features = false , version = "18.0.0" }
+asset-hub-kusama-runtime = { workspace = true }
 
-parachains-common = { default-features = false , version = "24.0.0" }
+staging-xcm = { workspace = true }
 
-codec = { package = "parity-scale-codec", version = "3.7.5", default-features = false, features = ["derive", "max-encoded-len"] }
+parachains-common = { workspace = true }
 
-frame-support = { default-features = false, version = "42.0.0" }
-frame-system = { default-features = false, version = "42.0.0" }
+codec = { workspace = true }
 
-sp-runtime = { default-features = false, version = "43.0.0" }
-sp-state-machine = { default-features = false, version = "0.47.0" }
-sp-consensus-aura = { default-features = false, version = "0.44.0" }
-sp-trie = { default-features = false, version = "41.0.0" }
-sp-core = { default-features = false, version = "38.0.0" }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
 
-pallet-timestamp = { default-features = false, version = "41.0.0" }
-pallet-balances = { default-features = false, version = "43.0.1" }
-pallet-xcm = { default-features = false, version = "22.0.1" }
-pallet-utility = { default-features = false, version = "42.0.0" }
-pallet-proxy = { default-features = false, version = "42.0.0" }
-pallet-multisig = { default-features = false, version = "42.0.0" }
-pallet-vesting = { default-features = false, version = "42.0.0" }
-pallet-remote-proxy = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
-pallet-recovery = { default-features = false, version = "42.0.0" }
-pallet-whitelist = { default-features = false, version = "41.0.0" }
+sp-runtime = { workspace = true }
+sp-state-machine = { workspace = true }
+sp-consensus-aura = { workspace = true }
+sp-trie = { workspace = true }
+sp-core = { workspace = true }
 
-cumulus-primitives-core = { default-features = false , version = "0.20.0" }
-cumulus-primitives-parachain-inherent = { default-features = false , version = "0.20.0" }
-cumulus-pallet-parachain-system = { default-features = false, version = "0.22.1" }
-cumulus-test-relay-sproof-builder = { default-features = false , version = "0.21.0" }
+pallet-timestamp = { workspace = true }
+pallet-balances = { workspace = true }
+pallet-xcm = { workspace = true }
+pallet-utility = { workspace = true }
+pallet-proxy = { workspace = true }
+pallet-multisig = { workspace = true }
+pallet-vesting = { workspace = true }
+pallet-remote-proxy = { workspace = true }
+pallet-recovery = { workspace = true }
+pallet-whitelist = { workspace = true }
 
-polkadot-parachain-primitives = { default-features = false, version = "18.0.0" }
-polkadot-primitives = { default-features = false, version = "20.0.0" }
+cumulus-primitives-core = { workspace = true }
+cumulus-primitives-parachain-inherent = { workspace = true }
+cumulus-pallet-parachain-system = { workspace = true }
+cumulus-test-relay-sproof-builder = { workspace = true }
+
+polkadot-parachain-primitives = { workspace = true }
+polkadot-primitives = { workspace = true }
 
 [features]
 default = ["std", "try-runtime"]
