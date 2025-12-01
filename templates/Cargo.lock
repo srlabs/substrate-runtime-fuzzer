@@ -6394,6 +6394,7 @@ dependencies = [
  "pallet-meta-tx",
  "pallet-multisig",
  "pallet-proxy",
+ "pallet-recovery",
  "pallet-referenda",
  "pallet-remark",
  "pallet-revive",

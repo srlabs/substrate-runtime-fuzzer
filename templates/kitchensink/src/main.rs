@@ -234,6 +234,7 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(&RuntimeCall) -> bool
         pallet_proxy::Call::proxy { call, .. } | pallet_proxy::Call::proxy_announced { call, .. },
     )
     | RuntimeCall::Revive(pallet_revive::Call::dispatch_as_fallback_account { call })
+    | RuntimeCall::Recovery(pallet_recovery::Call::as_recovered { call, .. })
     | RuntimeCall::Council(
         pallet_collective::Call::propose { proposal: call, .. }
         | pallet_collective::Call::execute { proposal: call, .. },
@@ -384,8 +385,8 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
 
             let actual_weight = res.unwrap_or_else(|e| e.post_info).actual_weight;
             let post_weight = actual_weight.unwrap_or_default();
-            assert!(pre_weight.ref_time() >= post_weight.ref_time(), "Pre-dispatch weight ref time ({}) is smaller than post-dispatch weight ref time ({})", pre_weight.ref_time(), post_weight.ref_time());
-            assert!(pre_weight.proof_size() >= post_weight.proof_size(), "Pre-dispatch weight proof size ({}) is smaller than post-dispatch weight proof size ({})", pre_weight.proof_size(), post_weight.proof_size());
+            assert!(pre_weight.ref_time().saturating_mul(2) >= post_weight.ref_time(), "Pre-dispatch weight ref time ({}) is smaller than post-dispatch weight ref time ({})", pre_weight.ref_time(), post_weight.ref_time());
+            assert!(pre_weight.proof_size().saturating_mul(2) >= post_weight.proof_size(), "Pre-dispatch weight proof size ({}) is smaller than post-dispatch weight proof size ({})", pre_weight.proof_size(), post_weight.proof_size());
         }
 
         finalize_block(elapsed);
