@@ -47,7 +47,7 @@ fn main() {
         if data.len() < 2 {
             return;
         }
-        Externalities::execute_with(&mut Default::default(), || {
+        Externalities::execute_with(&mut Externalities::default(), || {
             fuzz_runtimes!(
                 data,
                 [
@@ -103,6 +103,6 @@ fn main() {
                     ),
                 ]
             );
-        })
+        });
     });
 }
