@@ -5,46 +5,46 @@ edition = "2021"
 publish = false
 
 [dependencies]
-ziggy = { version = "1.3.2", default-features = false }
+ziggy = { workspace = true }
 
-staging-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
-staging-xcm = { default-features = false , version = "18.0.0" }
+staging-kusama-runtime = { workspace = true }
+staging-xcm = { workspace = true }
 
-kusama-runtime-constants = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
+kusama-runtime-constants = { workspace = true }
 
-polkadot-primitives = { version = "20.0.0", default-features = false }
-polkadot-runtime-parachains = { version = "21.0.1", default-features = false }
-polkadot-runtime-common = { version = "21.0.0", default-features = false }
+polkadot-primitives = { workspace = true }
+polkadot-runtime-parachains = { workspace = true }
+polkadot-runtime-common = { workspace = true }
 
-codec = { version = "3.7.5", features = ["derive", "max-encoded-len"], default-features = false, package = "parity-scale-codec" }
+codec = { workspace = true }
 
-frame-support = { default-features = false , version = "42.0.0" }
-frame-system = { default-features = false , version = "42.0.0" }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
 
-sp-application-crypto = { default-features = false , version = "42.0.0" }
-sp-runtime = { default-features = false , version = "43.0.0" }
-sp-state-machine = { default-features = false , version = "0.47.0" }
-sp-consensus-babe = { default-features = false , version = "0.44.0" }
-sp-consensus-beefy = { default-features = false , version = "26.0.0" }
-sp-authority-discovery = { default-features = false , version = "38.0.0" }
-sp-core = { default-features = false, version = "38.0.0" }
+sp-application-crypto = { workspace = true }
+sp-runtime = { workspace = true }
+sp-state-machine = { workspace = true }
+sp-consensus-babe = { workspace = true }
+sp-consensus-beefy = { workspace = true }
+sp-authority-discovery = { workspace = true }
+sp-core = { workspace = true }
 
-pallet-balances = { default-features = false , version = "43.0.1" }
-pallet-grandpa = { default-features = false , version = "42.0.0" }
-pallet-society = { default-features = false, version = "42.2.0" }
-pallet-utility = { default-features = false , version = "42.0.0" }
-pallet-multisig = { default-features = false , version = "42.0.0" }
-pallet-proxy = { default-features = false , version = "42.0.0" }
-pallet-identity = { default-features = false , version = "42.0.0" }
-pallet-bounties = { default-features = false , version = "41.0.0" }
-pallet-staking = { default-features = false , version = "42.0.0" }
-pallet-timestamp = { default-features = false , version = "41.0.0" }
-pallet-xcm = { default-features = false , version = "22.0.1" }
-pallet-referenda = { default-features = false , version = "42.0.0" }
-pallet-bags-list = { default-features = false , version = "41.0.0" }
-pallet-treasury = { default-features = false , version = "41.0.0" }
-pallet-vesting = { default-features = false , version = "42.0.0" }
-pallet-staking-async-ah-client = { default-features = false, version = "0.5.0" }
+pallet-balances = { workspace = true }
+pallet-grandpa = { workspace = true }
+pallet-society = { workspace = true }
+pallet-utility = { workspace = true }
+pallet-multisig = { workspace = true }
+pallet-proxy = { workspace = true }
+pallet-identity = { workspace = true }
+pallet-bounties = { workspace = true }
+pallet-staking = { workspace = true }
+pallet-timestamp = { workspace = true }
+pallet-xcm = { workspace = true }
+pallet-referenda = { workspace = true }
+pallet-bags-list = { workspace = true }
+pallet-treasury = { workspace = true }
+pallet-vesting = { workspace = true }
+pallet-staking-async-ah-client = { workspace = true }
 
 [features]
 default = ["std", "try-runtime"]
