@@ -19,72 +19,72 @@ members = [
 
 ziggy = { version = "1.3.5", default-features = false }
 
-polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
-asset-hub-polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
+polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.5", default-features = false }
+asset-hub-polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.5", default-features = false }
 # bridge-hub-polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
-collectives-polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
-coretime-polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
-people-polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
+collectives-polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.5", default-features = false }
+coretime-polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.5", default-features = false }
+people-polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.5", default-features = false }
 
-staging-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
-asset-hub-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
+staging-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.5", default-features = false }
+asset-hub-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.5", default-features = false }
 # bridge-hub-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
-coretime-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
+coretime-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.5", default-features = false }
 # encointer-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
-glutton-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
-people-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
+glutton-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.5", default-features = false }
+people-kusama-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.5", default-features = false }
 
-system-parachains-constants = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
-polkadot-runtime-constants = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
-kusama-runtime-constants = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
+system-parachains-constants = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.5", default-features = false }
+polkadot-runtime-constants = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.5", default-features = false }
+kusama-runtime-constants = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.5", default-features = false }
 
 codec = { version = "3.7.5", features = ["derive", "max-encoded-len"], default-features = false, package = "parity-scale-codec" }
 hex = "0.4.3"
 
-staging-xcm = { default-features = false , version = "18.0.0" }
+staging-xcm = { default-features = false , version = "20.0.0" }
 
-parachains-common = { default-features = false , version = "24.0.0" }
+parachains-common = { default-features = false , version = "26.0.0" }
 
-frame-support = { default-features = false, version = "42.0.0" }
-frame-system = { default-features = false, version = "42.0.0" }
+frame-support = { default-features = false, version = "44.0.0" }
+frame-system = { default-features = false, version = "44.0.0" }
 
 sp-runtime = { default-features = false, version = "43.0.0" }
-sp-state-machine = { version = "0.47.0", default-features = false }
+sp-state-machine = { version = "0.48.0", default-features = false }
 sp-consensus-aura = { default-features = false, version = "0.44.0" }
-sp-trie = { default-features = false, version = "41.0.0" }
-sp-core = { default-features = false, version = "38.0.0" }
+sp-trie = { default-features = false, version = "41.1.0" }
+sp-core = { default-features = false, version = "38.1.0" }
 sp-authority-discovery = { default-features = false, version = "38.0.0" }
 sp-consensus-babe = { default-features = false, version = "0.44.0" }
 sp-consensus-beefy = { default-features = false, version = "26.0.0" }
 sp-application-crypto = { default-features = false, version = "42.0.0" }
 
-pallet-timestamp = { default-features = false, version = "41.0.0" }
-pallet-balances = { default-features = false, version = "43.0.1" }
-pallet-xcm = { default-features = false, version = "22.0.1" }
-pallet-utility = { default-features = false, version = "42.0.0" }
-pallet-proxy = { default-features = false, version = "42.0.0" }
-pallet-multisig = { default-features = false, version = "42.0.0" }
-pallet-vesting = { default-features = false, version = "42.0.0" }
-pallet-remote-proxy = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
-pallet-recovery = { default-features = false, version = "42.0.0" }
-pallet-whitelist = { default-features = false, version = "41.0.0" }
-pallet-broker = { default-features = false, version = "0.21.0" }
-pallet-staking-async-ah-client = { default-features = false, version = "0.5.0" }
-pallet-bags-list = { default-features = false, version = "41.0.0" }
-pallet-bounties = { default-features = false, version = "41.0.0" }
-pallet-grandpa = { default-features = false, version = "42.0.0" }
-pallet-identity = { default-features = false, version = "42.0.0" }
-pallet-referenda = { default-features = false, version = "42.0.0" }
-pallet-society = { default-features = false, version = "42.0.0" }
-pallet-staking = { default-features = false, version = "42.0.0" }
-pallet-treasury = { default-features = false, version = "41.0.0" }
+pallet-timestamp = { default-features = false, version = "43.0.0" }
+pallet-balances = { default-features = false, version = "45.0.0" }
+pallet-xcm = { default-features = false, version = "24.0.0" }
+pallet-utility = { default-features = false, version = "44.0.0" }
+pallet-proxy = { default-features = false, version = "44.0.0" }
+pallet-multisig = { default-features = false, version = "44.0.0" }
+pallet-vesting = { default-features = false, version = "44.0.0" }
+pallet-remote-proxy = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.5", default-features = false }
+pallet-recovery = { default-features = false, version = "44.0.0" }
+pallet-whitelist = { default-features = false, version = "43.0.0" }
+pallet-broker = { default-features = false, version = "0.23.0" }
+pallet-staking-async-ah-client = { default-features = false, version = "0.6.0" }
+pallet-bags-list = { default-features = false, version = "43.0.0" }
+pallet-bounties = { default-features = false, version = "43.0.0" }
+pallet-grandpa = { default-features = false, version = "44.0.0" }
+pallet-identity = { default-features = false, version = "44.0.0" }
+pallet-referenda = { default-features = false, version = "44.0.0" }
+pallet-society = { default-features = false, version = "44.0.0" }
+pallet-staking = { default-features = false, version = "44.0.0" }
+pallet-treasury = { default-features = false, version = "43.0.0" }
 
-cumulus-primitives-core = { default-features = false , version = "0.20.0" }
-cumulus-primitives-parachain-inherent = { default-features = false , version = "0.20.0" }
-cumulus-pallet-parachain-system = { default-features = false, version = "0.22.1" }
-cumulus-test-relay-sproof-builder = { default-features = false , version = "0.21.0" }
+cumulus-primitives-core = { default-features = false , version = "0.22.0" }
+cumulus-primitives-parachain-inherent = { default-features = false , version = "0.22.0" }
+cumulus-pallet-parachain-system = { default-features = false, version = "0.24.1" }
+cumulus-test-relay-sproof-builder = { default-features = false , version = "0.23.1" }
 
 polkadot-parachain-primitives = { default-features = false, version = "18.0.0" }
 polkadot-primitives = { default-features = false, version = "20.0.0" }
-polkadot-runtime-parachains = { version = "21.0.1", default-features = false }
-polkadot-runtime-common = { version = "21.0.0", default-features = false }
+polkadot-runtime-parachains = { version = "23.0.0", default-features = false }
+polkadot-runtime-common = { version = "23.0.0", default-features = false }

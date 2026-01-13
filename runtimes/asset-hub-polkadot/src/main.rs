@@ -40,9 +40,9 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         AssetsConfig, AuraConfig, AuraExtConfig, BalancesConfig, ClaimsConfig,
         CollatorSelectionConfig, ForeignAssetsConfig, IndicesConfig,
         MultiBlockElectionVerifierConfig, NominationPoolsConfig, ParachainInfoConfig,
-        ParachainSystemConfig, PolkadotXcmConfig, PoolAssetsConfig, RuntimeGenesisConfig,
-        SessionConfig, SessionKeys, StakingConfig, SystemConfig, TransactionPaymentConfig,
-        TreasuryConfig, VestingConfig,
+        ParachainSystemConfig, PolkadotXcmConfig, PoolAssetsConfig, ReviveConfig,
+        RuntimeGenesisConfig, SessionConfig, SessionKeys, StakingConfig, SystemConfig,
+        TransactionPaymentConfig, TreasuryConfig, VestingConfig,
     };
     use sp_consensus_aura::ed25519::AuthorityId as AuraId;
     use sp_runtime::app_crypto::ByteArray;
@@ -86,6 +86,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         nomination_pools: NominationPoolsConfig::default(),
         staking: StakingConfig::default(),
         treasury: TreasuryConfig::default(),
+        revive: ReviveConfig::default(),
     }
     .build_storage()
     .unwrap()
@@ -257,8 +258,9 @@ fn initialize_block(block: u32, prev_header: Option<&Header>) {
             ..Default::default()
         };
 
-        let (relay_parent_storage_root, relay_chain_state) =
-            sproof_builder.into_state_root_and_proof();
+        let relay_parent_offset = 1;
+        let (relay_parent_storage_root, relay_chain_state, relay_parent_descendants) =
+            sproof_builder.into_state_root_proof_and_descendants(relay_parent_offset);
         BasicParachainInherentData {
             validation_data: polkadot_primitives::PersistedValidationData {
                 parent_head,
@@ -268,7 +270,7 @@ fn initialize_block(block: u32, prev_header: Option<&Header>) {
             },
             relay_chain_state,
             collator_peer_id: None,
-            relay_parent_descendants: vec![],
+            relay_parent_descendants,
         }
     };
     let inbound_message_data = {
