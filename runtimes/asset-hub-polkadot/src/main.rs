@@ -1,6 +1,6 @@
 #![warn(clippy::pedantic)]
 use asset_hub_polkadot_runtime::{
-    AllPalletsWithSystem, Balances, Executive, ParachainSystem, Runtime, RuntimeCall,
+    AllPalletsWithSystem, Assets, Balances, Executive, ParachainSystem, Runtime, RuntimeCall,
     RuntimeOrigin, Timestamp,
 };
 use codec::{DecodeLimit, Encode};
@@ -18,7 +18,7 @@ use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_runtime::{
     testing::H256,
     traits::{Dispatchable, Header as _},
-    Digest, DigestItem, Storage,
+    AccountId32, Digest, DigestItem, Storage,
 };
 use sp_state_machine::BasicExternalities;
 use std::{
@@ -51,11 +51,18 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
     let initial_authorities: Vec<(AccountId, AuraId)> =
         vec![([0; 32].into(), AuraId::from_slice(&[0; 32]).unwrap())];
 
-    RuntimeGenesisConfig {
+    let account_42 = AccountId32::from([42; 32]);
+
+    let mut storage = RuntimeGenesisConfig {
         system: SystemConfig::default(),
         balances: BalancesConfig {
             // Configure endowed accounts with initial balance of 1 << 60.
-            balances: accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
+            balances: accounts
+                .iter()
+                .chain(std::iter::once(&account_42))
+                .cloned()
+                .map(|k| (k, 1 << 60))
+                .collect(),
             dev_accounts: None,
         },
         aura: AuraConfig::default(),
@@ -89,7 +96,31 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         revive: ReviveConfig::default(),
     }
     .build_storage()
-    .unwrap()
+    .unwrap();
+    BasicExternalities::execute_with_storage(&mut storage, || {
+        Assets::create(
+            RuntimeOrigin::signed(accounts[0].clone()),
+            0.into(),
+            accounts[0].clone().into(),
+            500,
+        )
+        .unwrap();
+        Assets::create(
+            RuntimeOrigin::signed(account_42.clone()),
+            42.into(),
+            account_42.clone().into(),
+            1,
+        )
+        .unwrap();
+        Assets::mint(
+            RuntimeOrigin::signed(account_42.clone()),
+            42.into(),
+            account_42.into(),
+            42,
+        )
+        .unwrap();
+    });
+    storage
 }
 
 fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool) -> bool {
@@ -171,7 +202,6 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
 
         for (lapse, origin, extrinsic) in extrinsics {
             if lapse > 0 {
-                println!("YO");
                 let prev_header = finalize_block(elapsed);
 
                 // We update our state variables
@@ -334,6 +364,8 @@ fn check_invariants(block: u32, initial_total_issuance: Balance) {
     // If we find some kind of workaround for this, we could replace `<` by `!=` here and make the check stronger.
     assert!(total_issuance <= counted_issuance,);
     assert!(total_issuance <= initial_total_issuance,);
+    let account_42 = AccountId32::from([42; 32]);
+    assert_eq!(Assets::balance(42, account_42), 42);
     // We run all developer-defined integrity tests
     AllPalletsWithSystem::integrity_test();
     AllPalletsWithSystem::try_state(block, TryStateSelect::All).unwrap();

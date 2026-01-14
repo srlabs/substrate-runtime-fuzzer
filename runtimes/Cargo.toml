@@ -40,6 +40,7 @@ kusama-runtime-constants = { git = "https://github.com/polkadot-fellows/runtimes
 
 codec = { version = "3.7.5", features = ["derive", "max-encoded-len"], default-features = false, package = "parity-scale-codec" }
 hex = "0.4.3"
+scale-info = { default-features = false, version = "2.11.6", features = ["std"] }
 
 staging-xcm = { default-features = false , version = "20.0.0" }
 
@@ -47,6 +48,7 @@ parachains-common = { default-features = false , version = "26.0.0" }
 
 frame-support = { default-features = false, version = "44.0.0" }
 frame-system = { default-features = false, version = "44.0.0" }
+frame-metadata = { default-features = false, version = "23.0.1", features = ["current", "decode", "std"] }
 
 sp-runtime = { default-features = false, version = "43.0.0" }
 sp-state-machine = { version = "0.48.0", default-features = false }
@@ -60,6 +62,7 @@ sp-application-crypto = { default-features = false, version = "42.0.0" }
 
 pallet-timestamp = { default-features = false, version = "43.0.0" }
 pallet-balances = { default-features = false, version = "45.0.0" }
+pallet-assets = { default-features = false, version = "47.0.0" }
 pallet-xcm = { default-features = false, version = "24.0.0" }
 pallet-utility = { default-features = false, version = "44.0.0" }
 pallet-proxy = { default-features = false, version = "44.0.0" }
