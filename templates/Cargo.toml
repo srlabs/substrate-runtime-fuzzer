@@ -18,6 +18,8 @@ solochain-template-runtime = { git = "https://github.com/paritytech/polkadot-sdk
 kitchensink-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512", default-features = false }
 
 codec = { version = "3.7.5", features = ["derive", "max-encoded-len"], default-features = false, package = "parity-scale-codec" }
+scale-info = { default-features = false, version = "2.11.6", features = ["std"] }
+frame-metadata = { default-features = false, version = "23.0.1", features = ["current", "decode", "std"] }
 
 node-primitives = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512", default-features = false }
 

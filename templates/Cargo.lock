@@ -6498,6 +6498,7 @@ checksum = "c33070833c9ee02266356de0c43f723152bd38bd96ddf52c82b3af10c9138b28"
 name = "kitchensink-fuzzer"
 version = "0.1.0"
 dependencies = [
+ "frame-metadata",
  "frame-support",
  "frame-system",
  "kitchensink-runtime",
@@ -6528,6 +6529,7 @@ dependencies = [
  "pallet-utility",
  "pallet-whitelist",
  "parity-scale-codec",
+ "scale-info",
  "sp-authority-discovery",
  "sp-consensus-babe",
  "sp-consensus-beefy",
