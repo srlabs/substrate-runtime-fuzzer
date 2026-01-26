@@ -10,11 +10,13 @@ ziggy = { workspace = true }
 kitchensink-runtime = { workspace = true }
 
 codec = { workspace = true }
+scale-info = { workspace = true }
 
 node-primitives = { workspace = true }
 
 frame-support = { workspace = true }
 frame-system = { workspace = true }
+frame-metadata = { workspace = true }
 
 sp-core = { workspace = true }
 sp-runtime = { workspace = true }
@@ -47,6 +49,7 @@ pallet-asset-rewards = { workspace = true }
 pallet-whitelist = { workspace = true }
 pallet-bags-list = { workspace = true }
 pallet-recovery = { workspace = true }
+pallet-assets = { workspace = true }
 
 [features]
 default = ["std", "try-runtime"]

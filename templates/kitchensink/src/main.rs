@@ -314,6 +314,11 @@ fn call_filter(call: &RuntimeCall) -> bool {
             &call,
             RuntimeCall::VoterList(pallet_bags_list::Call::rebag {  .. })
     )
+    || matches!(
+            &call,
+            RuntimeCall::Assets(pallet_assets::Call::set_reserves {  .. })
+            | RuntimeCall::PoolAssets(pallet_assets::Call::set_reserves {  .. })
+    )
 }
 
 fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
