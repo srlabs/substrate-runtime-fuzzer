@@ -1006,6 +1006,7 @@ dependencies = [
  "pallet-balances",
  "pallet-multisig",
  "pallet-proxy",
+ "pallet-revive",
  "pallet-timestamp",
  "pallet-utility",
  "pallet-vesting",

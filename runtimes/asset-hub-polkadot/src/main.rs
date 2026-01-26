@@ -154,6 +154,10 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
     | RuntimeCall::Whitelist(
         pallet_whitelist::Call::dispatch_whitelisted_call_with_preimage { call, .. },
     )
+    | RuntimeCall::Revive(
+        pallet_revive::Call::dispatch_as_fallback_account { call }
+        | pallet_revive::Call::eth_substrate_call { call, .. }
+    )
     | RuntimeCall::Proxy(
         pallet_proxy::Call::proxy { call, .. } | pallet_proxy::Call::proxy_announced { call, .. },
     ) = call
@@ -176,15 +180,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
         iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
             .filter(|(_, _, x): &(_, _, RuntimeCall)| {
             !recursively_find_call(x.clone(), |call| {
-                // We filter out calls with Fungible(0) as they cause a debug crash
-                matches!(call.clone(), RuntimeCall::PolkadotXcm(pallet_xcm::Call::execute { message, .. })
-                    if matches!(message.as_ref(), staging_xcm::VersionedXcm::V3(staging_xcm::v3::Xcm(msg))
-                        if msg.iter().any(|m| matches!(m, staging_xcm::opaque::v3::prelude::BuyExecution { fees: staging_xcm::v3::MultiAsset { fun, .. }, .. }
-                            if *fun == staging_xcm::v3::Fungibility::Fungible(0)
-                        ))
-                    )
-                ) || matches!(call.clone(), RuntimeCall::System(_))
-                || matches!(call.clone(), RuntimeCall::AhMigrator(_))
+                matches!(call.clone(), RuntimeCall::AhMigrator(_))
                 || matches!(call.clone(), RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. }))
             })
         }).collect();

@@ -81,6 +81,7 @@ pallet-referenda = { default-features = false, version = "44.0.0" }
 pallet-society = { default-features = false, version = "44.0.0" }
 pallet-staking = { default-features = false, version = "44.0.0" }
 pallet-treasury = { default-features = false, version = "43.0.0" }
+pallet-revive = { default-features = false, version = "0.11.3" }
 
 cumulus-primitives-core = { default-features = false , version = "0.22.0" }
 cumulus-primitives-parachain-inherent = { default-features = false , version = "0.22.0" }
