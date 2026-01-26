@@ -1,6 +1,6 @@
 #![warn(clippy::pedantic)]
 use asset_hub_polkadot_runtime::{
-    AllPalletsWithSystem, Balances, Executive, ParachainSystem, Runtime, RuntimeCall,
+    AllPalletsWithSystem, Assets, Balances, Executive, ParachainSystem, Runtime, RuntimeCall,
     RuntimeOrigin, Timestamp,
 };
 use codec::{DecodeLimit, Encode};
@@ -18,7 +18,7 @@ use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_runtime::{
     testing::H256,
     traits::{Dispatchable, Header as _},
-    Digest, DigestItem, Storage,
+    AccountId32, Digest, DigestItem, Storage,
 };
 use sp_state_machine::BasicExternalities;
 use std::{
@@ -40,9 +40,9 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         AssetsConfig, AuraConfig, AuraExtConfig, BalancesConfig, ClaimsConfig,
         CollatorSelectionConfig, ForeignAssetsConfig, IndicesConfig,
         MultiBlockElectionVerifierConfig, NominationPoolsConfig, ParachainInfoConfig,
-        ParachainSystemConfig, PolkadotXcmConfig, PoolAssetsConfig, RuntimeGenesisConfig,
-        SessionConfig, SessionKeys, StakingConfig, SystemConfig, TransactionPaymentConfig,
-        TreasuryConfig, VestingConfig,
+        ParachainSystemConfig, PolkadotXcmConfig, PoolAssetsConfig, ReviveConfig,
+        RuntimeGenesisConfig, SessionConfig, SessionKeys, StakingConfig, SystemConfig,
+        TransactionPaymentConfig, TreasuryConfig, VestingConfig,
     };
     use sp_consensus_aura::ed25519::AuthorityId as AuraId;
     use sp_runtime::app_crypto::ByteArray;
@@ -51,11 +51,18 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
     let initial_authorities: Vec<(AccountId, AuraId)> =
         vec![([0; 32].into(), AuraId::from_slice(&[0; 32]).unwrap())];
 
-    RuntimeGenesisConfig {
+    let account_42 = AccountId32::from([42; 32]);
+
+    let mut storage = RuntimeGenesisConfig {
         system: SystemConfig::default(),
         balances: BalancesConfig {
             // Configure endowed accounts with initial balance of 1 << 60.
-            balances: accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
+            balances: accounts
+                .iter()
+                .chain(std::iter::once(&account_42))
+                .cloned()
+                .map(|k| (k, 1 << 60))
+                .collect(),
             dev_accounts: None,
         },
         aura: AuraConfig::default(),
@@ -86,9 +93,34 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         nomination_pools: NominationPoolsConfig::default(),
         staking: StakingConfig::default(),
         treasury: TreasuryConfig::default(),
+        revive: ReviveConfig::default(),
     }
     .build_storage()
-    .unwrap()
+    .unwrap();
+    BasicExternalities::execute_with_storage(&mut storage, || {
+        Assets::create(
+            RuntimeOrigin::signed(accounts[0].clone()),
+            0.into(),
+            accounts[0].clone().into(),
+            500,
+        )
+        .unwrap();
+        Assets::create(
+            RuntimeOrigin::signed(account_42.clone()),
+            42.into(),
+            account_42.clone().into(),
+            1,
+        )
+        .unwrap();
+        Assets::mint(
+            RuntimeOrigin::signed(account_42.clone()),
+            42.into(),
+            account_42.into(),
+            42,
+        )
+        .unwrap();
+    });
+    storage
 }
 
 fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool) -> bool {
@@ -122,6 +154,10 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
     | RuntimeCall::Whitelist(
         pallet_whitelist::Call::dispatch_whitelisted_call_with_preimage { call, .. },
     )
+    | RuntimeCall::Revive(
+        pallet_revive::Call::dispatch_as_fallback_account { call }
+        | pallet_revive::Call::eth_substrate_call { call, .. },
+    )
     | RuntimeCall::Proxy(
         pallet_proxy::Call::proxy { call, .. } | pallet_proxy::Call::proxy_announced { call, .. },
     ) = call
@@ -140,22 +176,18 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
 
     BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
         #[allow(deprecated)]
-    let extrinsics: Vec<(u8, u8, RuntimeCall)> =
-        iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
-            .filter(|(_, _, x): &(_, _, RuntimeCall)| {
-            !recursively_find_call(x.clone(), |call| {
-                // We filter out calls with Fungible(0) as they cause a debug crash
-                matches!(call.clone(), RuntimeCall::PolkadotXcm(pallet_xcm::Call::execute { message, .. })
-                    if matches!(message.as_ref(), staging_xcm::VersionedXcm::V3(staging_xcm::v3::Xcm(msg))
-                        if msg.iter().any(|m| matches!(m, staging_xcm::opaque::v3::prelude::BuyExecution { fees: staging_xcm::v3::MultiAsset { fun, .. }, .. }
-                            if *fun == staging_xcm::v3::Fungibility::Fungible(0)
-                        ))
-                    )
-                ) || matches!(call.clone(), RuntimeCall::System(_))
-                || matches!(call.clone(), RuntimeCall::AhMigrator(_))
-                || matches!(call.clone(), RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. }))
-            })
-        }).collect();
+        let extrinsics: Vec<(u8, u8, RuntimeCall)> =
+            iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
+                .filter(|(_, _, x): &(_, _, RuntimeCall)| {
+                    !recursively_find_call(x.clone(), |call| {
+                        matches!(call.clone(), RuntimeCall::AhMigrator(_))
+                            || matches!(
+                                call.clone(),
+                                RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
+                            )
+                    })
+                })
+                .collect();
 
         if extrinsics.is_empty() {
             return;
@@ -170,7 +202,6 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
 
         for (lapse, origin, extrinsic) in extrinsics {
             if lapse > 0 {
-                println!("YO");
                 let prev_header = finalize_block(elapsed);
 
                 // We update our state variables
@@ -257,8 +288,9 @@ fn initialize_block(block: u32, prev_header: Option<&Header>) {
             ..Default::default()
         };
 
-        let (relay_parent_storage_root, relay_chain_state) =
-            sproof_builder.into_state_root_and_proof();
+        let relay_parent_offset = 1;
+        let (relay_parent_storage_root, relay_chain_state, relay_parent_descendants) =
+            sproof_builder.into_state_root_proof_and_descendants(relay_parent_offset);
         BasicParachainInherentData {
             validation_data: polkadot_primitives::PersistedValidationData {
                 parent_head,
@@ -268,7 +300,7 @@ fn initialize_block(block: u32, prev_header: Option<&Header>) {
             },
             relay_chain_state,
             collator_peer_id: None,
-            relay_parent_descendants: vec![],
+            relay_parent_descendants,
         }
     };
     let inbound_message_data = {
@@ -332,6 +364,8 @@ fn check_invariants(block: u32, initial_total_issuance: Balance) {
     // If we find some kind of workaround for this, we could replace `<` by `!=` here and make the check stronger.
     assert!(total_issuance <= counted_issuance,);
     assert!(total_issuance <= initial_total_issuance,);
+    let account_42 = AccountId32::from([42; 32]);
+    assert_eq!(Assets::balance(42, account_42), 42);
     // We run all developer-defined integrity tests
     AllPalletsWithSystem::integrity_test();
     AllPalletsWithSystem::try_state(block, TryStateSelect::All).unwrap();

@@ -15,9 +15,11 @@ polkadot-runtime-constants = { workspace = true }
 parachains-common = { workspace = true }
 
 codec = { workspace = true }
+scale-info = { workspace = true }
 
 frame-support = { workspace = true }
 frame-system = { workspace = true }
+frame-metadata = { workspace = true }
 
 sp-runtime = { workspace = true }
 sp-state-machine = { workspace = true }
@@ -27,12 +29,14 @@ sp-core = { workspace = true }
 
 pallet-timestamp = { workspace = true }
 pallet-balances = { workspace = true }
+pallet-assets = { workspace = true }
 pallet-xcm = { workspace = true }
 pallet-utility = { workspace = true }
 pallet-proxy = { workspace = true }
 pallet-multisig = { workspace = true }
 pallet-vesting = { workspace = true }
 pallet-whitelist = { workspace = true }
+pallet-revive = { workspace = true }
 
 cumulus-primitives-core = { workspace = true }
 cumulus-primitives-parachain-inherent = { workspace = true }
