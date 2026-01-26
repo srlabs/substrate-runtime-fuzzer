@@ -6503,6 +6503,7 @@ dependencies = [
  "kitchensink-runtime",
  "node-primitives",
  "pallet-asset-rewards",
+ "pallet-assets",
  "pallet-bags-list",
  "pallet-balances",
  "pallet-broker",
