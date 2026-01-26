@@ -1,8 +1,8 @@
 #![warn(clippy::pedantic)]
-use kitchensink_runtime::{Runtime, RuntimeCall};
 use codec::{Decode, Encode};
 use frame_metadata::{RuntimeMetadata, RuntimeMetadataPrefixed};
 use frame_support::traits::GetCallMetadata;
+use kitchensink_runtime::{Runtime, RuntimeCall};
 use scale_info::TypeDef;
 use sp_state_machine::BasicExternalities;
 use std::{collections::BTreeMap, fs, path::Path};
