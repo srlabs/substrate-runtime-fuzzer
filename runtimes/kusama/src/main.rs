@@ -8,7 +8,7 @@ use frame_support::{
 };
 use frame_system::Account;
 use kusama_runtime_constants::{currency::UNITS, time::SLOT_DURATION};
-use pallet_balances::{Holds, TotalIssuance};
+use pallet_balances::{Freezes, Holds, TotalIssuance};
 use pallet_grandpa::AuthorityId as GrandpaId;
 use pallet_staking::StakerStatus;
 use polkadot_primitives::{AccountId, AssignmentId, Balance, Header, ValidatorId};
@@ -339,10 +339,15 @@ fn check_invariants(block: u32, initial_total_issuance: Balance) {
             .map(|l| l.amount)
             .max()
             .unwrap_or_default();
-        assert!(
-            max_lock <= info.data.frozen,
-            "Max lock ({max_lock}) should be less than or equal to frozen balance ({})",
-            info.data.frozen
+        let max_freeze = Freezes::<Runtime>::get(&account)
+            .iter()
+            .map(|freeze| freeze.amount)
+            .max()
+            .unwrap_or(0);
+        assert_eq!(
+            info.data.frozen,
+            max_lock.max(max_freeze),
+            "Frozen balance should be the max of the max lock and max freeze"
         );
         let sum_holds: Balance = Holds::<Runtime>::get(&account)
             .iter()

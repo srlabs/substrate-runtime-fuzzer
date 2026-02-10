@@ -17,9 +17,11 @@ polkadot-runtime-parachains = { workspace = true }
 polkadot-runtime-common = { workspace = true }
 
 codec = { workspace = true }
+scale-info = { workspace = true }
 
 frame-support = { workspace = true }
 frame-system = { workspace = true }
+frame-metadata = { workspace = true }
 
 sp-application-crypto = { workspace = true }
 sp-runtime = { workspace = true }
@@ -60,6 +62,7 @@ std = [
 	"pallet-balances/std",
 	"pallet-staking/std",
 	"sp-consensus-babe/std",
+	"sp-state-machine/std",
 	"polkadot-primitives/std",
 	"polkadot-runtime-parachains/std",
 	"sp-authority-discovery/std",

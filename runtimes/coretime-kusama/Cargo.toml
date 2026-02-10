@@ -13,9 +13,11 @@ system-parachains-constants = { workspace = true }
 parachains-common = { workspace = true }
 
 codec = { workspace = true }
+scale-info = { workspace = true }
 
 frame-support = { workspace = true }
 frame-system = { workspace = true }
+frame-metadata = { workspace = true }
 
 sp-runtime = { workspace = true }
 sp-state-machine = { workspace = true }
@@ -47,6 +49,7 @@ std = [
 	"pallet-timestamp/std",
 	"pallet-xcm/std",
 	"sp-consensus-aura/std",
+	"sp-state-machine/std",
 	"cumulus-primitives-core/std",
 	"cumulus-primitives-parachain-inherent/std",
 	"cumulus-pallet-parachain-system/std",
