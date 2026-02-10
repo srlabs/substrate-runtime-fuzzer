@@ -175,9 +175,15 @@ fn check_invariants(block: u32, initial_total_issuance: Balance) {
             .map(|l| l.amount)
             .max()
             .unwrap_or_default();
+        let max_freeze = Freezes::<Runtime>::get(&account)
+            .iter()
+            .map(|freeze| freeze.amount)
+            .max()
+            .unwrap_or(0);
         assert_eq!(
-            max_lock, info.data.frozen,
-            "Max lock should be equal to frozen balance"
+            info.data.frozen,
+            max_lock.max(max_freeze),
+            "Frozen balance should be the max of the max lock and max freeze"
         );
         let sum_holds: Balance = Holds::<Runtime>::get(&account)
             .iter()
