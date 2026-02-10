@@ -430,7 +430,7 @@ fn initialize_block(block: u32) {
 fn finalize_block(elapsed: Duration) {
     #[cfg(not(feature = "fuzzing"))]
     println!("\n  time spent: {elapsed:?}");
-    assert!(elapsed.as_secs() <= 2, "block execution took too much time");
+    assert!(elapsed.as_secs() <= 1, "block execution took too much time");
 
     #[cfg(not(feature = "fuzzing"))]
     println!("\n  finalizing block");
