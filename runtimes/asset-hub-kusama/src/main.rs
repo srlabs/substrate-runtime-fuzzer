@@ -135,8 +135,6 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
         return recursively_find_call(*call, matches_on);
     } else if matches_on(call.clone()) {
         return true;
-    } else {
-        println!("innermost call: {:?}", call);
     }
     false
 }
