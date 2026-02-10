@@ -113,7 +113,7 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
     ) = call
     {
         for call in calls {
-            if recursively_find_call(call.clone(), matches_on) {
+            if recursively_find_call(call, matches_on) {
                 return true;
             }
         }
@@ -123,7 +123,7 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
     | RuntimeCall::Utility(pallet_utility::Call::as_derivative { call, .. })
     | RuntimeCall::Proxy(pallet_proxy::Call::proxy { call, .. }) = call
     {
-        return recursively_find_call(*call.clone(), matches_on);
+        return recursively_find_call(*call, matches_on);
     } else if matches_on(call) {
         return true;
     }
@@ -137,9 +137,9 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
         iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
             .filter(|(_, _, x): &(_, _, RuntimeCall)| {
                 !recursively_find_call(x.clone(), |call| {
-                    matches!(call.clone(), RuntimeCall::System(_))
+                    matches!(&call, RuntimeCall::System(_))
                         || matches!(
-                            call.clone(),
+                            &call,
                             RuntimeCall::PolkadotXcm(pallet_xcm::Call::execute { .. })
                         )
                 })
@@ -221,7 +221,7 @@ fn initialize_block(block: u32, prev_header: Option<&Header>) {
         pre_digest,
     );
 
-    Executive::initialize_block(&parent_header.clone());
+    Executive::initialize_block(&parent_header);
     Timestamp::set(RuntimeOrigin::none(), u64::from(block) * SLOT_DURATION).unwrap();
 
     #[cfg(not(feature = "fuzzing"))]

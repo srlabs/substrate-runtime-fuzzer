@@ -105,13 +105,13 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
     ) = call
     {
         for call in calls {
-            if recursively_find_call(call.clone(), matches_on) {
+            if recursively_find_call(call, matches_on) {
                 return true;
             }
         }
     } else if let RuntimeCall::Utility(pallet_utility::Call::if_else { main, fallback }) = call {
-        return recursively_find_call(*main.clone(), matches_on)
-            || recursively_find_call(*fallback.clone(), matches_on);
+        return recursively_find_call(*main, matches_on)
+            || recursively_find_call(*fallback, matches_on);
     } else if let RuntimeCall::Multisig(pallet_multisig::Call::as_multi_threshold_1 {
         call, ..
     })
@@ -132,11 +132,11 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
         pallet_proxy::Call::proxy { call, .. } | pallet_proxy::Call::proxy_announced { call, .. },
     ) = call
     {
-        return recursively_find_call(*call.clone(), matches_on);
+        return recursively_find_call(*call, matches_on);
     } else if matches_on(call.clone()) {
         return true;
     } else {
-        println!("innermost call: {:?}", call.clone());
+        println!("innermost call: {:?}", call);
     }
     false
 }
@@ -155,10 +155,10 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
             iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
                 .filter(|(_, _, x): &(_, _, RuntimeCall)| {
                     !recursively_find_call(x.clone(), |call| {
-                        matches!(call.clone(), RuntimeCall::AhMigrator(_))
+                        matches!(&call, RuntimeCall::AhMigrator(_))
                             // || matches!(call.clone(), RuntimeCall::NominationPools(_))
                             || matches!(
-                                call.clone(),
+                                &call,
                                 RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
                             )
                     })

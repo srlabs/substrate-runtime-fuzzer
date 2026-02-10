@@ -148,7 +148,7 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
     ) = call
     {
         for call in calls {
-            if recursively_find_call(call.clone(), matches_on) {
+            if recursively_find_call(call, matches_on) {
                 return true;
             }
         }
@@ -161,7 +161,7 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
     | RuntimeCall::Utility(pallet_utility::Call::as_derivative { call, .. })
     | RuntimeCall::Proxy(pallet_proxy::Call::proxy { call, .. }) = call
     {
-        return recursively_find_call(*call.clone(), matches_on);
+        return recursively_find_call(*call, matches_on);
     } else if matches_on(call) {
         return true;
     }
@@ -177,10 +177,17 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
         })
         .filter(|(_, _, x): &(_, _, RuntimeCall)| {
             !recursively_find_call(x.clone(), |call| {
-                matches!(call.clone(), RuntimeCall::System(_))
-                || matches!(call.clone(), RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. }))
-                || matches!(call.clone(), RuntimeCall::VoterList(pallet_bags_list::Call::rebag { .. }))
-                || matches!(call.clone(), RuntimeCall::Treasury(pallet_treasury::Call::spend { valid_from, .. }) if valid_from.unwrap_or(0) >= 4_200_000_000)
+                matches!(&call, RuntimeCall::System(_))
+                || matches!(
+                    &call,
+                    RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
+                )
+                || matches!(&call, RuntimeCall::VoterList(pallet_bags_list::Call::rebag { .. }))
+                || matches!(
+                    &call,
+                    RuntimeCall::Treasury(pallet_treasury::Call::spend { valid_from, .. })
+                        if valid_from.as_ref().copied().unwrap_or(0) >= 4_200_000_000
+                )
                 || matches!(
                     &call,
                     RuntimeCall::Referenda(pallet_referenda::Call::submit {
@@ -245,7 +252,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
             println!("    call:       {extrinsic:?}");
 
             let now = Instant::now(); // We get the current time for timing purposes.
-            let res = extrinsic.clone().dispatch(origin);
+            let res = extrinsic.dispatch(origin);
             elapsed += now.elapsed();
 
             #[cfg(not(feature = "fuzzing"))]
