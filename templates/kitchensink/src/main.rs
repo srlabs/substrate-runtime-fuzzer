@@ -13,7 +13,7 @@ use kitchensink_runtime::{
     RuntimeOrigin, Timestamp,
 };
 use node_primitives::Balance;
-use pallet_balances::{Holds, TotalIssuance};
+use pallet_balances::{Freezes, Holds, TotalIssuance};
 use sp_consensus_babe::{
     digests::{PreDigest, SecondaryPlainPreDigest},
     Slot, BABE_ENGINE_ID,
@@ -198,7 +198,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
     storage
 }
 
-fn recursively_find_call(call: RuntimeCall, matches_on: fn(&RuntimeCall) -> bool) -> bool {
+fn recursively_find_call(call: &RuntimeCall, matches_on: fn(&RuntimeCall) -> bool) -> bool {
     if let RuntimeCall::Utility(
         pallet_utility::Call::batch { calls }
         | pallet_utility::Call::force_batch { calls }
@@ -206,13 +206,13 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(&RuntimeCall) -> bool
     ) = call
     {
         for call in calls {
-            if recursively_find_call(call.clone(), matches_on) {
+            if recursively_find_call(call, matches_on) {
                 return true;
             }
         }
     } else if let RuntimeCall::Utility(pallet_utility::Call::if_else { main, fallback }) = call {
-        return recursively_find_call(*main.clone(), matches_on)
-            || recursively_find_call(*fallback.clone(), matches_on);
+        return recursively_find_call(main, matches_on)
+            || recursively_find_call(fallback, matches_on);
     } else if let RuntimeCall::Lottery(pallet_lottery::Call::buy_ticket { call })
     | RuntimeCall::Multisig(pallet_multisig::Call::as_multi_threshold_1 {
         call, ..
@@ -248,8 +248,8 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(&RuntimeCall) -> bool
         | pallet_collective::Call::execute { proposal: call, .. },
     ) = call
     {
-        return recursively_find_call(*call, matches_on);
-    } else if matches_on(&call) {
+        return recursively_find_call(call, matches_on);
+    } else if matches_on(call) {
         return true;
     }
     false
@@ -320,7 +320,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     let extrinsics: Vec<(bool, u8, RuntimeCall)> =
         iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
             .filter(|(_, _, x): &(_, _, RuntimeCall)| {
-                !recursively_find_call(x.clone(), call_filter)
+                !recursively_find_call(x, call_filter)
             })
             .collect();
     if extrinsics.is_empty() {

@@ -7,7 +7,7 @@ use frame_support::{
     weights::constants::WEIGHT_REF_TIME_PER_SECOND,
 };
 use frame_system::Account;
-use pallet_balances::{Holds, TotalIssuance};
+use pallet_balances::{Freezes, Holds, TotalIssuance};
 use solochain_template_runtime::{
     AccountId, AllPalletsWithSystem, Balance, Balances, Executive, Runtime, RuntimeCall,
     RuntimeOrigin, Timestamp, SLOT_DURATION,
