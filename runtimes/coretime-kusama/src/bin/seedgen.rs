@@ -1,6 +1,6 @@
 #![warn(clippy::pedantic)]
-use coretime_kusama_runtime::{Runtime, RuntimeCall};
 use codec::{Decode, Encode};
+use coretime_kusama_runtime::{Runtime, RuntimeCall};
 use frame_metadata::{RuntimeMetadata, RuntimeMetadataPrefixed};
 use frame_support::traits::GetCallMetadata;
 use scale_info::TypeDef;
