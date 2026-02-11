@@ -16011,12 +16011,14 @@ dependencies = [
 name = "solochain-template-fuzzer"
 version = "0.1.0"
 dependencies = [
+ "frame-metadata",
  "frame-support",
  "frame-system",
  "pallet-balances",
  "pallet-grandpa",
  "pallet-timestamp",
  "parity-scale-codec",
+ "scale-info",
  "solochain-template-runtime",
  "sp-consensus-aura",
  "sp-runtime",

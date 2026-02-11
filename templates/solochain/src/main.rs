@@ -3,7 +3,7 @@ use codec::{DecodeLimit, Encode};
 use frame_support::{
     dispatch::GetDispatchInfo,
     pallet_prelude::Weight,
-    traits::{IntegrityTest, TryState, TryStateSelect},
+    traits::{Get, IntegrityTest, TryState, TryStateSelect},
     weights::constants::WEIGHT_REF_TIME_PER_SECOND,
 };
 use frame_system::Account;
@@ -162,6 +162,7 @@ fn finalize_block(elapsed: Duration) {
 }
 
 fn check_invariants(block: u32, initial_total_issuance: Balance) {
+    let ed = <Runtime as pallet_balances::Config>::ExistentialDeposit::get();
     let mut counted_free = 0;
     let mut counted_reserved = 0;
     for (account, info) in Account::<Runtime>::iter() {
@@ -170,12 +171,29 @@ fn check_invariants(block: u32, initial_total_issuance: Balance) {
         assert!(!(consumers > 0 && providers == 0), "Invalid c/p state");
         counted_free += info.data.free;
         counted_reserved += info.data.reserved;
+
+        // Invariant: accounts must not have a balance in the existential deposit "dust zone"
+        let total_balance = info.data.free + info.data.reserved;
+        assert!(
+            total_balance == 0 || total_balance >= ed,
+            "Account {account:?} has total balance ({total_balance}) below existential deposit ({ed}) but non-zero"
+        );
+
+        // Invariant: frozen balance must not exceed the total balance
+        assert!(
+            info.data.free + info.data.reserved >= info.data.frozen,
+            "Account {account:?} has frozen balance ({}) exceeding total balance ({})",
+            info.data.frozen,
+            info.data.free + info.data.reserved
+        );
+
         let max_lock: Balance = Balances::locks(&account)
             .iter()
             .map(|l| l.amount)
             .max()
             .unwrap_or_default();
-        let max_freeze = Freezes::<Runtime>::get(&account)
+        let freezes = Freezes::<Runtime>::get(&account);
+        let max_freeze = freezes
             .iter()
             .map(|freeze| freeze.amount)
             .max()
@@ -185,15 +203,42 @@ fn check_invariants(block: u32, initial_total_issuance: Balance) {
             max_lock.max(max_freeze),
             "Frozen balance should be the max of the max lock and max freeze"
         );
-        let sum_holds: Balance = Holds::<Runtime>::get(&account)
-            .iter()
-            .map(|l| l.amount)
-            .sum();
+
+        // Invariant: no duplicate freeze IDs, and all freeze amounts must be non-zero
+        for (i, freeze) in freezes.iter().enumerate() {
+            assert!(
+                freeze.amount > 0,
+                "Account {account:?} has a freeze with zero amount"
+            );
+            for other in freezes.iter().skip(i + 1) {
+                assert!(
+                    freeze.id != other.id,
+                    "Account {account:?} has duplicate freeze IDs"
+                );
+            }
+        }
+
+        let holds = Holds::<Runtime>::get(&account);
+        let sum_holds: Balance = holds.iter().map(|l| l.amount).sum();
         assert!(
             sum_holds <= info.data.reserved,
             "Sum of all holds ({sum_holds}) should be less than or equal to reserved balance {}",
             info.data.reserved
         );
+
+        // Invariant: no duplicate hold IDs, and all hold amounts must be non-zero
+        for (i, hold) in holds.iter().enumerate() {
+            assert!(
+                hold.amount > 0,
+                "Account {account:?} has a hold with zero amount"
+            );
+            for other in holds.iter().skip(i + 1) {
+                assert!(
+                    hold.id != other.id,
+                    "Account {account:?} has duplicate hold IDs"
+                );
+            }
+        }
     }
     let total_issuance = TotalIssuance::<Runtime>::get();
     let counted_issuance = counted_free + counted_reserved;
