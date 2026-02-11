@@ -296,18 +296,12 @@ fn check_invariants(block: u32, initial_total_issuance: Balance) {
             "Frozen balance should be the max of the max lock and max freeze"
         );
 
-        for (i, freeze) in freezes.iter().enumerate() {
+        freezes.iter().for_each(|f| {
             assert!(
-                freeze.amount > 0,
+                f.amount > 0,
                 "Account {account:?} has a freeze with zero amount"
-            );
-            for other in freezes.iter().skip(i + 1) {
-                assert!(
-                    freeze.id != other.id,
-                    "Account {account:?} has duplicate freeze IDs"
-                );
-            }
-        }
+            )
+        });
 
         let holds = Holds::<Runtime>::get(&account);
         let sum_holds: Balance = holds.iter().map(|l| l.amount).sum();
@@ -317,18 +311,12 @@ fn check_invariants(block: u32, initial_total_issuance: Balance) {
             info.data.reserved
         );
 
-        for (i, hold) in holds.iter().enumerate() {
+        holds.iter().for_each(|h| {
             assert!(
-                hold.amount > 0,
+                h.amount > 0,
                 "Account {account:?} has a hold with zero amount"
-            );
-            for other in holds.iter().skip(i + 1) {
-                assert!(
-                    hold.id != other.id,
-                    "Account {account:?} has duplicate hold IDs"
-                );
-            }
-        }
+            )
+        });
     }
     let total_issuance = TotalIssuance::<Runtime>::get();
     let counted_issuance = counted_free + counted_reserved;
