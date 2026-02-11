@@ -475,7 +475,7 @@ fn check_invariants(block: u32, initial_total_issuance: Balance) {
             assert!(
                 f.amount > 0,
                 "Account {account:?} has a freeze with zero amount"
-            )
+            );
         });
 
         let holds = Holds::<Runtime>::get(&account);
@@ -491,7 +491,7 @@ fn check_invariants(block: u32, initial_total_issuance: Balance) {
             assert!(
                 h.amount > 0,
                 "Account {account:?} has a hold with zero amount"
-            )
+            );
         });
     }
     let total_issuance = TotalIssuance::<Runtime>::get();
