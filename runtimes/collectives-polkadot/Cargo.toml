@@ -1,0 +1,76 @@
+[package]
+name = "collectives-polkadot-fuzzer"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+ziggy = { workspace = true }
+
+collectives-polkadot-runtime = { workspace = true }
+staging-xcm = { workspace = true }
+
+polkadot-runtime-constants = { workspace = true }
+
+parachains-common = { workspace = true }
+
+codec = { workspace = true }
+scale-info = { workspace = true }
+
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+frame-metadata = { workspace = true }
+
+sp-runtime = { workspace = true }
+sp-state-machine = { workspace = true }
+sp-consensus-aura = { workspace = true }
+sp-trie = { workspace = true }
+sp-core = { workspace = true }
+
+pallet-timestamp = { workspace = true }
+pallet-balances = { workspace = true }
+pallet-assets = { workspace = true }
+pallet-xcm = { workspace = true }
+pallet-utility = { workspace = true }
+pallet-proxy = { workspace = true }
+pallet-multisig = { workspace = true }
+pallet-vesting = { workspace = true }
+pallet-whitelist = { workspace = true }
+pallet-revive = { workspace = true }
+
+cumulus-primitives-core = { workspace = true }
+cumulus-primitives-parachain-inherent = { workspace = true }
+cumulus-pallet-parachain-system = { workspace = true }
+cumulus-test-relay-sproof-builder = { workspace = true }
+
+polkadot-parachain-primitives = { workspace = true }
+polkadot-primitives = { workspace = true }
+
+[features]
+default = ["std", "try-runtime"]
+fuzzing = []
+std = [
+    "collectives-polkadot-runtime/std",
+	"parachains-common/std",
+	"codec/std",
+	"frame-support/std",
+	"frame-system/std",
+	"sp-runtime/std",
+	"sp-state-machine/std",
+	"sp-consensus-aura/std",
+	"pallet-timestamp/std",
+	"pallet-balances/std",
+	"cumulus-primitives-core/std",
+	"cumulus-primitives-parachain-inherent/std",
+	"cumulus-pallet-parachain-system/std",
+	"cumulus-test-relay-sproof-builder/std",
+	"polkadot-parachain-primitives/std", 
+	"sp-trie/std",
+]
+try-runtime = [
+    "collectives-polkadot-runtime/try-runtime",
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+	"sp-runtime/try-runtime",
+	"pallet-timestamp/try-runtime",
+]

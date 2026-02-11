@@ -1884,6 +1884,43 @@ dependencies = [
 ]
 
 [[package]]
+name = "collectives-polkadot-fuzzer"
+version = "0.1.0"
+dependencies = [
+ "collectives-polkadot-runtime",
+ "cumulus-pallet-parachain-system",
+ "cumulus-primitives-core",
+ "cumulus-primitives-parachain-inherent",
+ "cumulus-test-relay-sproof-builder",
+ "frame-metadata",
+ "frame-support",
+ "frame-system",
+ "pallet-assets",
+ "pallet-balances",
+ "pallet-multisig",
+ "pallet-proxy",
+ "pallet-revive",
+ "pallet-timestamp",
+ "pallet-utility",
+ "pallet-vesting",
+ "pallet-whitelist",
+ "pallet-xcm",
+ "parachains-common",
+ "parity-scale-codec",
+ "polkadot-parachain-primitives",
+ "polkadot-primitives",
+ "polkadot-runtime-constants",
+ "scale-info",
+ "sp-consensus-aura",
+ "sp-core",
+ "sp-runtime",
+ "sp-state-machine 0.48.0",
+ "sp-trie",
+ "staging-xcm",
+ "ziggy",
+]
+
+[[package]]
 name = "collectives-polkadot-runtime"
 version = "1.0.0"
 source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.0.5#ff458d43013d4004419f8f72fd5e59fb9a0533e3"
