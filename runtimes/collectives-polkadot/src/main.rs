@@ -323,6 +323,9 @@ fn check_invariants(block: u32, initial_total_issuance: Balance) {
     assert_eq!(total_issuance, counted_issuance);
     assert!(total_issuance <= initial_total_issuance);
 
+    let account_42 = AccountId32::from([42; 32]);
+    assert_eq!(Assets::balance(42, account_42), 42);
+
     AllPalletsWithSystem::integrity_test();
     AllPalletsWithSystem::try_state(block, TryStateSelect::All).unwrap();
 }
