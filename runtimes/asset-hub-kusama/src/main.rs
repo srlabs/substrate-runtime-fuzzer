@@ -124,6 +124,9 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
         pallet_remote_proxy::Call::remote_proxy { call, .. }
         | pallet_remote_proxy::Call::remote_proxy_with_registered_proof { call, .. },
     )
+    | RuntimeCall::Revive(
+        pallet_revive::Call::dispatch_as_fallback_account { call, .. },
+    )
     | RuntimeCall::Recovery(pallet_recovery::Call::as_recovered { call, .. })
     | RuntimeCall::Whitelist(
         pallet_whitelist::Call::dispatch_whitelisted_call_with_preimage { call, .. },
