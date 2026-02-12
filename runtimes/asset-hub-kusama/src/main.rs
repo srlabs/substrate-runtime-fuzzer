@@ -12,7 +12,7 @@ use frame_support::{
     weights::constants::WEIGHT_REF_TIME_PER_SECOND,
 };
 use frame_system::Account;
-use pallet_balances::{Holds, TotalIssuance};
+use pallet_balances::{Freezes, Holds, TotalIssuance};
 use parachains_common::{AccountId, Balance, SLOT_DURATION};
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_runtime::{
@@ -105,13 +105,13 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
     ) = call
     {
         for call in calls {
-            if recursively_find_call(call.clone(), matches_on) {
+            if recursively_find_call(call, matches_on) {
                 return true;
             }
         }
     } else if let RuntimeCall::Utility(pallet_utility::Call::if_else { main, fallback }) = call {
-        return recursively_find_call(*main.clone(), matches_on)
-            || recursively_find_call(*fallback.clone(), matches_on);
+        return recursively_find_call(*main, matches_on)
+            || recursively_find_call(*fallback, matches_on);
     } else if let RuntimeCall::Multisig(pallet_multisig::Call::as_multi_threshold_1 {
         call, ..
     })
@@ -124,6 +124,10 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
         pallet_remote_proxy::Call::remote_proxy { call, .. }
         | pallet_remote_proxy::Call::remote_proxy_with_registered_proof { call, .. },
     )
+    | RuntimeCall::Revive(pallet_revive::Call::dispatch_as_fallback_account {
+        call,
+        ..
+    })
     | RuntimeCall::Recovery(pallet_recovery::Call::as_recovered { call, .. })
     | RuntimeCall::Whitelist(
         pallet_whitelist::Call::dispatch_whitelisted_call_with_preimage { call, .. },
@@ -132,11 +136,9 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
         pallet_proxy::Call::proxy { call, .. } | pallet_proxy::Call::proxy_announced { call, .. },
     ) = call
     {
-        return recursively_find_call(*call.clone(), matches_on);
+        return recursively_find_call(*call, matches_on);
     } else if matches_on(call.clone()) {
         return true;
-    } else {
-        println!("innermost call: {:?}", call.clone());
     }
     false
 }
@@ -155,10 +157,10 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
             iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
                 .filter(|(_, _, x): &(_, _, RuntimeCall)| {
                     !recursively_find_call(x.clone(), |call| {
-                        matches!(call.clone(), RuntimeCall::AhMigrator(_))
+                        matches!(&call, RuntimeCall::AhMigrator(_))
                             // || matches!(call.clone(), RuntimeCall::NominationPools(_))
                             || matches!(
-                                call.clone(),
+                                &call,
                                 RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
                             )
                     })
@@ -260,8 +262,9 @@ fn initialize_block(block: u32, prev_header: Option<&Header>) {
             ..Default::default()
         };
 
-        let (relay_parent_storage_root, relay_chain_state) =
-            sproof_builder.into_state_root_and_proof();
+        let relay_parent_offset = 1;
+        let (relay_parent_storage_root, relay_chain_state, relay_parent_descendants) =
+            sproof_builder.into_state_root_proof_and_descendants(relay_parent_offset);
         BasicParachainInherentData {
             validation_data: polkadot_primitives::PersistedValidationData {
                 parent_head,
@@ -271,7 +274,7 @@ fn initialize_block(block: u32, prev_header: Option<&Header>) {
             },
             relay_chain_state,
             collator_peer_id: None,
-            relay_parent_descendants: vec![],
+            relay_parent_descendants,
         }
     };
     let inbound_message_data = {
@@ -314,10 +317,16 @@ fn check_invariants(block: u32, initial_total_issuance: Balance) {
             .iter()
             .map(|l| l.amount)
             .max()
-            .unwrap_or_default();
+            .unwrap_or(0);
+        let max_freeze = Freezes::<Runtime>::get(&account)
+            .iter()
+            .map(|freeze| freeze.amount)
+            .max()
+            .unwrap_or(0);
         assert_eq!(
-            max_lock, info.data.frozen,
-            "Max lock should be equal to frozen balance"
+            info.data.frozen,
+            max_lock.max(max_freeze),
+            "Frozen balance should be the max of the max lock and max freeze"
         );
         let sum_holds: Balance = Holds::<Runtime>::get(&account)
             .iter()

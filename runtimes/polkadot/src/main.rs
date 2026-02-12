@@ -7,7 +7,7 @@ use frame_support::{
     weights::constants::WEIGHT_REF_TIME_PER_SECOND,
 };
 use frame_system::Account;
-use pallet_balances::{Holds, TotalIssuance};
+use pallet_balances::{Freezes, Holds, TotalIssuance};
 use pallet_grandpa::AuthorityId as GrandpaId;
 use pallet_staking::StakerStatus;
 use polkadot_primitives::{AccountId, AssignmentId, Balance, Header, ValidatorId};
@@ -147,20 +147,20 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
     ) = call
     {
         for call in calls {
-            if recursively_find_call(call.clone(), matches_on) {
+            if recursively_find_call(call, matches_on) {
                 return true;
             }
         }
     } else if let RuntimeCall::Utility(pallet_utility::Call::if_else { main, fallback }) = call {
-        return recursively_find_call(*main.clone(), matches_on)
-            || recursively_find_call(*fallback.clone(), matches_on);
+        return recursively_find_call(*main, matches_on)
+            || recursively_find_call(*fallback, matches_on);
     } else if let RuntimeCall::Multisig(pallet_multisig::Call::as_multi_threshold_1 {
         call, ..
     })
     | RuntimeCall::Utility(pallet_utility::Call::as_derivative { call, .. })
     | RuntimeCall::Proxy(pallet_proxy::Call::proxy { call, .. }) = call
     {
-        return recursively_find_call(*call.clone(), matches_on);
+        return recursively_find_call(*call, matches_on);
     } else if matches_on(call) {
         return true;
     }
@@ -176,10 +176,17 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
         })
         .filter(|(_, _, x): &(_, _, RuntimeCall)| {
             !recursively_find_call(x.clone(), |call| {
-                matches!(call.clone(), RuntimeCall::System(_))
-                || matches!(call.clone(), RuntimeCall::VoterList(pallet_bags_list::Call::rebag { .. }))
-                || matches!(call.clone(), RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. }))
-                || matches!(call.clone(), RuntimeCall::Treasury(pallet_treasury::Call::spend { valid_from, .. }) if valid_from.unwrap_or(0) >= 4_200_000_000)
+                matches!(&call, RuntimeCall::System(_))
+                || matches!(&call, RuntimeCall::VoterList(pallet_bags_list::Call::rebag { .. }))
+                || matches!(
+                    &call,
+                    RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
+                )
+                || matches!(
+                    &call,
+                    RuntimeCall::Treasury(pallet_treasury::Call::spend { valid_from, .. })
+                        if valid_from.as_ref().copied().unwrap_or(0) >= 4_200_000_000
+                )
                 || matches!(
                     &call,
                     RuntimeCall::Referenda(pallet_referenda::Call::submit {
@@ -244,7 +251,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
             println!("    call:       {extrinsic:?}");
 
             let now = Instant::now(); // We get the current time for timing purposes.
-            let res = extrinsic.clone().dispatch(origin);
+            let res = extrinsic.dispatch(origin);
             elapsed += now.elapsed();
 
             #[cfg(not(feature = "fuzzing"))]
@@ -338,10 +345,15 @@ fn check_invariants(block: u32, initial_total_issuance: Balance) {
             .map(|l| l.amount)
             .max()
             .unwrap_or_default();
-        assert!(
-            max_lock <= info.data.frozen,
-            "Max lock ({max_lock}) should be less than or equal to frozen balance ({})",
-            info.data.frozen
+        let max_freeze = Freezes::<Runtime>::get(&account)
+            .iter()
+            .map(|freeze| freeze.amount)
+            .max()
+            .unwrap_or(0);
+        assert_eq!(
+            info.data.frozen,
+            max_lock.max(max_freeze),
+            "Frozen balance should be the max of the max lock and max freeze"
         );
         let sum_holds: Balance = Holds::<Runtime>::get(&account)
             .iter()

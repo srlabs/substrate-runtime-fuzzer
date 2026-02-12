@@ -12,7 +12,7 @@ use frame_support::{
     weights::constants::WEIGHT_REF_TIME_PER_SECOND,
 };
 use frame_system::Account;
-use pallet_balances::{Holds, TotalIssuance};
+use pallet_balances::{Freezes, Holds, TotalIssuance};
 use parachains_common::{AccountId, Balance, SLOT_DURATION};
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_runtime::{
@@ -131,7 +131,7 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
     ) = call
     {
         for call in calls {
-            if recursively_find_call(call.clone(), matches_on) {
+            if recursively_find_call(call, matches_on) {
                 return true;
             }
         }
@@ -162,7 +162,7 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
         pallet_proxy::Call::proxy { call, .. } | pallet_proxy::Call::proxy_announced { call, .. },
     ) = call
     {
-        return recursively_find_call(*call.clone(), matches_on);
+        return recursively_find_call(*call, matches_on);
     } else if matches_on(call) {
         return true;
     }
@@ -180,9 +180,9 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
             iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
                 .filter(|(_, _, x): &(_, _, RuntimeCall)| {
                     !recursively_find_call(x.clone(), |call| {
-                        matches!(call.clone(), RuntimeCall::AhMigrator(_))
+                        matches!(&call, RuntimeCall::AhMigrator(_))
                             || matches!(
-                                call.clone(),
+                                &call,
                                 RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
                             )
                     })
@@ -344,9 +344,15 @@ fn check_invariants(block: u32, initial_total_issuance: Balance) {
             .map(|l| l.amount)
             .max()
             .unwrap_or_default();
+        let max_freeze = Freezes::<Runtime>::get(&account)
+            .iter()
+            .map(|freeze| freeze.amount)
+            .max()
+            .unwrap_or(0);
         assert_eq!(
-            max_lock, info.data.frozen,
-            "Max lock should be equal to frozen balance"
+            info.data.frozen,
+            max_lock.max(max_freeze),
+            "Frozen balance should be the max of the max lock and max freeze"
         );
         let sum_holds: Balance = Holds::<Runtime>::get(&account)
             .iter()

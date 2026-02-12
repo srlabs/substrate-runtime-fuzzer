@@ -12,7 +12,7 @@ use frame_support::{
     weights::constants::WEIGHT_REF_TIME_PER_SECOND,
 };
 use frame_system::Account;
-use pallet_balances::{Holds, TotalIssuance};
+use pallet_balances::{Freezes, Holds, TotalIssuance};
 use pallet_broker::{ConfigRecord, ConfigRecordOf, CoreIndex, CoreMask, Timeslice};
 use parachains_common::{AccountId, Balance, SLOT_DURATION};
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
@@ -113,7 +113,7 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
     ) = call
     {
         for call in calls {
-            if recursively_find_call(call.clone(), matches_on) {
+            if recursively_find_call(call, matches_on) {
                 return true;
             }
         }
@@ -123,7 +123,7 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
     | RuntimeCall::Utility(pallet_utility::Call::as_derivative { call, .. })
     | RuntimeCall::Proxy(pallet_proxy::Call::proxy { call, .. }) = call
     {
-        return recursively_find_call(*call.clone(), matches_on);
+        return recursively_find_call(*call, matches_on);
     } else if matches_on(call) {
         return true;
     }
@@ -137,9 +137,9 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
         iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
             .filter(|(_, _, x): &(_, _, RuntimeCall)| {
                 !recursively_find_call(x.clone(), |call| {
-                    matches!(call.clone(), RuntimeCall::System(_))
+                    matches!(&call, RuntimeCall::System(_))
                         || matches!(
-                            call.clone(),
+                            &call,
                             RuntimeCall::PolkadotXcm(pallet_xcm::Call::execute { .. })
                         )
                 })
@@ -221,7 +221,7 @@ fn initialize_block(block: u32, prev_header: Option<&Header>) {
         pre_digest,
     );
 
-    Executive::initialize_block(&parent_header.clone());
+    Executive::initialize_block(&parent_header);
     Timestamp::set(RuntimeOrigin::none(), u64::from(block) * SLOT_DURATION).unwrap();
 
     #[cfg(not(feature = "fuzzing"))]
@@ -240,8 +240,9 @@ fn initialize_block(block: u32, prev_header: Option<&Header>) {
             ..Default::default()
         };
 
-        let (relay_parent_storage_root, relay_chain_state) =
-            sproof_builder.into_state_root_and_proof();
+        let relay_parent_offset = 1;
+        let (relay_parent_storage_root, relay_chain_state, relay_parent_descendants) =
+            sproof_builder.into_state_root_proof_and_descendants(relay_parent_offset);
         BasicParachainInherentData {
             validation_data: PersistedValidationData {
                 parent_head,
@@ -251,7 +252,7 @@ fn initialize_block(block: u32, prev_header: Option<&Header>) {
             },
             relay_chain_state,
             collator_peer_id: None,
-            relay_parent_descendants: vec![],
+            relay_parent_descendants,
         }
     };
     let inbound_message_data = {
@@ -308,9 +309,15 @@ fn check_invariants(block: u32, initial_total_issuance: Balance) {
             .map(|l| l.amount)
             .max()
             .unwrap_or_default();
+        let max_freeze = Freezes::<Runtime>::get(&account)
+            .iter()
+            .map(|freeze| freeze.amount)
+            .max()
+            .unwrap_or(0);
         assert_eq!(
-            max_lock, info.data.frozen,
-            "Max lock should be equal to frozen balance"
+            info.data.frozen,
+            max_lock.max(max_freeze),
+            "Frozen balance should be the max of the max lock and max freeze"
         );
         let sum_holds: Balance = Holds::<Runtime>::get(&account)
             .iter()
