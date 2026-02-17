@@ -50,7 +50,7 @@ frame-support = { default-features = false, version = "44.0.0" }
 frame-system = { default-features = false, version = "44.0.0" }
 frame-metadata = { default-features = false, version = "23.0.1", features = ["current", "decode", "std"] }
 
-sp-runtime = { default-features = false, version = "44.0.0" }
+sp-runtime = { default-features = false, version = "43.0.0" }
 sp-state-machine = { version = "0.48.0", default-features = false }
 sp-consensus-aura = { default-features = false, version = "0.44.0" }
 sp-trie = { default-features = false, version = "41.1.0" }
@@ -58,7 +58,7 @@ sp-core = { default-features = false, version = "38.1.0" }
 sp-authority-discovery = { default-features = false, version = "38.0.0" }
 sp-consensus-babe = { default-features = false, version = "0.44.0" }
 sp-consensus-beefy = { default-features = false, version = "26.0.0" }
-sp-application-crypto = { default-features = false, version = "43.0.0" }
+sp-application-crypto = { default-features = false, version = "42.0.0" }
 
 pallet-timestamp = { default-features = false, version = "43.0.0" }
 pallet-balances = { default-features = false, version = "45.0.0" }
