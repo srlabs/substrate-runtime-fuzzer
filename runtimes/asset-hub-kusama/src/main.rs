@@ -118,7 +118,8 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
     | RuntimeCall::Utility(
         pallet_utility::Call::as_derivative { call, .. }
         | pallet_utility::Call::dispatch_as { call, .. }
-        | pallet_utility::Call::with_weight { call, .. },
+        | pallet_utility::Call::with_weight { call, .. }
+        | pallet_utility::Call::dispatch_as_fallible { call, .. },
     )
     | RuntimeCall::RemoteProxyRelayChain(
         pallet_remote_proxy::Call::remote_proxy { call, .. }
@@ -127,7 +128,7 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
     | RuntimeCall::Revive(pallet_revive::Call::dispatch_as_fallback_account {
         call,
         ..
-    })
+    }| pallet_revive::Call::eth_substrate_call {call, ..})
     | RuntimeCall::Recovery(pallet_recovery::Call::as_recovered { call, .. })
     | RuntimeCall::Whitelist(
         pallet_whitelist::Call::dispatch_whitelisted_call_with_preimage { call, .. },
@@ -188,6 +189,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                 initialize_block(block, Some(&prev_header));
             }
 
+            println!("    call:       {extrinsic:?}");
             let pre_weight = extrinsic.get_dispatch_info().call_weight;
             let cumulative_weight = weight.saturating_add(pre_weight);
             if cumulative_weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
