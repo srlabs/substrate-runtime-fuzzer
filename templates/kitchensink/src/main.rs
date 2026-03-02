@@ -233,7 +233,10 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(&RuntimeCall) -> bool
     | RuntimeCall::Proxy(
         pallet_proxy::Call::proxy { call, .. } | pallet_proxy::Call::proxy_announced { call, .. },
     )
-    | RuntimeCall::Revive(pallet_revive::Call::dispatch_as_fallback_account { call }| pallet_revive::Call::eth_substrate_call {call,..})
+    | RuntimeCall::Revive(
+        pallet_revive::Call::dispatch_as_fallback_account { call }
+        | pallet_revive::Call::eth_substrate_call { call, .. },
+    )
     | RuntimeCall::Recovery(pallet_recovery::Call::as_recovered { call, .. })
     | RuntimeCall::Council(
         pallet_collective::Call::propose { proposal: call, .. }
