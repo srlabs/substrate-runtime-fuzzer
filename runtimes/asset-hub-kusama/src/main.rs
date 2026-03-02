@@ -189,7 +189,6 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                 initialize_block(block, Some(&prev_header));
             }
 
-            println!("    call:       {extrinsic:?}");
             let pre_weight = extrinsic.get_dispatch_info().call_weight;
             let cumulative_weight = weight.saturating_add(pre_weight);
             if cumulative_weight.ref_time() >= 2 * WEIGHT_REF_TIME_PER_SECOND {
