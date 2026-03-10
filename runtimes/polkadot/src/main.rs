@@ -310,7 +310,7 @@ fn initialize_block(block: u32) {
     println!("  setting bitfields");
     ParaInherent::enter(
         RuntimeOrigin::none(),
-        polkadot_primitives::vstaging::InherentData {
+        polkadot_primitives::InherentData {
             parent_header: grandparent_header,
             backed_candidates: Vec::default(),
             bitfields: Vec::default(),
