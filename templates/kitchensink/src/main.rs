@@ -271,7 +271,6 @@ fn call_filter(call: &RuntimeCall) -> bool {
         }) if RuntimeOrigin::from(*matching_origin.clone()).caller() == RuntimeOrigin::root().caller()
     )
     // We disallow batches of referenda
-    // See https://github.com/paritytech/srlabs_findings/issues/296
     || matches!(
             &call,
             RuntimeCall::Referenda(pallet_referenda::Call::submit { .. })

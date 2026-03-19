@@ -191,9 +191,8 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                 || matches!(
                     &call,
                     RuntimeCall::Referenda(pallet_referenda::Call::submit {
-                        proposal_origin: matching_origin,
                         ..
-                    }) if RuntimeOrigin::from(*matching_origin.clone()).caller() == RuntimeOrigin::root().caller()
+                    })
                 )
             })
         })
@@ -215,7 +214,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
             if lapse > 0 {
                 finalize_block(elapsed);
 
-                block += u32::from(lapse) * 393; // 393 * 256 = 100608 which nearly corresponds to a week
+                block += 1;
                 weight = 0.into();
                 elapsed = Duration::ZERO;
 

@@ -163,6 +163,13 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                             || matches!(
                                 &call,
                                 RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
+                            ) || matches!(
+                                &call,
+                                RuntimeCall::PolkadotXcm(pallet_xcm::Call::execute { .. })
+                            )
+                              || matches!(
+                                 &call,
+                                RuntimeCall::Referenda(pallet_referenda::Call::submit { .. })
                             )
                     })
                 })
@@ -181,7 +188,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                 let prev_header = finalize_block(elapsed);
 
                 // We update our state variables
-                block += u32::from(lapse);
+                block += 1;
                 weight = Weight::zero();
                 elapsed = Duration::ZERO;
 

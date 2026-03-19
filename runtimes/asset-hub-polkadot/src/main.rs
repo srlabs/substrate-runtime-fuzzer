@@ -205,7 +205,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                 let prev_header = finalize_block(elapsed);
 
                 // We update our state variables
-                block += u32::from(lapse);
+                block += 1;
                 weight = Weight::zero();
                 elapsed = Duration::ZERO;
 
