@@ -133,7 +133,8 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
 fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     // We build the list of extrinsics we will execute
     let mut extrinsic_data = data;
-    let extrinsics: Vec<(/* lapse */ u8, /* origin */ u8, RuntimeCall)> =
+    // Vec<(advance_block, origin, extrinsic)>
+    let extrinsics: Vec<(bool, u8, RuntimeCall)> =
         iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
             .filter(|(_, _, x): &(_, _, RuntimeCall)| {
                 !recursively_find_call(x.clone(), |call| {
@@ -156,8 +157,8 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
         let initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
 
-        for (lapse, origin, extrinsic) in extrinsics {
-            if lapse > 0 {
+        for (advance_block, origin, extrinsic) in extrinsics {
+            if advance_block {
                 let prev_header = finalize_block(elapsed);
 
                 // We update our state variables

@@ -153,8 +153,8 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     let mut elapsed: Duration = Duration::ZERO;
 
     BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
-        // Vec<(lapse, origin, extrinsic)>
-        let extrinsics: Vec<(u8, u8, RuntimeCall)> =
+        // Vec<(advance_block, origin, extrinsic)>
+        let extrinsics: Vec<(bool, u8, RuntimeCall)> =
             iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
                 .filter(|(_, _, x): &(_, _, RuntimeCall)| {
                     !recursively_find_call(x.clone(), |call| {
@@ -183,8 +183,8 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
 
         initialize_block(block, None);
 
-        for (lapse, origin, extrinsic) in extrinsics {
-            if lapse > 0 {
+        for (advance_block, origin, extrinsic) in extrinsics {
+            if advance_block {
                 let prev_header = finalize_block(elapsed);
 
                 // We update our state variables
@@ -192,7 +192,6 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                 weight = Weight::zero();
                 elapsed = Duration::ZERO;
 
-                // We start the next block
                 initialize_block(block, Some(&prev_header));
             }
 

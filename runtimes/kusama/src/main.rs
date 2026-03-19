@@ -169,10 +169,10 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
 }
 
 fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
-    let mut extrinsic_data = data;
     // We build the list of extrinsics we will execute
-    #[allow(deprecated)]
-    let extrinsics: Vec<(/* lapse */ u8, /* origin */ u8, RuntimeCall)> =
+    let mut extrinsic_data = data;
+    // Vec<(advance_block, origin, extrinsic)>
+    let extrinsics: Vec<(bool, u8, RuntimeCall)> =
         iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
             .filter(|(_, _, x): &(_, _, RuntimeCall)| {
                 !recursively_find_call(x.clone(), |call| {
@@ -210,8 +210,8 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
 
         initialize_block(block);
 
-        for (lapse, origin, extrinsic) in extrinsics {
-            if lapse > 0 {
+        for (advance_block, origin, extrinsic) in extrinsics {
+            if advance_block {
                 finalize_block(elapsed);
 
                 block += 1;

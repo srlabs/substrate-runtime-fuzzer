@@ -61,15 +61,13 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
 }
 
 fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
-    let mut data = data;
     // We build the list of extrinsics we will execute
-    let extrinsics: Vec<(
-        /* next_block */ bool,
-        /* origin */ u8,
-        RuntimeCall,
-    )> = iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut data).ok())
-        .filter(|(_, _, x)| !matches!(x, RuntimeCall::System(_)))
-        .collect();
+    let mut data = data;
+    // Vec<(advance_block, origin, extrinsic)>
+    let extrinsics: Vec<(bool, u8, RuntimeCall)> =
+        iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut data).ok())
+            .filter(|(_, _, x)| !matches!(x, RuntimeCall::System(_)))
+            .collect();
     if extrinsics.is_empty() {
         return;
     }
@@ -83,8 +81,8 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
 
         initialize_block(block);
 
-        for (next_block, origin, extrinsic) in extrinsics {
-            if next_block {
+        for (advance_block, origin, extrinsic) in extrinsics {
+            if advance_block {
                 finalize_block(elapsed);
 
                 block += 1;
