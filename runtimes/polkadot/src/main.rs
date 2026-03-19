@@ -3,7 +3,7 @@ use codec::{DecodeLimit, Encode};
 use frame_support::{
     dispatch::GetDispatchInfo,
     pallet_prelude::Weight,
-    traits::{IntegrityTest, OriginTrait, TryState, TryStateSelect},
+    traits::{IntegrityTest, TryState, TryStateSelect},
     weights::constants::WEIGHT_REF_TIME_PER_SECOND,
 };
 use frame_system::Account;
