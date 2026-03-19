@@ -172,31 +172,31 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     let mut extrinsic_data = data;
     // We build the list of extrinsics we will execute
     #[allow(deprecated)]
-    let extrinsics: Vec<(/* lapse */ u8, /* origin */ u8, RuntimeCall)> = iter::from_fn(|| {
-            DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok()
-        })
-        .filter(|(_, _, x): &(_, _, RuntimeCall)| {
-            !recursively_find_call(x.clone(), |call| {
-                matches!(&call, RuntimeCall::System(_))
-                || matches!(
-                    &call,
-                    RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
-                )
-                || matches!(&call, RuntimeCall::VoterList(pallet_bags_list::Call::rebag { .. }))
-                || matches!(
-                    &call,
-                    RuntimeCall::Treasury(pallet_treasury::Call::spend { valid_from, .. })
-                        if valid_from.as_ref().copied().unwrap_or(0) >= 4_200_000_000
-                )
-                || matches!(
-                    &call,
-                    RuntimeCall::Referenda(pallet_referenda::Call::submit {
-                        ..
-                    })
-                )
+    let extrinsics: Vec<(/* lapse */ u8, /* origin */ u8, RuntimeCall)> =
+        iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
+            .filter(|(_, _, x): &(_, _, RuntimeCall)| {
+                !recursively_find_call(x.clone(), |call| {
+                    matches!(&call, RuntimeCall::System(_))
+                        || matches!(
+                            &call,
+                            RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
+                        )
+                        || matches!(
+                            &call,
+                            RuntimeCall::VoterList(pallet_bags_list::Call::rebag { .. })
+                        )
+                        || matches!(
+                            &call,
+                            RuntimeCall::Treasury(pallet_treasury::Call::spend { valid_from, .. })
+                                if valid_from.as_ref().copied().unwrap_or(0) >= 4_200_000_000
+                        )
+                        || matches!(
+                            &call,
+                            RuntimeCall::Referenda(pallet_referenda::Call::submit { .. })
+                        )
+                })
             })
-        })
-        .collect();
+            .collect();
     if extrinsics.is_empty() {
         return;
     }
