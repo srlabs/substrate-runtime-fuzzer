@@ -3,7 +3,7 @@ use codec::{DecodeLimit, Encode};
 use frame_support::{
     dispatch::GetDispatchInfo,
     pallet_prelude::Weight,
-    traits::{IntegrityTest, OriginTrait, TryState, TryStateSelect},
+    traits::{IntegrityTest, TryState, TryStateSelect},
     weights::constants::WEIGHT_REF_TIME_PER_SECOND,
 };
 use frame_system::Account;
@@ -169,35 +169,34 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
 }
 
 fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
-    let mut extrinsic_data = data;
     // We build the list of extrinsics we will execute
-    #[allow(deprecated)]
-    let extrinsics: Vec<(/* lapse */ u8, /* origin */ u8, RuntimeCall)> = iter::from_fn(|| {
-            DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok()
-        })
-        .filter(|(_, _, x): &(_, _, RuntimeCall)| {
-            !recursively_find_call(x.clone(), |call| {
-                matches!(&call, RuntimeCall::System(_))
-                || matches!(
-                    &call,
-                    RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
-                )
-                || matches!(&call, RuntimeCall::VoterList(pallet_bags_list::Call::rebag { .. }))
-                || matches!(
-                    &call,
-                    RuntimeCall::Treasury(pallet_treasury::Call::spend { valid_from, .. })
-                        if valid_from.as_ref().copied().unwrap_or(0) >= 4_200_000_000
-                )
-                || matches!(
-                    &call,
-                    RuntimeCall::Referenda(pallet_referenda::Call::submit {
-                        proposal_origin: matching_origin,
-                        ..
-                    }) if RuntimeOrigin::from(*matching_origin.clone()).caller() == RuntimeOrigin::root().caller()
-                )
+    let mut extrinsic_data = data;
+    // Vec<(advance_block, origin, extrinsic)>
+    let extrinsics: Vec<(bool, u8, RuntimeCall)> =
+        iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
+            .filter(|(_, _, x): &(_, _, RuntimeCall)| {
+                !recursively_find_call(x.clone(), |call| {
+                    matches!(&call, RuntimeCall::System(_))
+                        || matches!(
+                            &call,
+                            RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
+                        )
+                        || matches!(
+                            &call,
+                            RuntimeCall::VoterList(pallet_bags_list::Call::rebag { .. })
+                        )
+                        || matches!(
+                            &call,
+                            RuntimeCall::Treasury(pallet_treasury::Call::spend { valid_from, .. })
+                                if valid_from.as_ref().copied().unwrap_or(0) >= 4_200_000_000
+                        )
+                        || matches!(
+                            &call,
+                            RuntimeCall::Referenda(pallet_referenda::Call::submit { .. })
+                        )
+                })
             })
-        })
-        .collect();
+            .collect();
     if extrinsics.is_empty() {
         return;
     }
@@ -211,11 +210,11 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
 
         initialize_block(block);
 
-        for (lapse, origin, extrinsic) in extrinsics {
-            if lapse > 0 {
+        for (advance_block, origin, extrinsic) in extrinsics {
+            if advance_block {
                 finalize_block(elapsed);
 
-                block += u32::from(lapse) * 393; // 393 * 256 = 100608 which nearly corresponds to a week
+                block += 1;
                 weight = 0.into();
                 elapsed = Duration::ZERO;
 
@@ -311,7 +310,7 @@ fn initialize_block(block: u32) {
     println!("  setting bitfields");
     ParaInherent::enter(
         RuntimeOrigin::none(),
-        polkadot_primitives::vstaging::InherentData {
+        polkadot_primitives::InherentData {
             parent_header: grandparent_header,
             backed_candidates: Vec::default(),
             bitfields: Vec::default(),

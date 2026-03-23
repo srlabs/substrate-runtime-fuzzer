@@ -271,7 +271,6 @@ fn call_filter(call: &RuntimeCall) -> bool {
         }) if RuntimeOrigin::from(*matching_origin.clone()).caller() == RuntimeOrigin::root().caller()
     )
     // We disallow batches of referenda
-    // See https://github.com/paritytech/srlabs_findings/issues/296
     || matches!(
             &call,
             RuntimeCall::Referenda(pallet_referenda::Call::submit { .. })
@@ -327,7 +326,7 @@ fn call_filter(call: &RuntimeCall) -> bool {
 fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     // We build the list of extrinsics we will execute
     let mut extrinsic_data = data;
-    // Vec<(next_block, origin, extrinsic)>
+    // Vec<(advance_block, origin, extrinsic)>
     let extrinsics: Vec<(bool, u8, RuntimeCall)> =
         iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
             .filter(|(_, _, x): &(_, _, RuntimeCall)| {
@@ -347,16 +346,14 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
 
         initialize_block(block);
 
-        for (next_block, origin, extrinsic) in extrinsics {
-            if next_block {
-                // We end the current block
+        for (advance_block, origin, extrinsic) in extrinsics {
+            if advance_block {
                 finalize_block(elapsed);
 
                 block += 1;
                 weight = Weight::zero();
                 elapsed = Duration::ZERO;
 
-                // We start the next block
                 initialize_block(block);
             }
 
