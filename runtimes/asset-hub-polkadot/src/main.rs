@@ -212,7 +212,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
             }
 
             #[cfg(not(feature = "fuzzing"))]
-            println!("    call:       {extrinsic:?}");
+            println!("\n    call:       {extrinsic:?}");
 
             let pre_weight = extrinsic.get_dispatch_info().call_weight;
             let cumulative_weight = weight.saturating_add(pre_weight);
@@ -226,7 +226,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
             let origin = accounts[origin as usize % accounts.len()].clone();
 
             #[cfg(not(feature = "fuzzing"))]
-            println!("\n    origin:     {origin:?}");
+            println!("    origin:     {origin:?}");
 
             let now = Instant::now(); // We get the current time for timing purposes.
             let res = extrinsic.dispatch(RuntimeOrigin::signed(origin));

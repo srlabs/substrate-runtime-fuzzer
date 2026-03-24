@@ -30,6 +30,7 @@ sp-core = { workspace = true }
 pallet-timestamp = { workspace = true }
 pallet-balances = { workspace = true }
 pallet-assets = { workspace = true }
+pallet-uniques = { workspace = true }
 pallet-xcm = { workspace = true }
 pallet-utility = { workspace = true }
 pallet-proxy = { workspace = true }

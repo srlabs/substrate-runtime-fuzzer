@@ -63,6 +63,7 @@ sp-application-crypto = { default-features = false, version = "44.0.0" }
 pallet-timestamp = { default-features = false, version = "44.0.0" }
 pallet-balances = { default-features = false, version = "46.0.0" }
 pallet-assets = { default-features = false, version = "48.1.0" }
+pallet-uniques = { default-features = false, version = "45.0.0" }
 pallet-xcm = { default-features = false, version = "25.0.0" }
 pallet-utility = { default-features = false, version = "45.0.0" }
 pallet-proxy = { default-features = false, version = "45.0.0" }
