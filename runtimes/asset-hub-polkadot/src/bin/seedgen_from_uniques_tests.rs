@@ -582,10 +582,7 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             0,
             RuntimeCall::Uniques(pallet_uniques::Call::clear_collection_metadata { collection: 0 }),
         ));
-        seeds.push((
-            "test_set_collection_metadata_should_work".to_string(),
-            data,
-        ));
+        seeds.push(("test_set_collection_metadata_should_work".to_string(), data));
     }
 
     // --- test: set_item_metadata_should_work ---
@@ -818,10 +815,7 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
                 value: vec![1].try_into().unwrap(),
             }),
         ));
-        seeds.push((
-            "test_set_attribute_should_respect_freeze".to_string(),
-            data,
-        ));
+        seeds.push(("test_set_attribute_should_respect_freeze".to_string(), data));
     }
 
     // --- test: burn_works ---
