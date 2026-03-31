@@ -90,13 +90,21 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let mut data = Vec::new();
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::bond {
-            value: BOND,
-            payee: RewardDestination::Staked,
-        })));
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::validate {
-            prefs: ValidatorPrefs::default(),
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::bond {
+                value: BOND,
+                payee: RewardDestination::Staked,
+            }),
+        ));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::validate {
+                prefs: ValidatorPrefs::default(),
+            }),
+        ));
         seeds.push(("staking_bond_and_validate".into(), data));
     }
 
@@ -107,16 +115,24 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let mut data = Vec::new();
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::bond {
-            value: BOND,
-            payee: RewardDestination::Stash,
-        })));
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::validate {
-            prefs: ValidatorPrefs {
-                commission: Perbill::from_percent(10),
-                blocked: false,
-            },
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::bond {
+                value: BOND,
+                payee: RewardDestination::Stash,
+            }),
+        ));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::validate {
+                prefs: ValidatorPrefs {
+                    commission: Perbill::from_percent(10),
+                    blocked: false,
+                },
+            }),
+        ));
         seeds.push(("staking_bond_and_validate_with_commission".into(), data));
     }
 
@@ -127,13 +143,21 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let mut data = Vec::new();
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::bond {
-            value: BOND,
-            payee: RewardDestination::Staked,
-        })));
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::nominate {
-            targets: vec![lookup(0)],
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::bond {
+                value: BOND,
+                payee: RewardDestination::Staked,
+            }),
+        ));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::nominate {
+                targets: vec![lookup(0)],
+            }),
+        ));
         seeds.push(("staking_bond_and_nominate".into(), data));
     }
 
@@ -145,13 +169,21 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     {
         let mut data = Vec::new();
         for origin in 1u8..=4 {
-            data.extend(enc(false, origin, RuntimeCall::Staking(pallet_staking::Call::bond {
-                value: BOND,
-                payee: RewardDestination::Staked,
-            })));
-            data.extend(enc(false, origin, RuntimeCall::Staking(pallet_staking::Call::nominate {
-                targets: vec![lookup(0)],
-            })));
+            data.extend(enc(
+                false,
+                origin,
+                RuntimeCall::Staking(pallet_staking::Call::bond {
+                    value: BOND,
+                    payee: RewardDestination::Staked,
+                }),
+            ));
+            data.extend(enc(
+                false,
+                origin,
+                RuntimeCall::Staking(pallet_staking::Call::nominate {
+                    targets: vec![lookup(0)],
+                }),
+            ));
         }
         seeds.push(("staking_multi_nominator".into(), data));
     }
@@ -164,11 +196,19 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let mut data = Vec::new();
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::bond {
-            value: BOND,
-            payee: RewardDestination::Staked,
-        })));
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::chill {})));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::bond {
+                value: BOND,
+                payee: RewardDestination::Staked,
+            }),
+        ));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::chill {}),
+        ));
         seeds.push(("staking_bond_and_chill".into(), data));
     }
 
@@ -179,14 +219,26 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let mut data = Vec::new();
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::bond {
-            value: BOND,
-            payee: RewardDestination::Staked,
-        })));
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::validate {
-            prefs: ValidatorPrefs::default(),
-        })));
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::chill {})));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::bond {
+                value: BOND,
+                payee: RewardDestination::Staked,
+            }),
+        ));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::validate {
+                prefs: ValidatorPrefs::default(),
+            }),
+        ));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::chill {}),
+        ));
         seeds.push(("staking_bond_validate_chill".into(), data));
     }
 
@@ -197,14 +249,26 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let mut data = Vec::new();
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::bond {
-            value: BOND,
-            payee: RewardDestination::Staked,
-        })));
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::nominate {
-            targets: vec![lookup(0)],
-        })));
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::chill {})));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::bond {
+                value: BOND,
+                payee: RewardDestination::Staked,
+            }),
+        ));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::nominate {
+                targets: vec![lookup(0)],
+            }),
+        ));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::chill {}),
+        ));
         seeds.push(("staking_bond_nominate_chill".into(), data));
     }
 
@@ -217,23 +281,43 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     {
         let mut data = Vec::new();
         // Bond and nominate
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::bond {
-            value: BOND * 2,
-            payee: RewardDestination::Account(account(1)),
-        })));
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::nominate {
-            targets: vec![lookup(0)],
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::bond {
+                value: BOND * 2,
+                payee: RewardDestination::Account(account(1)),
+            }),
+        ));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::nominate {
+                targets: vec![lookup(0)],
+            }),
+        ));
         // Switch to validator
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::validate {
-            prefs: ValidatorPrefs::default(),
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::validate {
+                prefs: ValidatorPrefs::default(),
+            }),
+        ));
         // Switch back to nominator
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::nominate {
-            targets: vec![lookup(0)],
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::nominate {
+                targets: vec![lookup(0)],
+            }),
+        ));
         // Chill
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::chill {})));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::chill {}),
+        ));
         seeds.push(("staking_switching_roles".into(), data));
     }
 
@@ -246,13 +330,21 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     {
         let mut data = Vec::new();
         // Small bond_extra
-        data.extend(enc(false, 0, RuntimeCall::Staking(pallet_staking::Call::bond_extra {
-            max_additional: BOND,
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Staking(pallet_staking::Call::bond_extra {
+                max_additional: BOND,
+            }),
+        ));
         // Bond everything remaining
-        data.extend(enc(false, 0, RuntimeCall::Staking(pallet_staking::Call::bond_extra {
-            max_additional: u128::MAX,
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Staking(pallet_staking::Call::bond_extra {
+                max_additional: u128::MAX,
+            }),
+        ));
         seeds.push(("staking_bond_extra".into(), data));
     }
 
@@ -261,16 +353,28 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let mut data = Vec::new();
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::bond {
-            value: BOND,
-            payee: RewardDestination::Staked,
-        })));
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::bond_extra {
-            max_additional: BOND,
-        })));
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::validate {
-            prefs: ValidatorPrefs::default(),
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::bond {
+                value: BOND,
+                payee: RewardDestination::Staked,
+            }),
+        ));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::bond_extra {
+                max_additional: BOND,
+            }),
+        ));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::validate {
+                prefs: ValidatorPrefs::default(),
+            }),
+        ));
         seeds.push(("staking_bond_then_bond_extra".into(), data));
     }
 
@@ -282,13 +386,19 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let mut data = Vec::new();
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::bond {
-            value: BOND * 2,
-            payee: RewardDestination::Staked,
-        })));
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::unbond {
-            value: BOND,
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::bond {
+                value: BOND * 2,
+                payee: RewardDestination::Staked,
+            }),
+        ));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::unbond { value: BOND }),
+        ));
         seeds.push(("staking_bond_unbond".into(), data));
     }
 
@@ -300,17 +410,27 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let mut data = Vec::new();
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::bond {
-            value: BOND * 2,
-            payee: RewardDestination::Staked,
-        })));
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::unbond {
-            value: BOND,
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::bond {
+                value: BOND * 2,
+                payee: RewardDestination::Staked,
+            }),
+        ));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::unbond { value: BOND }),
+        ));
         // withdraw immediately – unlocking chunk too young, ledger unchanged
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::withdraw_unbonded {
-            num_slashing_spans: 0,
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::withdraw_unbonded {
+                num_slashing_spans: 0,
+            }),
+        ));
         seeds.push(("staking_bond_unbond_withdraw".into(), data));
     }
 
@@ -322,17 +442,25 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let mut data = Vec::new();
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::bond {
-            value: BOND * 3,
-            payee: RewardDestination::Staked,
-        })));
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::unbond {
-            value: BOND * 2,
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::bond {
+                value: BOND * 3,
+                payee: RewardDestination::Staked,
+            }),
+        ));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::unbond { value: BOND * 2 }),
+        ));
         // Rebond half of what was unbonded
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::rebond {
-            value: BOND,
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::rebond { value: BOND }),
+        ));
         seeds.push(("staking_bond_unbond_rebond".into(), data));
     }
 
@@ -345,20 +473,28 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let mut data = Vec::new();
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::bond {
-            value: BOND * 6,
-            payee: RewardDestination::Staked,
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::bond {
+                value: BOND * 6,
+                payee: RewardDestination::Staked,
+            }),
+        ));
         // Three unbond chunks in three consecutive blocks
         for i in 0u8..3 {
-            data.extend(enc(i > 0, 1, RuntimeCall::Staking(pallet_staking::Call::unbond {
-                value: BOND,
-            })));
+            data.extend(enc(
+                i > 0,
+                1,
+                RuntimeCall::Staking(pallet_staking::Call::unbond { value: BOND }),
+            ));
         }
         // Rebond everything
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::rebond {
-            value: BOND * 3,
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::rebond { value: BOND * 3 }),
+        ));
         seeds.push(("staking_multiple_unbond_chunks_then_rebond".into(), data));
     }
 
@@ -369,22 +505,42 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let mut data = Vec::new();
-        data.extend(enc(false, 0, RuntimeCall::Staking(pallet_staking::Call::set_payee {
-            payee: RewardDestination::Staked,
-        })));
-        data.extend(enc(false, 0, RuntimeCall::Staking(pallet_staking::Call::set_payee {
-            payee: RewardDestination::Stash,
-        })));
-        data.extend(enc(false, 0, RuntimeCall::Staking(pallet_staking::Call::set_payee {
-            payee: RewardDestination::Account(account(1)),
-        })));
-        data.extend(enc(false, 0, RuntimeCall::Staking(pallet_staking::Call::set_payee {
-            payee: RewardDestination::None,
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Staking(pallet_staking::Call::set_payee {
+                payee: RewardDestination::Staked,
+            }),
+        ));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Staking(pallet_staking::Call::set_payee {
+                payee: RewardDestination::Stash,
+            }),
+        ));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Staking(pallet_staking::Call::set_payee {
+                payee: RewardDestination::Account(account(1)),
+            }),
+        ));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Staking(pallet_staking::Call::set_payee {
+                payee: RewardDestination::None,
+            }),
+        ));
         // Reset back to Staked
-        data.extend(enc(false, 0, RuntimeCall::Staking(pallet_staking::Call::set_payee {
-            payee: RewardDestination::Staked,
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Staking(pallet_staking::Call::set_payee {
+                payee: RewardDestination::Staked,
+            }),
+        ));
         seeds.push(("staking_set_payee_variants".into(), data));
     }
 
@@ -393,16 +549,28 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let mut data = Vec::new();
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::bond {
-            value: BOND,
-            payee: RewardDestination::Staked,
-        })));
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::nominate {
-            targets: vec![lookup(0)],
-        })));
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::set_payee {
-            payee: RewardDestination::Account(account(2)),
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::bond {
+                value: BOND,
+                payee: RewardDestination::Staked,
+            }),
+        ));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::nominate {
+                targets: vec![lookup(0)],
+            }),
+        ));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::set_payee {
+                payee: RewardDestination::Account(account(2)),
+            }),
+        ));
         seeds.push(("staking_bond_nominate_set_payee".into(), data));
     }
 
@@ -413,7 +581,11 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let mut data = Vec::new();
-        data.extend(enc(false, 0, RuntimeCall::Staking(pallet_staking::Call::set_controller {})));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Staking(pallet_staking::Call::set_controller {}),
+        ));
         seeds.push(("staking_set_controller".into(), data));
     }
 
@@ -426,25 +598,48 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     {
         let mut data = Vec::new();
         // account(1): bond + validate (blocked)
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::bond {
-            value: BOND,
-            payee: RewardDestination::Staked,
-        })));
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::validate {
-            prefs: ValidatorPrefs { commission: Perbill::zero(), blocked: true },
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::bond {
+                value: BOND,
+                payee: RewardDestination::Staked,
+            }),
+        ));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::validate {
+                prefs: ValidatorPrefs {
+                    commission: Perbill::zero(),
+                    blocked: true,
+                },
+            }),
+        ));
         // account(2): bond + nominate account(1)
-        data.extend(enc(false, 2, RuntimeCall::Staking(pallet_staking::Call::bond {
-            value: BOND,
-            payee: RewardDestination::Staked,
-        })));
-        data.extend(enc(false, 2, RuntimeCall::Staking(pallet_staking::Call::nominate {
-            targets: vec![lookup(1)],
-        })));
+        data.extend(enc(
+            false,
+            2,
+            RuntimeCall::Staking(pallet_staking::Call::bond {
+                value: BOND,
+                payee: RewardDestination::Staked,
+            }),
+        ));
+        data.extend(enc(
+            false,
+            2,
+            RuntimeCall::Staking(pallet_staking::Call::nominate {
+                targets: vec![lookup(1)],
+            }),
+        ));
         // account(1): kick account(2) as nominator
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::kick {
-            who: vec![lookup(2)],
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::kick {
+                who: vec![lookup(2)],
+            }),
+        ));
         seeds.push(("staking_blocking_and_kicking".into(), data));
     }
 
@@ -457,10 +652,14 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let mut data = Vec::new();
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::payout_stakers {
-            validator_stash: account(0),
-            era: 0,
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::payout_stakers {
+                validator_stash: account(0),
+                era: 0,
+            }),
+        ));
         seeds.push(("staking_payout_stakers_era0".into(), data));
     }
 
@@ -469,11 +668,15 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let mut data = Vec::new();
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::payout_stakers_by_page {
-            validator_stash: account(0),
-            era: 0,
-            page: 0,
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::payout_stakers_by_page {
+                validator_stash: account(0),
+                era: 0,
+                page: 0,
+            }),
+        ));
         seeds.push(("staking_payout_stakers_by_page".into(), data));
     }
 
@@ -487,15 +690,23 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     {
         let mut data = Vec::new();
         // Try to reap account(0) – funded, should fail
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::reap_stash {
-            stash: account(0),
-            num_slashing_spans: 0,
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::reap_stash {
+                stash: account(0),
+                num_slashing_spans: 0,
+            }),
+        ));
         // Try to reap account(1) – not stashed, should fail (NotStash)
-        data.extend(enc(false, 0, RuntimeCall::Staking(pallet_staking::Call::reap_stash {
-            stash: account(1),
-            num_slashing_spans: 0,
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Staking(pallet_staking::Call::reap_stash {
+                stash: account(1),
+                num_slashing_spans: 0,
+            }),
+        ));
         seeds.push(("staking_reap_stash".into(), data));
     }
 
@@ -509,17 +720,27 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     {
         let mut data = Vec::new();
         // account(1) bonds + nominates
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::bond {
-            value: BOND,
-            payee: RewardDestination::Staked,
-        })));
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::nominate {
-            targets: vec![lookup(0)],
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::bond {
+                value: BOND,
+                payee: RewardDestination::Staked,
+            }),
+        ));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::nominate {
+                targets: vec![lookup(0)],
+            }),
+        ));
         // account(2) tries to chill account(1) – CannotChillOther without thresholds
-        data.extend(enc(false, 2, RuntimeCall::Staking(pallet_staking::Call::chill_other {
-            stash: account(1),
-        })));
+        data.extend(enc(
+            false,
+            2,
+            RuntimeCall::Staking(pallet_staking::Call::chill_other { stash: account(1) }),
+        ));
         seeds.push(("staking_chill_other".into(), data));
     }
 
@@ -532,9 +753,13 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let mut data = Vec::new();
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::force_apply_min_commission {
-            validator_stash: account(0),
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::force_apply_min_commission {
+                validator_stash: account(0),
+            }),
+        ));
         seeds.push(("staking_force_apply_min_commission".into(), data));
     }
 
@@ -547,9 +772,13 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     {
         let mut data = Vec::new();
         // account(0) is already bonded; update its payee entry
-        data.extend(enc(false, 0, RuntimeCall::Staking(pallet_staking::Call::update_payee {
-            controller: account(0),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Staking(pallet_staking::Call::update_payee {
+                controller: account(0),
+            }),
+        ));
         seeds.push(("staking_update_payee".into(), data));
     }
 
@@ -562,9 +791,11 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let mut data = Vec::new();
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::migrate_currency {
-            stash: account(0),
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::migrate_currency { stash: account(0) }),
+        ));
         seeds.push(("staking_migrate_currency".into(), data));
     }
 
@@ -577,26 +808,44 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     {
         let mut data = Vec::new();
         // Bond
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::bond {
-            value: BOND * 2,
-            payee: RewardDestination::Staked,
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::bond {
+                value: BOND * 2,
+                payee: RewardDestination::Staked,
+            }),
+        ));
         // Validate
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::validate {
-            prefs: ValidatorPrefs::default(),
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::validate {
+                prefs: ValidatorPrefs::default(),
+            }),
+        ));
         // Bond extra
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::bond_extra {
-            max_additional: BOND,
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::bond_extra {
+                max_additional: BOND,
+            }),
+        ));
         // Unbond part
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::unbond {
-            value: BOND * 2,
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::unbond { value: BOND * 2 }),
+        ));
         // Try to withdraw (no-op, chunk not mature)
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::withdraw_unbonded {
-            num_slashing_spans: 0,
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::withdraw_unbonded {
+                num_slashing_spans: 0,
+            }),
+        ));
         seeds.push(("staking_full_lifecycle".into(), data));
     }
 
@@ -605,23 +854,43 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let mut data = Vec::new();
-        data.extend(enc(false, 2, RuntimeCall::Staking(pallet_staking::Call::bond {
-            value: BOND * 4,
-            payee: RewardDestination::Stash,
-        })));
-        data.extend(enc(false, 2, RuntimeCall::Staking(pallet_staking::Call::nominate {
-            targets: vec![lookup(0)],
-        })));
-        data.extend(enc(false, 2, RuntimeCall::Staking(pallet_staking::Call::chill {})));
-        data.extend(enc(false, 2, RuntimeCall::Staking(pallet_staking::Call::unbond {
-            value: BOND * 2,
-        })));
-        data.extend(enc(false, 2, RuntimeCall::Staking(pallet_staking::Call::rebond {
-            value: BOND,
-        })));
-        data.extend(enc(false, 2, RuntimeCall::Staking(pallet_staking::Call::withdraw_unbonded {
-            num_slashing_spans: 0,
-        })));
+        data.extend(enc(
+            false,
+            2,
+            RuntimeCall::Staking(pallet_staking::Call::bond {
+                value: BOND * 4,
+                payee: RewardDestination::Stash,
+            }),
+        ));
+        data.extend(enc(
+            false,
+            2,
+            RuntimeCall::Staking(pallet_staking::Call::nominate {
+                targets: vec![lookup(0)],
+            }),
+        ));
+        data.extend(enc(
+            false,
+            2,
+            RuntimeCall::Staking(pallet_staking::Call::chill {}),
+        ));
+        data.extend(enc(
+            false,
+            2,
+            RuntimeCall::Staking(pallet_staking::Call::unbond { value: BOND * 2 }),
+        ));
+        data.extend(enc(
+            false,
+            2,
+            RuntimeCall::Staking(pallet_staking::Call::rebond { value: BOND }),
+        ));
+        data.extend(enc(
+            false,
+            2,
+            RuntimeCall::Staking(pallet_staking::Call::withdraw_unbonded {
+                num_slashing_spans: 0,
+            }),
+        ));
         seeds.push(("staking_nominate_chill_unbond_rebond".into(), data));
     }
 
@@ -634,28 +903,48 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     {
         let mut data = Vec::new();
         // Block 1: bond
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::bond {
-            value: BOND * 3,
-            payee: RewardDestination::Staked,
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::bond {
+                value: BOND * 3,
+                payee: RewardDestination::Staked,
+            }),
+        ));
         // Block 2: validate
-        data.extend(enc(true, 1, RuntimeCall::Staking(pallet_staking::Call::validate {
-            prefs: ValidatorPrefs::default(),
-        })));
+        data.extend(enc(
+            true,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::validate {
+                prefs: ValidatorPrefs::default(),
+            }),
+        ));
         // Block 3: bond_extra
-        data.extend(enc(true, 1, RuntimeCall::Staking(pallet_staking::Call::bond_extra {
-            max_additional: BOND,
-        })));
+        data.extend(enc(
+            true,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::bond_extra {
+                max_additional: BOND,
+            }),
+        ));
         // Block 4: unbond
-        data.extend(enc(true, 1, RuntimeCall::Staking(pallet_staking::Call::unbond {
-            value: BOND,
-        })));
+        data.extend(enc(
+            true,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::unbond { value: BOND }),
+        ));
         // Block 5: rebond
-        data.extend(enc(true, 1, RuntimeCall::Staking(pallet_staking::Call::rebond {
-            value: BOND / 2,
-        })));
+        data.extend(enc(
+            true,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::rebond { value: BOND / 2 }),
+        ));
         // Block 6: chill
-        data.extend(enc(true, 1, RuntimeCall::Staking(pallet_staking::Call::chill {})));
+        data.extend(enc(
+            true,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::chill {}),
+        ));
         seeds.push(("staking_cross_block_lifecycle".into(), data));
     }
 
@@ -666,15 +955,23 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let mut data = Vec::new();
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::bond {
-            value: BOND,
-            payee: RewardDestination::Staked,
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::bond {
+                value: BOND,
+                payee: RewardDestination::Staked,
+            }),
+        ));
         // Second bond → AlreadyBonded
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::bond {
-            value: BOND,
-            payee: RewardDestination::Staked,
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::bond {
+                value: BOND,
+                payee: RewardDestination::Staked,
+            }),
+        ));
         seeds.push(("staking_double_bond_fails".into(), data));
     }
 
@@ -684,9 +981,13 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     {
         let mut data = Vec::new();
         // account(1) not bonded → NotController
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::validate {
-            prefs: ValidatorPrefs::default(),
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::validate {
+                prefs: ValidatorPrefs::default(),
+            }),
+        ));
         seeds.push(("staking_validate_without_bond".into(), data));
     }
 
@@ -695,9 +996,13 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let mut data = Vec::new();
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::nominate {
-            targets: vec![lookup(0)],
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::nominate {
+                targets: vec![lookup(0)],
+            }),
+        ));
         seeds.push(("staking_nominate_without_bond".into(), data));
     }
 
@@ -706,9 +1011,11 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let mut data = Vec::new();
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::unbond {
-            value: BOND,
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::unbond { value: BOND }),
+        ));
         seeds.push(("staking_unbond_without_bond".into(), data));
     }
 
@@ -717,13 +1024,24 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let mut data = Vec::new();
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::bond {
-            value: BOND,
-            payee: RewardDestination::Staked,
-        })));
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::validate {
-            prefs: ValidatorPrefs { commission: Perbill::one(), blocked: false },
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::bond {
+                value: BOND,
+                payee: RewardDestination::Staked,
+            }),
+        ));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::validate {
+                prefs: ValidatorPrefs {
+                    commission: Perbill::one(),
+                    blocked: false,
+                },
+            }),
+        ));
         seeds.push(("staking_validate_max_commission".into(), data));
     }
 
@@ -734,15 +1052,27 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     {
         let small_bond = DOLLARS; // 1 DOLLAR, above ED (also DOLLARS)
         let mut data = Vec::new();
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::bond {
-            value: small_bond,
-            payee: RewardDestination::Staked,
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::bond {
+                value: small_bond,
+                payee: RewardDestination::Staked,
+            }),
+        ));
         // validate may succeed (MinValidatorBond defaults to 0)
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::validate {
-            prefs: ValidatorPrefs::default(),
-        })));
-        data.extend(enc(false, 1, RuntimeCall::Staking(pallet_staking::Call::chill {})));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::validate {
+                prefs: ValidatorPrefs::default(),
+            }),
+        ));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Staking(pallet_staking::Call::chill {}),
+        ));
         seeds.push(("staking_bond_small_value".into(), data));
     }
 
@@ -755,23 +1085,39 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
         let mut data = Vec::new();
         // account(1) and account(2) become validators
         for origin in [1u8, 2] {
-            data.extend(enc(false, origin, RuntimeCall::Staking(pallet_staking::Call::bond {
-                value: BOND * 2,
-                payee: RewardDestination::Staked,
-            })));
-            data.extend(enc(false, origin, RuntimeCall::Staking(pallet_staking::Call::validate {
-                prefs: ValidatorPrefs::default(),
-            })));
+            data.extend(enc(
+                false,
+                origin,
+                RuntimeCall::Staking(pallet_staking::Call::bond {
+                    value: BOND * 2,
+                    payee: RewardDestination::Staked,
+                }),
+            ));
+            data.extend(enc(
+                false,
+                origin,
+                RuntimeCall::Staking(pallet_staking::Call::validate {
+                    prefs: ValidatorPrefs::default(),
+                }),
+            ));
         }
         // account(3) and account(4) nominate both new validators
         for origin in [3u8, 4] {
-            data.extend(enc(false, origin, RuntimeCall::Staking(pallet_staking::Call::bond {
-                value: BOND,
-                payee: RewardDestination::Staked,
-            })));
-            data.extend(enc(false, origin, RuntimeCall::Staking(pallet_staking::Call::nominate {
-                targets: vec![lookup(1), lookup(2)],
-            })));
+            data.extend(enc(
+                false,
+                origin,
+                RuntimeCall::Staking(pallet_staking::Call::bond {
+                    value: BOND,
+                    payee: RewardDestination::Staked,
+                }),
+            ));
+            data.extend(enc(
+                false,
+                origin,
+                RuntimeCall::Staking(pallet_staking::Call::nominate {
+                    targets: vec![lookup(1), lookup(2)],
+                }),
+            ));
         }
         seeds.push(("staking_two_validators_two_nominators".into(), data));
     }
@@ -784,15 +1130,26 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let mut data = Vec::new();
-        data.extend(enc(false, 0, RuntimeCall::Staking(pallet_staking::Call::chill {})));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Staking(pallet_staking::Call::chill {}),
+        ));
         // Re-validate with different commission
-        data.extend(enc(false, 0, RuntimeCall::Staking(pallet_staking::Call::validate {
-            prefs: ValidatorPrefs {
-                commission: Perbill::from_percent(5),
-                blocked: false,
-            },
-        })));
-        seeds.push(("staking_existing_validator_chill_and_revalidate".into(), data));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Staking(pallet_staking::Call::validate {
+                prefs: ValidatorPrefs {
+                    commission: Perbill::from_percent(5),
+                    blocked: false,
+                },
+            }),
+        ));
+        seeds.push((
+            "staking_existing_validator_chill_and_revalidate".into(),
+            data,
+        ));
     }
 
     // =========================================================================
@@ -803,15 +1160,27 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let mut data = Vec::new();
-        data.extend(enc(false, 0, RuntimeCall::Staking(pallet_staking::Call::unbond {
-            value: GENESIS_STASH / 2,
-        })));
-        data.extend(enc(false, 0, RuntimeCall::Staking(pallet_staking::Call::withdraw_unbonded {
-            num_slashing_spans: 0,
-        })));
-        data.extend(enc(false, 0, RuntimeCall::Staking(pallet_staking::Call::bond_extra {
-            max_additional: GENESIS_STASH / 2,
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Staking(pallet_staking::Call::unbond {
+                value: GENESIS_STASH / 2,
+            }),
+        ));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Staking(pallet_staking::Call::withdraw_unbonded {
+                num_slashing_spans: 0,
+            }),
+        ));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Staking(pallet_staking::Call::bond_extra {
+                max_additional: GENESIS_STASH / 2,
+            }),
+        ));
         seeds.push(("staking_existing_validator_unbond_rebond".into(), data));
     }
 

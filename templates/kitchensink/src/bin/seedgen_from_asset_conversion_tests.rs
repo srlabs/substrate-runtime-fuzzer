@@ -340,13 +340,15 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
         data.extend(enc(
             false,
             0,
-            RuntimeCall::AssetConversion(pallet_asset_conversion::Call::swap_exact_tokens_for_tokens {
-                path: vec![with_id(2), native()],
-                amount_in: 100u128,
-                amount_out_min: 1u128,
-                send_to: account(0),
-                keep_alive: false,
-            }),
+            RuntimeCall::AssetConversion(
+                pallet_asset_conversion::Call::swap_exact_tokens_for_tokens {
+                    path: vec![with_id(2), native()],
+                    amount_in: 100u128,
+                    amount_out_min: 1u128,
+                    send_to: account(0),
+                    keep_alive: false,
+                },
+            ),
         ));
 
         seeds.push(("asset_conversion_swap_with_native".to_string(), data));
@@ -395,13 +397,15 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
         data.extend(enc(
             false,
             0,
-            RuntimeCall::AssetConversion(pallet_asset_conversion::Call::swap_exact_tokens_for_tokens {
-                path: vec![with_id(2), native()],
-                amount_in: 10 * UNIT,
-                amount_out_min: 1u128,
-                send_to: account(0),
-                keep_alive: false,
-            }),
+            RuntimeCall::AssetConversion(
+                pallet_asset_conversion::Call::swap_exact_tokens_for_tokens {
+                    path: vec![with_id(2), native()],
+                    amount_in: 10 * UNIT,
+                    amount_out_min: 1u128,
+                    send_to: account(0),
+                    keep_alive: false,
+                },
+            ),
         ));
 
         seeds.push(("asset_conversion_swap_realistic_values".to_string(), data));
@@ -451,13 +455,15 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
         data.extend(enc(
             false,
             0,
-            RuntimeCall::AssetConversion(pallet_asset_conversion::Call::swap_tokens_for_exact_tokens {
-                path: vec![native(), with_id(2)],
-                amount_out: 50u128,
-                amount_in_max: 3_500 * DOLLARS,
-                send_to: account(0),
-                keep_alive: true,
-            }),
+            RuntimeCall::AssetConversion(
+                pallet_asset_conversion::Call::swap_tokens_for_exact_tokens {
+                    path: vec![native(), with_id(2)],
+                    amount_out: 50u128,
+                    amount_in_max: 3_500 * DOLLARS,
+                    send_to: account(0),
+                    keep_alive: true,
+                },
+            ),
         ));
 
         seeds.push(("asset_conversion_swap_tokens_for_exact".to_string(), data));
@@ -522,13 +528,15 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
         data.extend(enc(
             false,
             0,
-            RuntimeCall::AssetConversion(pallet_asset_conversion::Call::swap_tokens_for_exact_tokens {
-                path: vec![native(), with_id(2)],
-                amount_out: 50u128,
-                amount_in_max: 3_500 * DOLLARS,
-                send_to: account(0),
-                keep_alive: true,
-            }),
+            RuntimeCall::AssetConversion(
+                pallet_asset_conversion::Call::swap_tokens_for_exact_tokens {
+                    path: vec![native(), with_id(2)],
+                    amount_out: 50u128,
+                    amount_in_max: 3_500 * DOLLARS,
+                    send_to: account(0),
+                    keep_alive: true,
+                },
+            ),
         ));
 
         // account(1) removes LP tokens
@@ -623,13 +631,15 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
         data.extend(enc(
             false,
             0,
-            RuntimeCall::AssetConversion(pallet_asset_conversion::Call::swap_exact_tokens_for_tokens {
-                path: vec![native(), with_id(2), with_id(3)],
-                amount_in: 500 * DOLLARS,
-                amount_out_min: 80u128,
-                send_to: account(0),
-                keep_alive: true,
-            }),
+            RuntimeCall::AssetConversion(
+                pallet_asset_conversion::Call::swap_exact_tokens_for_tokens {
+                    path: vec![native(), with_id(2), with_id(3)],
+                    amount_in: 500 * DOLLARS,
+                    amount_out_min: 80u128,
+                    send_to: account(0),
+                    keep_alive: true,
+                },
+            ),
         ));
 
         seeds.push(("asset_conversion_multi_hop_swap_exact".to_string(), data));
@@ -705,16 +715,21 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
         data.extend(enc(
             false,
             0,
-            RuntimeCall::AssetConversion(pallet_asset_conversion::Call::swap_tokens_for_exact_tokens {
-                path: vec![native(), with_id(2), with_id(3)],
-                amount_out: 100u128,
-                amount_in_max: 1_000 * DOLLARS,
-                send_to: account(0),
-                keep_alive: true,
-            }),
+            RuntimeCall::AssetConversion(
+                pallet_asset_conversion::Call::swap_tokens_for_exact_tokens {
+                    path: vec![native(), with_id(2), with_id(3)],
+                    amount_out: 100u128,
+                    amount_in_max: 1_000 * DOLLARS,
+                    send_to: account(0),
+                    keep_alive: true,
+                },
+            ),
         ));
 
-        seeds.push(("asset_conversion_multi_hop_swap_exact_out".to_string(), data));
+        seeds.push((
+            "asset_conversion_multi_hop_swap_exact_out".to_string(),
+            data,
+        ));
     }
 
     // =========================================================================
@@ -775,16 +790,21 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
         data.extend(enc(
             false,
             0,
-            RuntimeCall::AssetConversion(pallet_asset_conversion::Call::swap_tokens_for_exact_tokens {
-                path: vec![with_id(2), native()],
-                amount_out: 1 * DOLLARS,
-                amount_in_max: 500u128,
-                send_to: account(0),
-                keep_alive: false,
-            }),
+            RuntimeCall::AssetConversion(
+                pallet_asset_conversion::Call::swap_tokens_for_exact_tokens {
+                    path: vec![with_id(2), native()],
+                    amount_out: 1 * DOLLARS,
+                    amount_in_max: 500u128,
+                    send_to: account(0),
+                    keep_alive: false,
+                },
+            ),
         ));
 
-        seeds.push(("asset_conversion_swap_close_to_empty_pool".to_string(), data));
+        seeds.push((
+            "asset_conversion_swap_close_to_empty_pool".to_string(),
+            data,
+        ));
     }
 
     // =========================================================================
@@ -838,16 +858,21 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
         data.extend(enc(
             false,
             1,
-            RuntimeCall::AssetConversion(pallet_asset_conversion::Call::swap_exact_tokens_for_tokens {
-                path: vec![with_id(2), native()],
-                amount_in: 1u128,
-                amount_out_min: 1u128,
-                send_to: account(1),
-                keep_alive: false,
-            }),
+            RuntimeCall::AssetConversion(
+                pallet_asset_conversion::Call::swap_exact_tokens_for_tokens {
+                    path: vec![with_id(2), native()],
+                    amount_in: 1u128,
+                    amount_out_min: 1u128,
+                    send_to: account(1),
+                    keep_alive: false,
+                },
+            ),
         ));
 
-        seeds.push(("asset_conversion_quote_exact_tokens_matches_execution".to_string(), data));
+        seeds.push((
+            "asset_conversion_quote_exact_tokens_matches_execution".to_string(),
+            data,
+        ));
     }
 
     // =========================================================================
@@ -912,7 +937,10 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             }),
         ));
 
-        seeds.push(("asset_conversion_cannot_block_pool_creation".to_string(), data));
+        seeds.push((
+            "asset_conversion_cannot_block_pool_creation".to_string(),
+            data,
+        ));
     }
 
     // =========================================================================
@@ -976,7 +1004,10 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             }),
         ));
 
-        seeds.push(("asset_conversion_add_tiny_liquidity_to_pool_address".to_string(), data));
+        seeds.push((
+            "asset_conversion_add_tiny_liquidity_to_pool_address".to_string(),
+            data,
+        ));
     }
 
     seeds

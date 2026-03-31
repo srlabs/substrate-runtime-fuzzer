@@ -44,7 +44,7 @@
 //! dispatched from the multisig account.  The multisig account is funded beforehand
 //! by transferring 5 DOLLARS from account(0).
 
-use codec::{Encode};
+use codec::Encode;
 use frame_support::weights::Weight;
 use kitchensink_runtime::RuntimeCall;
 use node_primitives::AccountIndex;
@@ -92,10 +92,12 @@ fn signatories_3() -> [AccountId; 3] {
 
 /// Standard inner call: transfer 1 DOLLAR from the multisig account to account(3).
 fn inner_transfer_call() -> Box<RuntimeCall> {
-    Box::new(RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
-        dest: lookup(3),
-        value: DOLLARS,
-    }))
+    Box::new(RuntimeCall::Balances(
+        pallet_balances::Call::transfer_allow_death {
+            dest: lookup(3),
+            value: DOLLARS,
+        },
+    ))
 }
 
 /// SCALE-encode the inner call and return its blake2_256 hash.
@@ -107,7 +109,10 @@ fn inner_transfer_hash() -> [u8; 32] {
 /// Since the fuzzer bypasses `Executive::apply_extrinsic`, `extrinsic_index()` is
 /// always `None → 0` for every call in the block.
 fn tp1() -> Timepoint<u32> {
-    Timepoint { height: 1, index: 0 }
+    Timepoint {
+        height: 1,
+        index: 0,
+    }
 }
 
 /// Large-enough max_weight for the executing as_multi call.
@@ -144,10 +149,14 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
 
     // Helper: fund the multisig account from account(0).
     let fund_multi = |multi: &AccountId| -> Vec<u8> {
-        enc(false, 0, RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
-            dest: MultiAddress::Id(multi.clone()),
-            value: 5 * DOLLARS,
-        }))
+        enc(
+            false,
+            0,
+            RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
+                dest: MultiAddress::Id(multi.clone()),
+                value: 5 * DOLLARS,
+            }),
+        )
     };
 
     // =========================================================================
@@ -162,22 +171,30 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
         data.extend(fund_multi(&multi_2of3));
 
         // sig0: first approval (no timepoint), stores the call
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
-            threshold: 2,
-            other_signatories: vec![account(1), account(2)],
-            maybe_timepoint: None,
-            call: inner_transfer_call(),
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
+                threshold: 2,
+                other_signatories: vec![account(1), account(2)],
+                maybe_timepoint: None,
+                call: inner_transfer_call(),
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // sig1: second approval, threshold met → executes
-        data.extend(enc(false, 1, RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
-            threshold: 2,
-            other_signatories: vec![account(0), account(2)],
-            maybe_timepoint: Some(tp1()),
-            call: inner_transfer_call(),
-            max_weight: exec_weight(),
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
+                threshold: 2,
+                other_signatories: vec![account(0), account(2)],
+                maybe_timepoint: Some(tp1()),
+                call: inner_transfer_call(),
+                max_weight: exec_weight(),
+            }),
+        ));
 
         seeds.push(("multisig_deposit_taken_and_returned".to_string(), data));
     }
@@ -193,32 +210,44 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
         data.extend(fund_multi(&multi_2of3));
 
         // sig0: first approval (hash-only)
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
-            threshold: 2,
-            other_signatories: vec![account(1), account(2)],
-            maybe_timepoint: None,
-            call_hash,
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
+                threshold: 2,
+                other_signatories: vec![account(1), account(2)],
+                maybe_timepoint: None,
+                call_hash,
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // sig1: second approval (hash-only, timepoint required)
         // Even though threshold is now met, approve_as_multi never executes.
-        data.extend(enc(false, 1, RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
-            threshold: 2,
-            other_signatories: vec![account(0), account(2)],
-            maybe_timepoint: Some(tp1()),
-            call_hash,
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
+                threshold: 2,
+                other_signatories: vec![account(0), account(2)],
+                maybe_timepoint: Some(tp1()),
+                call_hash,
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // sig2: supplies call data and executes
-        data.extend(enc(false, 2, RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
-            threshold: 2,
-            other_signatories: vec![account(0), account(1)],
-            maybe_timepoint: Some(tp1()),
-            call: inner_transfer_call(),
-            max_weight: exec_weight(),
-        })));
+        data.extend(enc(
+            false,
+            2,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
+                threshold: 2,
+                other_signatories: vec![account(0), account(1)],
+                maybe_timepoint: Some(tp1()),
+                call: inner_transfer_call(),
+                max_weight: exec_weight(),
+            }),
+        ));
 
         seeds.push(("multisig_2_of_3_works".to_string(), data));
     }
@@ -233,21 +262,29 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
         let mut data = Vec::new();
         data.extend(fund_multi(&multi_2of3));
 
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
-            threshold: 2,
-            other_signatories: vec![account(1), account(2)],
-            maybe_timepoint: None,
-            call: inner_transfer_call(),
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
+                threshold: 2,
+                other_signatories: vec![account(1), account(2)],
+                maybe_timepoint: None,
+                call: inner_transfer_call(),
+                max_weight: Weight::zero(),
+            }),
+        ));
 
-        data.extend(enc(false, 1, RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
-            threshold: 2,
-            other_signatories: vec![account(0), account(2)],
-            maybe_timepoint: Some(tp1()),
-            call: inner_transfer_call(),
-            max_weight: exec_weight(),
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
+                threshold: 2,
+                other_signatories: vec![account(0), account(2)],
+                maybe_timepoint: Some(tp1()),
+                call: inner_transfer_call(),
+                max_weight: exec_weight(),
+            }),
+        ));
 
         seeds.push(("multisig_2_of_3_as_multi_works".to_string(), data));
     }
@@ -262,29 +299,41 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
         let mut data = Vec::new();
         data.extend(fund_multi(&multi_3of3));
 
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
-            threshold: 3,
-            other_signatories: vec![account(1), account(2)],
-            maybe_timepoint: None,
-            call_hash,
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
+                threshold: 3,
+                other_signatories: vec![account(1), account(2)],
+                maybe_timepoint: None,
+                call_hash,
+                max_weight: Weight::zero(),
+            }),
+        ));
 
-        data.extend(enc(false, 1, RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
-            threshold: 3,
-            other_signatories: vec![account(0), account(2)],
-            maybe_timepoint: Some(tp1()),
-            call_hash,
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
+                threshold: 3,
+                other_signatories: vec![account(0), account(2)],
+                maybe_timepoint: Some(tp1()),
+                call_hash,
+                max_weight: Weight::zero(),
+            }),
+        ));
 
-        data.extend(enc(false, 2, RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
-            threshold: 3,
-            other_signatories: vec![account(0), account(1)],
-            maybe_timepoint: Some(tp1()),
-            call: inner_transfer_call(),
-            max_weight: exec_weight(),
-        })));
+        data.extend(enc(
+            false,
+            2,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
+                threshold: 3,
+                other_signatories: vec![account(0), account(1)],
+                maybe_timepoint: Some(tp1()),
+                call: inner_transfer_call(),
+                max_weight: exec_weight(),
+            }),
+        ));
 
         seeds.push(("multisig_3_of_3_works".to_string(), data));
     }
@@ -299,38 +348,54 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
         let mut data = Vec::new();
         data.extend(fund_multi(&multi_3of3));
 
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
-            threshold: 3,
-            other_signatories: vec![account(1), account(2)],
-            maybe_timepoint: None,
-            call_hash,
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
+                threshold: 3,
+                other_signatories: vec![account(1), account(2)],
+                maybe_timepoint: None,
+                call_hash,
+                max_weight: Weight::zero(),
+            }),
+        ));
 
-        data.extend(enc(false, 1, RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
-            threshold: 3,
-            other_signatories: vec![account(0), account(2)],
-            maybe_timepoint: Some(tp1()),
-            call_hash,
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
+                threshold: 3,
+                other_signatories: vec![account(0), account(2)],
+                maybe_timepoint: Some(tp1()),
+                call_hash,
+                max_weight: Weight::zero(),
+            }),
+        ));
 
-        data.extend(enc(false, 2, RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
-            threshold: 3,
-            other_signatories: vec![account(0), account(1)],
-            maybe_timepoint: Some(tp1()),
-            call_hash,
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            2,
+            RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
+                threshold: 3,
+                other_signatories: vec![account(0), account(1)],
+                maybe_timepoint: Some(tp1()),
+                call_hash,
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // sig2 re-submits with full call to execute
-        data.extend(enc(false, 2, RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
-            threshold: 3,
-            other_signatories: vec![account(0), account(1)],
-            maybe_timepoint: Some(tp1()),
-            call: inner_transfer_call(),
-            max_weight: exec_weight(),
-        })));
+        data.extend(enc(
+            false,
+            2,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
+                threshold: 3,
+                other_signatories: vec![account(0), account(1)],
+                maybe_timepoint: Some(tp1()),
+                call: inner_transfer_call(),
+                max_weight: exec_weight(),
+            }),
+        ));
 
         seeds.push(("multisig_handles_no_preimage".to_string(), data));
     }
@@ -343,37 +408,53 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     {
         let mut data = Vec::new();
 
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
-            threshold: 3,
-            other_signatories: vec![account(1), account(2)],
-            maybe_timepoint: None,
-            call_hash,
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
+                threshold: 3,
+                other_signatories: vec![account(1), account(2)],
+                maybe_timepoint: None,
+                call_hash,
+                max_weight: Weight::zero(),
+            }),
+        ));
 
-        data.extend(enc(false, 1, RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
-            threshold: 3,
-            other_signatories: vec![account(0), account(2)],
-            maybe_timepoint: Some(tp1()),
-            call_hash,
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
+                threshold: 3,
+                other_signatories: vec![account(0), account(2)],
+                maybe_timepoint: Some(tp1()),
+                call_hash,
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // sig1 tries to cancel → fails (NotOwner)
-        data.extend(enc(false, 1, RuntimeCall::Multisig(pallet_multisig::Call::cancel_as_multi {
-            threshold: 3,
-            other_signatories: vec![account(0), account(2)],
-            timepoint: tp1(),
-            call_hash,
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Multisig(pallet_multisig::Call::cancel_as_multi {
+                threshold: 3,
+                other_signatories: vec![account(0), account(2)],
+                timepoint: tp1(),
+                call_hash,
+            }),
+        ));
 
         // sig0 (depositor) cancels → succeeds, deposit returned
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::cancel_as_multi {
-            threshold: 3,
-            other_signatories: vec![account(1), account(2)],
-            timepoint: tp1(),
-            call_hash,
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::cancel_as_multi {
+                threshold: 3,
+                other_signatories: vec![account(1), account(2)],
+                timepoint: tp1(),
+                call_hash,
+            }),
+        ));
 
         seeds.push(("multisig_cancel_returns_deposit".to_string(), data));
     }
@@ -384,28 +465,40 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     {
         let mut data = Vec::new();
 
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
-            threshold: 2,
-            other_signatories: vec![account(1), account(2)],
-            maybe_timepoint: None,
-            call_hash,
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
+                threshold: 2,
+                other_signatories: vec![account(1), account(2)],
+                maybe_timepoint: None,
+                call_hash,
+                max_weight: Weight::zero(),
+            }),
+        ));
 
-        data.extend(enc(false, 1, RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
-            threshold: 2,
-            other_signatories: vec![account(0), account(2)],
-            maybe_timepoint: Some(tp1()),
-            call_hash,
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
+                threshold: 2,
+                other_signatories: vec![account(0), account(2)],
+                maybe_timepoint: Some(tp1()),
+                call_hash,
+                max_weight: Weight::zero(),
+            }),
+        ));
 
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::cancel_as_multi {
-            threshold: 2,
-            other_signatories: vec![account(1), account(2)],
-            timepoint: tp1(),
-            call_hash,
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::cancel_as_multi {
+                threshold: 2,
+                other_signatories: vec![account(1), account(2)],
+                timepoint: tp1(),
+                call_hash,
+            }),
+        ));
 
         seeds.push(("multisig_cancel_works".to_string(), data));
     }
@@ -420,10 +513,14 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
         let mut data = Vec::new();
         data.extend(fund_multi(&multi_1of3));
 
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::as_multi_threshold_1 {
-            other_signatories: vec![account(1), account(2)],
-            call: inner_transfer_call(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi_threshold_1 {
+                other_signatories: vec![account(1), account(2)],
+                call: inner_transfer_call(),
+            }),
+        ));
 
         seeds.push(("multisig_1_of_3_threshold_1".to_string(), data));
     }
@@ -456,46 +553,66 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
 
         let mut data = Vec::new();
         // Fund the 2-of-3 multisig for both transfers
-        data.extend(enc(false, 0, RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
-            dest: MultiAddress::Id(multi_2of3.clone()),
-            value: 10 * DOLLARS,
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
+                dest: MultiAddress::Id(multi_2of3.clone()),
+                value: 10 * DOLLARS,
+            }),
+        ));
 
         // sig0 proposes call_a (no timepoint)
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
-            threshold: 2,
-            other_signatories: vec![account(1), account(2)],
-            maybe_timepoint: None,
-            call: call_a.clone(),
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
+                threshold: 2,
+                other_signatories: vec![account(1), account(2)],
+                maybe_timepoint: None,
+                call: call_a.clone(),
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // sig1 proposes call_b (no timepoint – independent multisig operation)
-        data.extend(enc(false, 1, RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
-            threshold: 2,
-            other_signatories: vec![account(0), account(2)],
-            maybe_timepoint: None,
-            call: call_b.clone(),
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
+                threshold: 2,
+                other_signatories: vec![account(0), account(2)],
+                maybe_timepoint: None,
+                call: call_b.clone(),
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // sig2 executes call_a (stored under hash_a, timepoint {1,0})
-        data.extend(enc(false, 2, RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
-            threshold: 2,
-            other_signatories: vec![account(0), account(1)],
-            maybe_timepoint: Some(tp1()),
-            call: call_a,
-            max_weight: exec_weight(),
-        })));
+        data.extend(enc(
+            false,
+            2,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
+                threshold: 2,
+                other_signatories: vec![account(0), account(1)],
+                maybe_timepoint: Some(tp1()),
+                call: call_a,
+                max_weight: exec_weight(),
+            }),
+        ));
 
         // sig2 executes call_b (stored under hash_b, same timepoint {1,0})
-        data.extend(enc(false, 2, RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
-            threshold: 2,
-            other_signatories: vec![account(0), account(1)],
-            maybe_timepoint: Some(tp1()),
-            call: call_b,
-            max_weight: exec_weight(),
-        })));
+        data.extend(enc(
+            false,
+            2,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
+                threshold: 2,
+                other_signatories: vec![account(0), account(1)],
+                maybe_timepoint: Some(tp1()),
+                call: call_b,
+                max_weight: exec_weight(),
+            }),
+        ));
 
         // suppress unused variable warnings (hash_a/hash_b used implicitly above)
         let _ = (hash_a, hash_b);
@@ -520,46 +637,66 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
 
         let mut data = Vec::new();
         // Fund with exactly enough for one execution
-        data.extend(enc(false, 0, RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
-            dest: MultiAddress::Id(multi_2of3.clone()),
-            value: DOLLARS / 2,
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
+                dest: MultiAddress::Id(multi_2of3.clone()),
+                value: DOLLARS / 2,
+            }),
+        ));
 
         // First execution: sig0 proposes
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
-            threshold: 2,
-            other_signatories: vec![account(1), account(2)],
-            maybe_timepoint: None,
-            call: call_small.clone(),
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
+                threshold: 2,
+                other_signatories: vec![account(1), account(2)],
+                maybe_timepoint: None,
+                call: call_small.clone(),
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // sig1 executes – succeeds, funds consumed
-        data.extend(enc(false, 1, RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
-            threshold: 2,
-            other_signatories: vec![account(0), account(2)],
-            maybe_timepoint: Some(tp1()),
-            call: call_small.clone(),
-            max_weight: exec_weight(),
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
+                threshold: 2,
+                other_signatories: vec![account(0), account(2)],
+                maybe_timepoint: Some(tp1()),
+                call: call_small.clone(),
+                max_weight: exec_weight(),
+            }),
+        ));
 
         // Second attempt: sig0 proposes again (no timepoint → new multisig entry)
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
-            threshold: 2,
-            other_signatories: vec![account(1), account(2)],
-            maybe_timepoint: None,
-            call: call_small.clone(),
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
+                threshold: 2,
+                other_signatories: vec![account(1), account(2)],
+                maybe_timepoint: None,
+                call: call_small.clone(),
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // sig2 executes – inner transfer fails (FundsUnavailable) but outer Ok
-        data.extend(enc(false, 2, RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
-            threshold: 2,
-            other_signatories: vec![account(0), account(1)],
-            maybe_timepoint: Some(tp1()),
-            call: call_small,
-            max_weight: exec_weight(),
-        })));
+        data.extend(enc(
+            false,
+            2,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
+                threshold: 2,
+                other_signatories: vec![account(0), account(1)],
+                maybe_timepoint: Some(tp1()),
+                call: call_small,
+                max_weight: exec_weight(),
+            }),
+        ));
 
         let _ = hash_small;
         seeds.push(("multisig_cannot_reissue_same_call".to_string(), data));
@@ -576,49 +713,69 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
         let mut data = Vec::new();
 
         // sig0: first approval
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
-            threshold: 2,
-            other_signatories: vec![account(1), account(2)],
-            maybe_timepoint: None,
-            call_hash,
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
+                threshold: 2,
+                other_signatories: vec![account(1), account(2)],
+                maybe_timepoint: None,
+                call_hash,
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // sig0: duplicate approve → AlreadyApproved (error, still interesting seed)
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
-            threshold: 2,
-            other_signatories: vec![account(1), account(2)],
-            maybe_timepoint: Some(tp1()),
-            call_hash,
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
+                threshold: 2,
+                other_signatories: vec![account(1), account(2)],
+                maybe_timepoint: Some(tp1()),
+                call_hash,
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // sig0: duplicate via as_multi → AlreadyApproved
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
-            threshold: 2,
-            other_signatories: vec![account(1), account(2)],
-            maybe_timepoint: Some(tp1()),
-            call: inner_transfer_call(),
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
+                threshold: 2,
+                other_signatories: vec![account(1), account(2)],
+                maybe_timepoint: Some(tp1()),
+                call: inner_transfer_call(),
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // sig1: new approval → succeeds (threshold met; does not execute via approve_as_multi)
-        data.extend(enc(false, 1, RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
-            threshold: 2,
-            other_signatories: vec![account(0), account(2)],
-            maybe_timepoint: Some(tp1()),
-            call_hash,
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
+                threshold: 2,
+                other_signatories: vec![account(0), account(2)],
+                maybe_timepoint: Some(tp1()),
+                call_hash,
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // sig2: also tries to approve → AlreadyApproved (threshold already met)
-        data.extend(enc(false, 2, RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
-            threshold: 2,
-            other_signatories: vec![account(0), account(1)],
-            maybe_timepoint: Some(tp1()),
-            call_hash,
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            2,
+            RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
+                threshold: 2,
+                other_signatories: vec![account(0), account(1)],
+                maybe_timepoint: Some(tp1()),
+                call_hash,
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         seeds.push(("multisig_duplicate_approvals_ignored".to_string(), data));
     }
@@ -630,55 +787,78 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // WrongTimepoint) followed by the correct sequence.
     // =========================================================================
     {
-        let wrong_tp = Timepoint { height: 99u32, index: 0u32 };
+        let wrong_tp = Timepoint {
+            height: 99u32,
+            index: 0u32,
+        };
 
         let mut data = Vec::new();
         data.extend(fund_multi(&multi_2of3));
 
         // sig1: second-approval without a matching first → UnexpectedTimepoint
-        data.extend(enc(false, 1, RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
-            threshold: 2,
-            other_signatories: vec![account(0), account(2)],
-            maybe_timepoint: Some(tp1()),
-            call_hash,
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
+                threshold: 2,
+                other_signatories: vec![account(0), account(2)],
+                maybe_timepoint: Some(tp1()),
+                call_hash,
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // sig0: first approval (no timepoint) → OK
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
-            threshold: 2,
-            other_signatories: vec![account(1), account(2)],
-            maybe_timepoint: None,
-            call_hash,
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
+                threshold: 2,
+                other_signatories: vec![account(1), account(2)],
+                maybe_timepoint: None,
+                call_hash,
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // sig1: as_multi with None timepoint → NoTimepoint
-        data.extend(enc(false, 1, RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
-            threshold: 2,
-            other_signatories: vec![account(0), account(2)],
-            maybe_timepoint: None,
-            call: inner_transfer_call(),
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
+                threshold: 2,
+                other_signatories: vec![account(0), account(2)],
+                maybe_timepoint: None,
+                call: inner_transfer_call(),
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // sig1: as_multi with wrong timepoint → WrongTimepoint
-        data.extend(enc(false, 1, RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
-            threshold: 2,
-            other_signatories: vec![account(0), account(2)],
-            maybe_timepoint: Some(wrong_tp),
-            call: inner_transfer_call(),
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
+                threshold: 2,
+                other_signatories: vec![account(0), account(2)],
+                maybe_timepoint: Some(wrong_tp),
+                call: inner_transfer_call(),
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // sig1: correct sequence → executes
-        data.extend(enc(false, 1, RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
-            threshold: 2,
-            other_signatories: vec![account(0), account(2)],
-            maybe_timepoint: Some(tp1()),
-            call: inner_transfer_call(),
-            max_weight: exec_weight(),
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
+                threshold: 2,
+                other_signatories: vec![account(0), account(2)],
+                maybe_timepoint: Some(tp1()),
+                call: inner_transfer_call(),
+                max_weight: exec_weight(),
+            }),
+        ));
 
         seeds.push(("multisig_timepoint_checking_works".to_string(), data));
     }
@@ -694,31 +874,43 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
         data.extend(fund_multi(&multi_2of3));
 
         // sig0: first approval
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
-            threshold: 2,
-            other_signatories: vec![account(1), account(2)],
-            maybe_timepoint: None,
-            call: inner_transfer_call(),
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
+                threshold: 2,
+                other_signatories: vec![account(1), account(2)],
+                maybe_timepoint: None,
+                call: inner_transfer_call(),
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // sig1: second approval with max_weight=0 → MaxWeightTooLow (error path)
-        data.extend(enc(false, 1, RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
-            threshold: 2,
-            other_signatories: vec![account(0), account(2)],
-            maybe_timepoint: Some(tp1()),
-            call: inner_transfer_call(),
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
+                threshold: 2,
+                other_signatories: vec![account(0), account(2)],
+                maybe_timepoint: Some(tp1()),
+                call: inner_transfer_call(),
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // sig1: retry with adequate weight → executes
-        data.extend(enc(false, 1, RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
-            threshold: 2,
-            other_signatories: vec![account(0), account(2)],
-            maybe_timepoint: Some(tp1()),
-            call: inner_transfer_call(),
-            max_weight: exec_weight(),
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
+                threshold: 2,
+                other_signatories: vec![account(0), account(2)],
+                maybe_timepoint: Some(tp1()),
+                call: inner_transfer_call(),
+                max_weight: exec_weight(),
+            }),
+        ));
 
         seeds.push(("multisig_weight_check_works".to_string(), data));
     }
@@ -734,37 +926,53 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
         let mut data = Vec::new();
 
         // Create a 2-of-3 multisig
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
-            threshold: 2,
-            other_signatories: vec![account(1), account(2)],
-            maybe_timepoint: None,
-            call_hash,
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
+                threshold: 2,
+                other_signatories: vec![account(1), account(2)],
+                maybe_timepoint: None,
+                call_hash,
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // cancel with wrong signatories → NotFound
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::cancel_as_multi {
-            threshold: 2,
-            other_signatories: vec![account(1), account(3)], // wrong
-            timepoint: tp1(),
-            call_hash,
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::cancel_as_multi {
+                threshold: 2,
+                other_signatories: vec![account(1), account(3)], // wrong
+                timepoint: tp1(),
+                call_hash,
+            }),
+        ));
 
         // cancel with wrong hash → NotFound
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::cancel_as_multi {
-            threshold: 2,
-            other_signatories: vec![account(1), account(2)],
-            timepoint: tp1(),
-            call_hash: wrong_hash,
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::cancel_as_multi {
+                threshold: 2,
+                other_signatories: vec![account(1), account(2)],
+                timepoint: tp1(),
+                call_hash: wrong_hash,
+            }),
+        ));
 
         // correct cancel → succeeds
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::cancel_as_multi {
-            threshold: 2,
-            other_signatories: vec![account(1), account(2)],
-            timepoint: tp1(),
-            call_hash,
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::cancel_as_multi {
+                threshold: 2,
+                other_signatories: vec![account(1), account(2)],
+                timepoint: tp1(),
+                call_hash,
+            }),
+        ));
 
         seeds.push(("multisig_cancel_error_paths".to_string(), data));
     }
@@ -779,31 +987,43 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
         let mut data = Vec::new();
 
         // sig0: first approval (no timepoint)
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
-            threshold: 2,
-            other_signatories: vec![account(1), account(2)],
-            maybe_timepoint: None,
-            call_hash,
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
+                threshold: 2,
+                other_signatories: vec![account(1), account(2)],
+                maybe_timepoint: None,
+                call_hash,
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // sig1: second approval without timepoint → NoTimepoint
-        data.extend(enc(false, 1, RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
-            threshold: 2,
-            other_signatories: vec![account(0), account(2)],
-            maybe_timepoint: None,
-            call_hash,
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
+                threshold: 2,
+                other_signatories: vec![account(0), account(2)],
+                maybe_timepoint: None,
+                call_hash,
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // sig1: with correct timepoint → succeeds
-        data.extend(enc(false, 1, RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
-            threshold: 2,
-            other_signatories: vec![account(0), account(2)],
-            maybe_timepoint: Some(tp1()),
-            call_hash,
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
+                threshold: 2,
+                other_signatories: vec![account(0), account(2)],
+                maybe_timepoint: Some(tp1()),
+                call_hash,
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         seeds.push(("multisig_timepoint_required_after_first".to_string(), data));
     }
@@ -819,47 +1039,67 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
         let mut data = Vec::new();
 
         // as_multi out-of-order → fails
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
-            threshold: 2,
-            other_signatories: vec![account(2), account(1)], // reversed
-            maybe_timepoint: None,
-            call: inner_transfer_call(),
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
+                threshold: 2,
+                other_signatories: vec![account(2), account(1)], // reversed
+                maybe_timepoint: None,
+                call: inner_transfer_call(),
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // approve_as_multi out-of-order → fails
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
-            threshold: 2,
-            other_signatories: vec![account(2), account(1)], // reversed
-            maybe_timepoint: None,
-            call_hash,
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
+                threshold: 2,
+                other_signatories: vec![account(2), account(1)], // reversed
+                maybe_timepoint: None,
+                call_hash,
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // correct order → succeeds (first approval)
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
-            threshold: 2,
-            other_signatories: vec![account(1), account(2)],
-            maybe_timepoint: None,
-            call_hash,
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
+                threshold: 2,
+                other_signatories: vec![account(1), account(2)],
+                maybe_timepoint: None,
+                call_hash,
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // cancel with out-of-order → SignatoriesOutOfOrder
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::cancel_as_multi {
-            threshold: 2,
-            other_signatories: vec![account(2), account(1)], // reversed
-            timepoint: tp1(),
-            call_hash,
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::cancel_as_multi {
+                threshold: 2,
+                other_signatories: vec![account(2), account(1)], // reversed
+                timepoint: tp1(),
+                call_hash,
+            }),
+        ));
 
         // correct cancel → succeeds
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::cancel_as_multi {
-            threshold: 2,
-            other_signatories: vec![account(1), account(2)],
-            timepoint: tp1(),
-            call_hash,
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::cancel_as_multi {
+                threshold: 2,
+                other_signatories: vec![account(1), account(2)],
+                timepoint: tp1(),
+                call_hash,
+            }),
+        ));
 
         seeds.push(("multisig_signatories_out_of_order".to_string(), data));
     }
@@ -875,47 +1115,67 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
         let mut data = Vec::new();
 
         // as_multi: sender (account(0)) in signatories → fails
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
-            threshold: 2,
-            other_signatories: vec![account(0), account(1)], // sender account(0) included
-            maybe_timepoint: None,
-            call: inner_transfer_call(),
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
+                threshold: 2,
+                other_signatories: vec![account(0), account(1)], // sender account(0) included
+                maybe_timepoint: None,
+                call: inner_transfer_call(),
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // correct first approval by sig0
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
-            threshold: 2,
-            other_signatories: vec![account(1), account(2)],
-            maybe_timepoint: None,
-            call_hash,
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
+                threshold: 2,
+                other_signatories: vec![account(1), account(2)],
+                maybe_timepoint: None,
+                call_hash,
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // sig1 includes themselves → SenderInSignatories
-        data.extend(enc(false, 1, RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
-            threshold: 2,
-            other_signatories: vec![account(0), account(1)], // sender account(1) included
-            maybe_timepoint: Some(tp1()),
-            call_hash,
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
+                threshold: 2,
+                other_signatories: vec![account(0), account(1)], // sender account(1) included
+                maybe_timepoint: Some(tp1()),
+                call_hash,
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // sig0 tries to cancel including themselves → SenderInSignatories
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::cancel_as_multi {
-            threshold: 2,
-            other_signatories: vec![account(0), account(2)], // sender included
-            timepoint: tp1(),
-            call_hash,
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::cancel_as_multi {
+                threshold: 2,
+                other_signatories: vec![account(0), account(2)], // sender included
+                timepoint: tp1(),
+                call_hash,
+            }),
+        ));
 
         // correct cancel
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::cancel_as_multi {
-            threshold: 2,
-            other_signatories: vec![account(1), account(2)],
-            timepoint: tp1(),
-            call_hash,
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::cancel_as_multi {
+                threshold: 2,
+                other_signatories: vec![account(1), account(2)],
+                timepoint: tp1(),
+                call_hash,
+            }),
+        ));
 
         seeds.push(("multisig_sender_in_signatories_fails".to_string(), data));
     }
@@ -928,32 +1188,44 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
         let mut data = Vec::new();
 
         // threshold = 0 → MinimumThreshold
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
-            threshold: 0,
-            other_signatories: vec![account(1)],
-            maybe_timepoint: None,
-            call: inner_transfer_call(),
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
+                threshold: 0,
+                other_signatories: vec![account(1)],
+                maybe_timepoint: None,
+                call: inner_transfer_call(),
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // threshold = 1 with others → MinimumThreshold
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
-            threshold: 1,
-            other_signatories: vec![account(1)],
-            maybe_timepoint: None,
-            call: inner_transfer_call(),
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
+                threshold: 1,
+                other_signatories: vec![account(1)],
+                maybe_timepoint: None,
+                call: inner_transfer_call(),
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // too many signatories (MaxSignatories = 100, use 3 which is fine; this
         // is a fuzz-valuable call even though it won't hit the limit with 3 accts)
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
-            threshold: 2,
-            other_signatories: vec![account(1), account(2)],
-            maybe_timepoint: None,
-            call: inner_transfer_call(),
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
+                threshold: 2,
+                other_signatories: vec![account(1), account(2)],
+                maybe_timepoint: None,
+                call: inner_transfer_call(),
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         seeds.push(("multisig_threshold_and_signatory_checks".to_string(), data));
     }
@@ -968,27 +1240,39 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
         let mut data = Vec::new();
 
         // poke non-existent → NotFound
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::poke_deposit {
-            threshold: 2,
-            other_signatories: vec![account(1), account(2)],
-            call_hash: [0u8; 32],
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::poke_deposit {
+                threshold: 2,
+                other_signatories: vec![account(1), account(2)],
+                call_hash: [0u8; 32],
+            }),
+        ));
 
         // create a multisig
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
-            threshold: 2,
-            other_signatories: vec![account(1), account(2)],
-            maybe_timepoint: None,
-            call_hash,
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
+                threshold: 2,
+                other_signatories: vec![account(1), account(2)],
+                maybe_timepoint: None,
+                call_hash,
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // poke existing multisig (deposit unchanged → Pays::Yes)
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::poke_deposit {
-            threshold: 2,
-            other_signatories: vec![account(1), account(2)],
-            call_hash,
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::poke_deposit {
+                threshold: 2,
+                other_signatories: vec![account(1), account(2)],
+                call_hash,
+            }),
+        ));
 
         seeds.push(("multisig_poke_deposit".to_string(), data));
     }
@@ -1002,27 +1286,39 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
         let mut data = Vec::new();
 
         // sig0 creates the multisig
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
-            threshold: 2,
-            other_signatories: vec![account(1), account(2)],
-            maybe_timepoint: None,
-            call_hash,
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
+                threshold: 2,
+                other_signatories: vec![account(1), account(2)],
+                maybe_timepoint: None,
+                call_hash,
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // sig1 tries to poke → NotOwner (note: sig1's other_signatories computed from sig1's POV)
-        data.extend(enc(false, 1, RuntimeCall::Multisig(pallet_multisig::Call::poke_deposit {
-            threshold: 2,
-            other_signatories: vec![account(0), account(2)],
-            call_hash,
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Multisig(pallet_multisig::Call::poke_deposit {
+                threshold: 2,
+                other_signatories: vec![account(0), account(2)],
+                call_hash,
+            }),
+        ));
 
         // sig0 pokes → succeeds
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::poke_deposit {
-            threshold: 2,
-            other_signatories: vec![account(1), account(2)],
-            call_hash,
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::poke_deposit {
+                threshold: 2,
+                other_signatories: vec![account(1), account(2)],
+                call_hash,
+            }),
+        ));
 
         seeds.push(("multisig_poke_deposit_non_owner".to_string(), data));
     }
@@ -1037,28 +1333,40 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
         let multi_2of2 = multi_account_id(&sigs2, 2);
 
         let mut data = Vec::new();
-        data.extend(enc(false, 0, RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
-            dest: MultiAddress::Id(multi_2of2),
-            value: 5 * DOLLARS,
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
+                dest: MultiAddress::Id(multi_2of2),
+                value: 5 * DOLLARS,
+            }),
+        ));
 
         // sig0: first approval
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
-            threshold: 2,
-            other_signatories: vec![account(1)],
-            maybe_timepoint: None,
-            call: inner_transfer_call(),
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
+                threshold: 2,
+                other_signatories: vec![account(1)],
+                maybe_timepoint: None,
+                call: inner_transfer_call(),
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // sig1: second approval → executes
-        data.extend(enc(false, 1, RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
-            threshold: 2,
-            other_signatories: vec![account(0)],
-            maybe_timepoint: Some(tp1()),
-            call: inner_transfer_call(),
-            max_weight: exec_weight(),
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Multisig(pallet_multisig::Call::as_multi {
+                threshold: 2,
+                other_signatories: vec![account(0)],
+                maybe_timepoint: Some(tp1()),
+                call: inner_transfer_call(),
+                max_weight: exec_weight(),
+            }),
+        ));
 
         seeds.push(("multisig_2_of_2_works".to_string(), data));
     }
@@ -1069,27 +1377,39 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     {
         let mut data = Vec::new();
 
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
-            threshold: 2,
-            other_signatories: vec![account(1), account(2)],
-            maybe_timepoint: None,
-            call_hash,
-            max_weight: Weight::zero(),
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::approve_as_multi {
+                threshold: 2,
+                other_signatories: vec![account(1), account(2)],
+                maybe_timepoint: None,
+                call_hash,
+                max_weight: Weight::zero(),
+            }),
+        ));
 
         // poke with out-of-order signatories → SignatoriesOutOfOrder
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::poke_deposit {
-            threshold: 2,
-            other_signatories: vec![account(2), account(1)], // wrong order
-            call_hash,
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::poke_deposit {
+                threshold: 2,
+                other_signatories: vec![account(2), account(1)], // wrong order
+                call_hash,
+            }),
+        ));
 
         // correct order → succeeds
-        data.extend(enc(false, 0, RuntimeCall::Multisig(pallet_multisig::Call::poke_deposit {
-            threshold: 2,
-            other_signatories: vec![account(1), account(2)],
-            call_hash,
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Multisig(pallet_multisig::Call::poke_deposit {
+                threshold: 2,
+                other_signatories: vec![account(1), account(2)],
+                call_hash,
+            }),
+        ));
 
         seeds.push(("multisig_poke_deposit_out_of_order".to_string(), data));
     }

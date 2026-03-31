@@ -55,31 +55,44 @@ fn enc(advance_block: bool, origin: u8, call: RuntimeCall) -> Vec<u8> {
 }
 
 fn transfer(origin: u8, dest: u8, value: u128) -> Vec<u8> {
-    enc(false, origin, RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
-        dest: lookup(dest),
-        value,
-    }))
+    enc(
+        false,
+        origin,
+        RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
+            dest: lookup(dest),
+            value,
+        }),
+    )
 }
 
 fn transfer_keep_alive(origin: u8, dest: u8, value: u128) -> Vec<u8> {
-    enc(false, origin, RuntimeCall::Balances(pallet_balances::Call::transfer_keep_alive {
-        dest: lookup(dest),
-        value,
-    }))
+    enc(
+        false,
+        origin,
+        RuntimeCall::Balances(pallet_balances::Call::transfer_keep_alive {
+            dest: lookup(dest),
+            value,
+        }),
+    )
 }
 
 fn transfer_all(origin: u8, dest: u8, keep_alive: bool) -> Vec<u8> {
-    enc(false, origin, RuntimeCall::Balances(pallet_balances::Call::transfer_all {
-        dest: lookup(dest),
-        keep_alive,
-    }))
+    enc(
+        false,
+        origin,
+        RuntimeCall::Balances(pallet_balances::Call::transfer_all {
+            dest: lookup(dest),
+            keep_alive,
+        }),
+    )
 }
 
 fn burn(origin: u8, value: u128, keep_alive: bool) -> Vec<u8> {
-    enc(false, origin, RuntimeCall::Balances(pallet_balances::Call::burn {
-        value,
-        keep_alive,
-    }))
+    enc(
+        false,
+        origin,
+        RuntimeCall::Balances(pallet_balances::Call::burn { value, keep_alive }),
+    )
 }
 
 // ─── entry point ─────────────────────────────────────────────────────────────
@@ -319,9 +332,9 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let init = ENDOWMENT;
-        let burn1 = DOLLARS;                 // leaves init - burn1, still alive
-        let burn2 = init - burn1 - ED + 1;  // would leave ED-1 < ED with keep_alive → error
-        let burn3 = init - burn1;           // burns everything remaining, allow_death → reaped
+        let burn1 = DOLLARS; // leaves init - burn1, still alive
+        let burn2 = init - burn1 - ED + 1; // would leave ED-1 < ED with keep_alive → error
+        let burn3 = init - burn1; // burns everything remaining, allow_death → reaped
 
         let mut data = Vec::new();
         // 1. Burn some (succeeds, account survives)
@@ -393,9 +406,13 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let mut data = Vec::new();
-        data.extend(enc(false, 0, RuntimeCall::Balances(pallet_balances::Call::upgrade_accounts {
-            who: vec![account(0), account(1), account(2), account(3), account(4)],
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Balances(pallet_balances::Call::upgrade_accounts {
+                who: vec![account(0), account(1), account(2), account(3), account(4)],
+            }),
+        ));
         seeds.push(("balances_upgrade_accounts_all".into(), data));
     }
 
@@ -404,9 +421,13 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let mut data = Vec::new();
-        data.extend(enc(false, 1, RuntimeCall::Balances(pallet_balances::Call::upgrade_accounts {
-            who: vec![account(2)],
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Balances(pallet_balances::Call::upgrade_accounts {
+                who: vec![account(2)],
+            }),
+        ));
         seeds.push(("balances_upgrade_accounts_single".into(), data));
     }
 
@@ -415,9 +436,11 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let mut data = Vec::new();
-        data.extend(enc(false, 0, RuntimeCall::Balances(pallet_balances::Call::upgrade_accounts {
-            who: vec![],
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Balances(pallet_balances::Call::upgrade_accounts { who: vec![] }),
+        ));
         seeds.push(("balances_upgrade_accounts_empty".into(), data));
     }
 
@@ -446,9 +469,13 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
         // account(3) drains to account(4) (allow death)
         data.extend(transfer_all(3, 4, false));
         // Upgrade a set of accounts
-        data.extend(enc(false, 0, RuntimeCall::Balances(pallet_balances::Call::upgrade_accounts {
-            who: vec![account(1), account(2)],
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Balances(pallet_balances::Call::upgrade_accounts {
+                who: vec![account(1), account(2)],
+            }),
+        ));
         // account(0) keeps itself alive while sending to account(2)
         data.extend(transfer_keep_alive(0, 2, 3 * DOLLARS));
         seeds.push(("balances_multi_call_sequence".into(), data));
@@ -464,15 +491,23 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     {
         let mut data = Vec::new();
         // Block 1: account(0) → account(1)
-        data.extend(enc(false, 0, RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
-            dest: lookup(1),
-            value: DOLLARS,
-        })));
+        data.extend(enc(
+            false,
+            0,
+            RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
+                dest: lookup(1),
+                value: DOLLARS,
+            }),
+        ));
         // Block 2: account(1) → account(2)
-        data.extend(enc(true, 1, RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
-            dest: lookup(2),
-            value: DOLLARS,
-        })));
+        data.extend(enc(
+            true,
+            1,
+            RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
+                dest: lookup(2),
+                value: DOLLARS,
+            }),
+        ));
         seeds.push(("balances_transfer_cross_block".into(), data));
     }
 
@@ -481,14 +516,22 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
     // =========================================================================
     {
         let mut data = Vec::new();
-        data.extend(enc(false, 1, RuntimeCall::Balances(pallet_balances::Call::burn {
-            value: 10 * DOLLARS,
-            keep_alive: false,
-        })));
-        data.extend(enc(true, 1, RuntimeCall::Balances(pallet_balances::Call::transfer_all {
-            dest: lookup(2),
-            keep_alive: true,
-        })));
+        data.extend(enc(
+            false,
+            1,
+            RuntimeCall::Balances(pallet_balances::Call::burn {
+                value: 10 * DOLLARS,
+                keep_alive: false,
+            }),
+        ));
+        data.extend(enc(
+            true,
+            1,
+            RuntimeCall::Balances(pallet_balances::Call::transfer_all {
+                dest: lookup(2),
+                keep_alive: true,
+            }),
+        ));
         seeds.push(("balances_burn_then_transfer_all_cross_block".into(), data));
     }
 
