@@ -18,9 +18,9 @@
 //! * `set_reserves` is filtered by the fuzzer – skipped in all seeds.
 //! * Root-only calls (`force_create`, `force_set_metadata`, `force_clear_metadata`,
 //!   `force_asset_status`) are omitted; signed equivalents are used where possible.
-//! * All five fuzzer accounts ([0;32]…[4;32]) start with 10_000_000 DOLLARS,
+//! * All five fuzzer accounts ([0;32]…[4;32]) start with `10_000_000` DOLLARS,
 //!   so every deposit (AssetDeposit=100 DOLLARS, ApprovalDeposit=1 DOLLAR,
-//!   MetadataDeposit, AccountDeposit=1 DOLLAR) is comfortably covered.
+//!   `MetadataDeposit`, AccountDeposit=1 DOLLAR) is comfortably covered.
 
 use codec::{Compact, Encode};
 use kitchensink_runtime::RuntimeCall;

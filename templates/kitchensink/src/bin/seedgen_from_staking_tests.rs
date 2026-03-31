@@ -27,7 +27,7 @@
 //! can mutate `advance_block` flags to drive the runtime through era boundaries.
 //!
 //! ## Note on `NominationPools`
-//! NominationPools calls are filtered by the kitchensink fuzzer – excluded here.
+//! `NominationPools` calls are filtered by the kitchensink fuzzer – excluded here.
 
 use codec::Encode;
 use kitchensink_runtime::RuntimeCall;

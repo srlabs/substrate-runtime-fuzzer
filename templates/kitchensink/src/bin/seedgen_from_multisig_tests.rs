@@ -12,7 +12,7 @@
 //! The test genesis gives u64 accounts small balances (`[1..5 → 10,10,10,5,2]`).
 //! Fuzzer accounts all have `ENDOWMENT = 10_000_000 DOLLARS`, so any deposit fits.
 //!
-//! | Test account | Fuzzer origin | Fuzzer AccountId32 |
+//! | Test account | Fuzzer origin | Fuzzer `AccountId32` |
 //! |---|---|---|
 //! | 1 | 0 | [0;32] |
 //! | 2 | 1 | [1;32] |
@@ -33,7 +33,7 @@
 //! `blake2_256(("modlpy/utilisuba", sorted_signatories, threshold).encode())`.
 //! This is a pure computation – no externalities required.
 //!
-//! ### max_weight
+//! ### `max_weight`
 //! The final `as_multi` that actually *executes* the inner call needs a non-zero
 //! `max_weight`.  We use `Weight::from_parts(1_000_000_000, 100_000)` (~1 ms),
 //! which is generous for a balance transfer yet far below the 2-second block limit.
@@ -55,7 +55,7 @@ use std::{fs, path::Path};
 
 // ─── constants ───────────────────────────────────────────────────────────────
 
-/// DOLLARS = 100 * CENTS = 100 * 1_000 * MILLICENTS = 100 * 1_000 * 1_000_000_000
+/// DOLLARS = 100 * CENTS = 100 * `1_000` * MILLICENTS = 100 * `1_000` * `1_000_000_000`
 const DOLLARS: u128 = 100 * 1_000 * 1_000_000_000;
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -100,7 +100,7 @@ fn inner_transfer_call() -> Box<RuntimeCall> {
     ))
 }
 
-/// SCALE-encode the inner call and return its blake2_256 hash.
+/// SCALE-encode the inner call and return its `blake2_256` hash.
 fn inner_transfer_hash() -> [u8; 32] {
     blake2_256(&inner_transfer_call().encode())
 }
@@ -115,7 +115,7 @@ fn tp1() -> Timepoint<u32> {
     }
 }
 
-/// Large-enough max_weight for the executing as_multi call.
+/// Large-enough `max_weight` for the executing `as_multi` call.
 fn exec_weight() -> Weight {
     Weight::from_parts(1_000_000_000, 100_000)
 }

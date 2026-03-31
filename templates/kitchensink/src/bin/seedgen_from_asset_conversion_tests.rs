@@ -5,17 +5,17 @@
 //!
 //! Each seed encodes one full test scenario as a sequence of SCALE-encoded
 //! `(bool, u8, RuntimeCall)` tuples. The fuzzer uses these as a starting
-//! corpus and mutates them to explore deeper code paths in the AssetConversion
+//! corpus and mutates them to explore deeper code paths in the `AssetConversion`
 //! pallet.
 //!
 //! Translation notes
 //! -----------------
 //! * `Assets::force_create(root, id, owner, ...)` → replaced by
 //!   `Assets::create(signed(0), id, lookup(0), min_balance)`. The kitchensink
-//!   genesis gives every account 10_000_000 DOLLARS, so the AssetDeposit is
+//!   genesis gives every account `10_000_000` DOLLARS, so the `AssetDeposit` is
 //!   always covered.
 //! * `Balances::force_set_balance(root, ...)` → dropped entirely. Genesis
-//!   endowment (10_000_000 DOLLARS per account) far exceeds any amount used
+//!   endowment (`10_000_000` DOLLARS per account) far exceeds any amount used
 //!   in the tests.
 //! * Test account integer `N` (1-indexed u128) → fuzzer origin `N-1`, account
 //!   `[N-1; 32]`. Exception: test account 2 used in two-user tests → origin 1.
@@ -23,10 +23,10 @@
 //!   so use `account(idx)` directly (not `MultiAddress`).
 //! * The path arg in swap calls is `Vec<Box<NativeOrWithId<u32>>>`.
 //! * All native (asset1) amounts are scaled by DOLLARS
-//!   (= 100_000_000_000_000 planks = 10^14) because the kitchensink
-//!   ExistentialDeposit is 1 DOLLAR, and `add_liquidity` rejects
+//!   (= `100_000_000_000_000` planks = 10^14) because the kitchensink
+//!   `ExistentialDeposit` is 1 DOLLAR, and `add_liquidity` rejects
 //!   amounts below the native minimum balance.
-//! * Non-native asset amounts are kept small (min_balance = 1 for created
+//! * Non-native asset amounts are kept small (`min_balance` = 1 for created
 //!   assets), matching test values directly.
 //! * Trait-based tests (`SwapCredit`, `Swap` trait, genesis-pool tests) are
 //!   skipped – they do not map to dispatchable `RuntimeCall` variants.
@@ -41,7 +41,7 @@ use std::{fs, path::Path};
 // ── constants ─────────────────────────────────────────────────────────────────
 
 /// 1 DOT in planks: MILLICENTS=1e9, CENTS=1e12, DOLLARS=1e14.
-/// Matches kitchensink_runtime::constants::currency::DOLLARS.
+/// Matches `kitchensink_runtime::constants::currency::DOLLARS`.
 const DOLLARS: u128 = 100_000_000_000_000;
 
 // ── type aliases ─────────────────────────────────────────────────────────────
@@ -65,13 +65,13 @@ fn enc(advance_block: bool, origin: u8, call: RuntimeCall) -> Vec<u8> {
 }
 
 /// Shorthand: `NativeOrWithId::Native`.
-fn native() -> Box<NativeOrWithId<u32>> {
-    Box::new(NativeOrWithId::Native)
+fn native() -> NativeOrWithId<u32> {
+    NativeOrWithId::Native
 }
 
 /// Shorthand: `NativeOrWithId::WithId(id)`.
-fn with_id(id: u32) -> Box<NativeOrWithId<u32>> {
-    Box::new(NativeOrWithId::WithId(id))
+fn with_id(id: u32) -> NativeOrWithId<u32> {
+    NativeOrWithId::WithId(id)
 }
 
 // ── entry point ──────────────────────────────────────────────────────────────
@@ -151,8 +151,8 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::create_pool {
-                asset1: with_id(2),
-                asset2: native(),
+                asset1: Box::new(with_id(2)),
+                asset2: Box::new(native()),
             }),
         ));
 
@@ -162,8 +162,8 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::create_pool {
-                asset1: with_id(1),
-                asset2: with_id(2),
+                asset1: Box::new(with_id(1)),
+                asset2: Box::new(with_id(2)),
             }),
         ));
 
@@ -192,16 +192,16 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::create_pool {
-                asset1: native(),
-                asset2: with_id(2),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(2)),
             }),
         ));
         data.extend(enc(
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::create_pool {
-                asset1: native(),
-                asset2: with_id(3),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(3)),
             }),
         ));
 
@@ -210,8 +210,8 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::add_liquidity {
-                asset1: native(),
-                asset2: with_id(2),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(2)),
                 amount1_desired: 10_000 * DOLLARS,
                 amount2_desired: 10u128,
                 amount1_min: 10_000 * DOLLARS,
@@ -225,8 +225,8 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::add_liquidity {
-                asset1: with_id(3),
-                asset2: native(),
+                asset1: Box::new(with_id(3)),
+                asset2: Box::new(native()),
                 amount1_desired: 10u128,
                 amount2_desired: 10_000 * DOLLARS,
                 amount1_min: 10u128,
@@ -261,8 +261,8 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::create_pool {
-                asset1: native(),
-                asset2: with_id(2),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(2)),
             }),
         ));
 
@@ -271,8 +271,8 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::add_liquidity {
-                asset1: native(),
-                asset2: with_id(2),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(2)),
                 amount1_desired: 1_000 * DOLLARS,
                 amount2_desired: 100_000u128,
                 amount1_min: 1u128,
@@ -287,8 +287,8 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::remove_liquidity {
-                asset1: native(),
-                asset2: with_id(2),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(2)),
                 lp_token_burn: 3_162_000_000u128,
                 amount1_min_receive: 0u128,
                 amount2_min_receive: 0u128,
@@ -316,8 +316,8 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::create_pool {
-                asset1: native(),
-                asset2: with_id(2),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(2)),
             }),
         ));
 
@@ -326,8 +326,8 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::add_liquidity {
-                asset1: native(),
-                asset2: with_id(2),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(2)),
                 amount1_desired: 10_000 * DOLLARS,
                 amount2_desired: 200u128,
                 amount1_min: 1u128,
@@ -342,7 +342,7 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             0,
             RuntimeCall::AssetConversion(
                 pallet_asset_conversion::Call::swap_exact_tokens_for_tokens {
-                    path: vec![with_id(2), native()],
+                    path: vec![Box::new(with_id(2)), Box::new(native())],
                     amount_in: 100u128,
                     amount_out_min: 1u128,
                     send_to: account(0),
@@ -373,8 +373,8 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::create_pool {
-                asset1: native(),
-                asset2: with_id(2),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(2)),
             }),
         ));
 
@@ -383,8 +383,8 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::add_liquidity {
-                asset1: native(),
-                asset2: with_id(2),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(2)),
                 amount1_desired: 200_000 * UNIT,
                 amount2_desired: 1_000_000 * UNIT,
                 amount1_min: 1u128,
@@ -399,7 +399,7 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             0,
             RuntimeCall::AssetConversion(
                 pallet_asset_conversion::Call::swap_exact_tokens_for_tokens {
-                    path: vec![with_id(2), native()],
+                    path: vec![Box::new(with_id(2)), Box::new(native())],
                     amount_in: 10 * UNIT,
                     amount_out_min: 1u128,
                     send_to: account(0),
@@ -431,8 +431,8 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::create_pool {
-                asset1: native(),
-                asset2: with_id(2),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(2)),
             }),
         ));
 
@@ -441,8 +441,8 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::add_liquidity {
-                asset1: native(),
-                asset2: with_id(2),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(2)),
                 amount1_desired: 10_000 * DOLLARS,
                 amount2_desired: 200u128,
                 amount1_min: 1u128,
@@ -457,7 +457,7 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             0,
             RuntimeCall::AssetConversion(
                 pallet_asset_conversion::Call::swap_tokens_for_exact_tokens {
-                    path: vec![native(), with_id(2)],
+                    path: vec![Box::new(native()), Box::new(with_id(2))],
                     amount_out: 50u128,
                     amount_in_max: 3_500 * DOLLARS,
                     send_to: account(0),
@@ -505,16 +505,16 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             1,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::create_pool {
-                asset1: native(),
-                asset2: with_id(2),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(2)),
             }),
         ));
         data.extend(enc(
             false,
             1,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::add_liquidity {
-                asset1: native(),
-                asset2: with_id(2),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(2)),
                 amount1_desired: 10_000 * DOLLARS,
                 amount2_desired: 200u128,
                 amount1_min: 1u128,
@@ -530,7 +530,7 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             0,
             RuntimeCall::AssetConversion(
                 pallet_asset_conversion::Call::swap_tokens_for_exact_tokens {
-                    path: vec![native(), with_id(2)],
+                    path: vec![Box::new(native()), Box::new(with_id(2))],
                     amount_out: 50u128,
                     amount_in_max: 3_500 * DOLLARS,
                     send_to: account(0),
@@ -546,8 +546,8 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             1,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::remove_liquidity {
-                asset1: native(),
-                asset2: with_id(2),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(2)),
                 lp_token_burn: 1_414_213_462u128,
                 amount1_min_receive: 0u128,
                 amount2_min_receive: 0u128,
@@ -584,16 +584,16 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::create_pool {
-                asset1: native(),
-                asset2: with_id(2),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(2)),
             }),
         ));
         data.extend(enc(
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::create_pool {
-                asset1: with_id(2),
-                asset2: with_id(3),
+                asset1: Box::new(with_id(2)),
+                asset2: Box::new(with_id(3)),
             }),
         ));
 
@@ -602,8 +602,8 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::add_liquidity {
-                asset1: native(),
-                asset2: with_id(2),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(2)),
                 amount1_desired: 10_000 * DOLLARS,
                 amount2_desired: 200u128,
                 amount1_min: 1u128,
@@ -617,8 +617,8 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::add_liquidity {
-                asset1: with_id(2),
-                asset2: with_id(3),
+                asset1: Box::new(with_id(2)),
+                asset2: Box::new(with_id(3)),
                 amount1_desired: 200u128,
                 amount2_desired: 2_000u128,
                 amount1_min: 1u128,
@@ -633,7 +633,7 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             0,
             RuntimeCall::AssetConversion(
                 pallet_asset_conversion::Call::swap_exact_tokens_for_tokens {
-                    path: vec![native(), with_id(2), with_id(3)],
+                    path: vec![Box::new(native()), Box::new(with_id(2)), Box::new(with_id(3))],
                     amount_in: 500 * DOLLARS,
                     amount_out_min: 80u128,
                     send_to: account(0),
@@ -668,16 +668,16 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::create_pool {
-                asset1: native(),
-                asset2: with_id(2),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(2)),
             }),
         ));
         data.extend(enc(
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::create_pool {
-                asset1: with_id(2),
-                asset2: with_id(3),
+                asset1: Box::new(with_id(2)),
+                asset2: Box::new(with_id(3)),
             }),
         ));
 
@@ -686,8 +686,8 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::add_liquidity {
-                asset1: native(),
-                asset2: with_id(2),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(2)),
                 amount1_desired: 10_000 * DOLLARS,
                 amount2_desired: 200u128,
                 amount1_min: 1u128,
@@ -701,8 +701,8 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::add_liquidity {
-                asset1: with_id(2),
-                asset2: with_id(3),
+                asset1: Box::new(with_id(2)),
+                asset2: Box::new(with_id(3)),
                 amount1_desired: 200u128,
                 amount2_desired: 2_000u128,
                 amount1_min: 1u128,
@@ -717,7 +717,7 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             0,
             RuntimeCall::AssetConversion(
                 pallet_asset_conversion::Call::swap_tokens_for_exact_tokens {
-                    path: vec![native(), with_id(2), with_id(3)],
+                    path: vec![Box::new(native()), Box::new(with_id(2)), Box::new(with_id(3))],
                     amount_out: 100u128,
                     amount_in_max: 1_000 * DOLLARS,
                     send_to: account(0),
@@ -752,8 +752,8 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::create_pool {
-                asset1: native(),
-                asset2: with_id(2),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(2)),
             }),
         ));
 
@@ -762,8 +762,8 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::add_liquidity {
-                asset1: native(),
-                asset2: with_id(2),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(2)),
                 amount1_desired: 10_000 * DOLLARS,
                 amount2_desired: 200u128,
                 amount1_min: 1u128,
@@ -777,8 +777,8 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::remove_liquidity {
-                asset1: native(),
-                asset2: with_id(2),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(2)),
                 lp_token_burn: 1_414_213_362u128,
                 amount1_min_receive: 1u128,
                 amount2_min_receive: 1u128,
@@ -792,8 +792,8 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             0,
             RuntimeCall::AssetConversion(
                 pallet_asset_conversion::Call::swap_tokens_for_exact_tokens {
-                    path: vec![with_id(2), native()],
-                    amount_out: 1 * DOLLARS,
+                    path: vec![Box::new(with_id(2)), Box::new(native())],
+                    amount_out: DOLLARS,
                     amount_in_max: 500u128,
                     send_to: account(0),
                     keep_alive: false,
@@ -834,8 +834,8 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::create_pool {
-                asset1: native(),
-                asset2: with_id(2),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(2)),
             }),
         ));
 
@@ -844,8 +844,8 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::add_liquidity {
-                asset1: native(),
-                asset2: with_id(2),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(2)),
                 amount1_desired: 10_000 * DOLLARS,
                 amount2_desired: 200u128,
                 amount1_min: 1u128,
@@ -860,7 +860,7 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             1,
             RuntimeCall::AssetConversion(
                 pallet_asset_conversion::Call::swap_exact_tokens_for_tokens {
-                    path: vec![with_id(2), native()],
+                    path: vec![Box::new(with_id(2)), Box::new(native())],
                     amount_in: 1u128,
                     amount_out_min: 1u128,
                     send_to: account(1),
@@ -917,8 +917,8 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::create_pool {
-                asset1: native(),
-                asset2: with_id(2),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(2)),
             }),
         ));
 
@@ -927,8 +927,8 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::add_liquidity {
-                asset1: native(),
-                asset2: with_id(2),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(2)),
                 amount1_desired: 10_000 * DOLLARS,
                 amount2_desired: 100u128,
                 amount1_min: 1u128,
@@ -961,16 +961,16 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::create_pool {
-                asset1: native(),
-                asset2: with_id(2),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(2)),
             }),
         ));
         data.extend(enc(
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::create_pool {
-                asset1: native(),
-                asset2: with_id(3),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(3)),
             }),
         ));
 
@@ -979,8 +979,8 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::add_liquidity {
-                asset1: native(),
-                asset2: with_id(2),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(2)),
                 amount1_desired: 10_000 * DOLLARS,
                 amount2_desired: 10u128,
                 amount1_min: 10_000 * DOLLARS,
@@ -994,8 +994,8 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             false,
             0,
             RuntimeCall::AssetConversion(pallet_asset_conversion::Call::add_liquidity {
-                asset1: native(),
-                asset2: with_id(3),
+                asset1: Box::new(native()),
+                asset2: Box::new(with_id(3)),
                 amount1_desired: 10_000 * DOLLARS,
                 amount2_desired: 10u128,
                 amount1_min: 10_000 * DOLLARS,
