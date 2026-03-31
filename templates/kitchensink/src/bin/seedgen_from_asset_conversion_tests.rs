@@ -633,7 +633,11 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             0,
             RuntimeCall::AssetConversion(
                 pallet_asset_conversion::Call::swap_exact_tokens_for_tokens {
-                    path: vec![Box::new(native()), Box::new(with_id(2)), Box::new(with_id(3))],
+                    path: vec![
+                        Box::new(native()),
+                        Box::new(with_id(2)),
+                        Box::new(with_id(3)),
+                    ],
                     amount_in: 500 * DOLLARS,
                     amount_out_min: 80u128,
                     send_to: account(0),
@@ -717,7 +721,11 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             0,
             RuntimeCall::AssetConversion(
                 pallet_asset_conversion::Call::swap_tokens_for_exact_tokens {
-                    path: vec![Box::new(native()), Box::new(with_id(2)), Box::new(with_id(3))],
+                    path: vec![
+                        Box::new(native()),
+                        Box::new(with_id(2)),
+                        Box::new(with_id(3)),
+                    ],
                     amount_out: 100u128,
                     amount_in_max: 1_000 * DOLLARS,
                     send_to: account(0),
