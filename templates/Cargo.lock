@@ -17985,6 +17985,53 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
+name = "token-thief"
+version = "0.1.0"
+dependencies = [
+ "frame-metadata",
+ "frame-support",
+ "frame-system",
+ "kitchensink-runtime",
+ "node-primitives",
+ "pallet-asset-conversion",
+ "pallet-asset-rewards",
+ "pallet-assets",
+ "pallet-bags-list",
+ "pallet-balances",
+ "pallet-bounties",
+ "pallet-broker",
+ "pallet-collective",
+ "pallet-contracts",
+ "pallet-grandpa",
+ "pallet-im-online",
+ "pallet-lottery",
+ "pallet-meta-tx",
+ "pallet-multisig",
+ "pallet-proxy",
+ "pallet-recovery",
+ "pallet-referenda",
+ "pallet-remark",
+ "pallet-revive",
+ "pallet-society",
+ "pallet-staking",
+ "pallet-sudo",
+ "pallet-timestamp",
+ "pallet-transaction-storage",
+ "pallet-treasury",
+ "pallet-utility",
+ "pallet-whitelist",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-authority-discovery",
+ "sp-consensus-babe",
+ "sp-consensus-beefy",
+ "sp-core",
+ "sp-runtime",
+ "sp-state-machine",
+ "ziggy",
+]
+
+[[package]]
 name = "tokio"
 version = "1.50.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
