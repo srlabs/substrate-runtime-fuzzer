@@ -172,11 +172,10 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
 fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     // We build the list of extrinsics we will execute
     let mut extrinsic_data = data;
-    // Vec<(lapse, origin, extrinsic)>
-
+    // Vec<(advance_block, origin, extrinsic)>
     BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
         #[allow(deprecated)]
-        let extrinsics: Vec<(u8, u8, RuntimeCall)> =
+        let extrinsics: Vec<(bool, u8, RuntimeCall)> =
             iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
                 .filter(|(_, _, x): &(_, _, RuntimeCall)| {
                     !recursively_find_call(x.clone(), |call| {
@@ -200,21 +199,20 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
 
         initialize_block(block, None);
 
-        for (lapse, origin, extrinsic) in extrinsics {
-            if lapse > 0 {
+        for (advance_block, origin, extrinsic) in extrinsics {
+            if advance_block {
                 let prev_header = finalize_block(elapsed);
 
                 // We update our state variables
-                block += u32::from(lapse);
+                block += 1;
                 weight = Weight::zero();
                 elapsed = Duration::ZERO;
 
-                // We start the next block
                 initialize_block(block, Some(&prev_header));
             }
 
             #[cfg(not(feature = "fuzzing"))]
-            println!("    call:       {extrinsic:?}");
+            println!("\n    call:       {extrinsic:?}");
 
             let pre_weight = extrinsic.get_dispatch_info().call_weight;
             let cumulative_weight = weight.saturating_add(pre_weight);
@@ -228,7 +226,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
             let origin = accounts[origin as usize % accounts.len()].clone();
 
             #[cfg(not(feature = "fuzzing"))]
-            println!("\n    origin:     {origin:?}");
+            println!("    origin:     {origin:?}");
 
             let now = Instant::now(); // We get the current time for timing purposes.
             let res = extrinsic.dispatch(RuntimeOrigin::signed(origin));

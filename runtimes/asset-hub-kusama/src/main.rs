@@ -118,16 +118,17 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
     | RuntimeCall::Utility(
         pallet_utility::Call::as_derivative { call, .. }
         | pallet_utility::Call::dispatch_as { call, .. }
-        | pallet_utility::Call::with_weight { call, .. },
+        | pallet_utility::Call::with_weight { call, .. }
+        | pallet_utility::Call::dispatch_as_fallible { call, .. },
     )
     | RuntimeCall::RemoteProxyRelayChain(
         pallet_remote_proxy::Call::remote_proxy { call, .. }
         | pallet_remote_proxy::Call::remote_proxy_with_registered_proof { call, .. },
     )
-    | RuntimeCall::Revive(pallet_revive::Call::dispatch_as_fallback_account {
-        call,
-        ..
-    })
+    | RuntimeCall::Revive(
+        pallet_revive::Call::dispatch_as_fallback_account { call, .. }
+        | pallet_revive::Call::eth_substrate_call { call, .. },
+    )
     | RuntimeCall::Recovery(pallet_recovery::Call::as_recovered { call, .. })
     | RuntimeCall::Whitelist(
         pallet_whitelist::Call::dispatch_whitelisted_call_with_preimage { call, .. },
@@ -152,8 +153,8 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     let mut elapsed: Duration = Duration::ZERO;
 
     BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
-        // Vec<(lapse, origin, extrinsic)>
-        let extrinsics: Vec<(u8, u8, RuntimeCall)> =
+        // Vec<(advance_block, origin, extrinsic)>
+        let extrinsics: Vec<(bool, u8, RuntimeCall)> =
             iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
                 .filter(|(_, _, x): &(_, _, RuntimeCall)| {
                     !recursively_find_call(x.clone(), |call| {
@@ -162,6 +163,13 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                             || matches!(
                                 &call,
                                 RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
+                            ) || matches!(
+                                &call,
+                                RuntimeCall::PolkadotXcm(pallet_xcm::Call::execute { .. })
+                            )
+                              || matches!(
+                                 &call,
+                                RuntimeCall::Referenda(pallet_referenda::Call::submit { .. })
                             )
                     })
                 })
@@ -175,16 +183,15 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
 
         initialize_block(block, None);
 
-        for (lapse, origin, extrinsic) in extrinsics {
-            if lapse > 0 {
+        for (advance_block, origin, extrinsic) in extrinsics {
+            if advance_block {
                 let prev_header = finalize_block(elapsed);
 
                 // We update our state variables
-                block += u32::from(lapse);
+                block += 1;
                 weight = Weight::zero();
                 elapsed = Duration::ZERO;
 
-                // We start the next block
                 initialize_block(block, Some(&prev_header));
             }
 
