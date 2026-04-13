@@ -323,7 +323,7 @@ fn call_filter(call: &RuntimeCall) -> bool {
     )
     || matches!(
             &call,
-            RuntimeCall::Assets(pallet_asset::Call::transfer_ownership { .. })
+            RuntimeCall::Assets(pallet_assets::Call::transfer_ownership { .. })
     )
     || matches!(
             &call,
