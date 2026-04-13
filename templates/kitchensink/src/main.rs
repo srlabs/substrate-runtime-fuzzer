@@ -321,6 +321,14 @@ fn call_filter(call: &RuntimeCall) -> bool {
             RuntimeCall::Assets(pallet_assets::Call::set_reserves {  .. })
             | RuntimeCall::PoolAssets(pallet_assets::Call::set_reserves {  .. })
     )
+    || matches!(
+            &call,
+            RuntimeCall::Assets(pallet_assets::Call::transfer_ownership { .. })
+    )
+    || matches!(
+            &call,
+            RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
+    )
 }
 
 fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
