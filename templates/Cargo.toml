@@ -61,3 +61,4 @@ pallet-recovery = { git = "https://github.com/paritytech/polkadot-sdk.git", tag 
 pallet-assets = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603", default-features = false }
 pallet-bounties = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603", default-features = false }
 pallet-asset-conversion = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603", default-features = false }
+pallet-vesting = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603", default-features = false }

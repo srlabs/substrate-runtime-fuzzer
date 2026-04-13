@@ -52,6 +52,7 @@ pallet-recovery = { workspace = true }
 pallet-assets = { workspace = true }
 pallet-bounties = { workspace = true }
 pallet-asset-conversion = { workspace = true }
+pallet-vesting = { workspace = true }
 
 [features]
 default = ["std", "try-runtime"]
