@@ -179,11 +179,10 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
             iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
                 .filter(|(_, _, x): &(_, _, RuntimeCall)| {
                     !recursively_find_call(x.clone(), |call| {
-                        matches!(&call, RuntimeCall::AhMigrator(_))
-                            || matches!(
-                                &call,
-                                RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
-                            )
+                        matches!(
+                            &call,
+                            RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
+                        )
                     })
                 })
                 .collect();
