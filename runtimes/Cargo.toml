@@ -11,6 +11,7 @@ members = [
     "asset-hub-kusama",
     "asset-hub-polkadot",
     "coretime-kusama",
+    "people-kusama",
     "polkadot",
     "runtime-call",
 ]
