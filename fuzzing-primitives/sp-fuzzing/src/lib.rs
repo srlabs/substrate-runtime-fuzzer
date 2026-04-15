@@ -47,7 +47,11 @@ struct ChildLayer {
 
 impl ChildLayer {
     fn new(info: ChildInfo) -> Self {
-        Self { info, killed: false, writes: HashMap::new() }
+        Self {
+            info,
+            killed: false,
+            writes: HashMap::new(),
+        }
     }
 }
 
@@ -88,7 +92,12 @@ impl FuzzingExternalities {
     /// Convert back into a [`Storage`]. Any still-open transaction layers are flushed
     /// bottom-up, as if they had been committed.
     pub fn into_storage(self) -> Storage {
-        let Self { mut base_top, mut base_children, layers, .. } = self;
+        let Self {
+            mut base_top,
+            mut base_children,
+            layers,
+            ..
+        } = self;
         for layer in layers {
             merge_top_into_base(&mut base_top, layer.top);
             merge_children_into_base(&mut base_children, layer.children);
@@ -97,7 +106,15 @@ impl FuzzingExternalities {
             top: base_top,
             children_default: base_children
                 .into_iter()
-                .map(|(k, (info, data))| (k, StorageChild { data, child_info: info }))
+                .map(|(k, (info, data))| {
+                    (
+                        k,
+                        StorageChild {
+                            data,
+                            child_info: info,
+                        },
+                    )
+                })
                 .collect(),
         }
     }
@@ -146,7 +163,9 @@ impl FuzzingExternalities {
                 }
             }
         }
-        self.base_children.get(storage_key).and_then(|(_, m)| m.get(key))
+        self.base_children
+            .get(storage_key)
+            .and_then(|(_, m)| m.get(key))
     }
 
     /// Write a top-level key into the current layer, or into the base if none.
@@ -166,12 +185,7 @@ impl FuzzingExternalities {
     }
 
     /// Write a child key into the current layer, or into the base if none.
-    fn set_child(
-        &mut self,
-        child_info: &ChildInfo,
-        key: StorageKey,
-        value: Option<StorageValue>,
-    ) {
+    fn set_child(&mut self, child_info: &ChildInfo, key: StorageKey, value: Option<StorageValue>) {
         if let Some(layer) = self.layers.last_mut() {
             layer
                 .children
@@ -235,11 +249,7 @@ impl FuzzingExternalities {
     }
 
     /// Same, for a child storage.
-    fn visible_child_keys_with_prefix(
-        &self,
-        storage_key: &[u8],
-        prefix: &[u8],
-    ) -> Vec<StorageKey> {
+    fn visible_child_keys_with_prefix(&self, storage_key: &[u8], prefix: &[u8]) -> Vec<StorageKey> {
         use std::ops::Bound;
         let kill_floor = self.child_kill_floor(storage_key);
         let mut candidates: BTreeSet<StorageKey> = BTreeSet::new();
@@ -344,8 +354,7 @@ impl sp_core::traits::Externalities for FuzzingExternalities {
             .map(|(k, _)| k.as_slice())
             .peekable();
         loop {
-            let candidate: &[u8] = match (base_iter.peek().copied(), overlay_iter.peek().copied())
-            {
+            let candidate: &[u8] = match (base_iter.peek().copied(), overlay_iter.peek().copied()) {
                 (None, None) => return None,
                 (Some(b), None) => {
                     base_iter.next();
@@ -375,11 +384,7 @@ impl sp_core::traits::Externalities for FuzzingExternalities {
         }
     }
 
-    fn next_child_storage_key(
-        &mut self,
-        child_info: &ChildInfo,
-        key: &[u8],
-    ) -> Option<StorageKey> {
+    fn next_child_storage_key(&mut self, child_info: &ChildInfo, key: &[u8]) -> Option<StorageKey> {
         use std::ops::Bound;
         let storage_key = child_info.storage_key();
         let kill_floor = self.child_kill_floor(storage_key);
@@ -440,7 +445,12 @@ impl sp_core::traits::Externalities for FuzzingExternalities {
         } else {
             self.base_children.remove(storage_key);
         }
-        MultiRemovalResults { maybe_cursor: None, backend: count, unique: count, loops: count }
+        MultiRemovalResults {
+            maybe_cursor: None,
+            backend: count,
+            unique: count,
+            loops: count,
+        }
     }
 
     fn clear_prefix(
@@ -462,7 +472,12 @@ impl sp_core::traits::Externalities for FuzzingExternalities {
         for k in keys {
             self.set_top(k, None);
         }
-        MultiRemovalResults { maybe_cursor: None, backend: count, unique: count, loops: count }
+        MultiRemovalResults {
+            maybe_cursor: None,
+            backend: count,
+            unique: count,
+            loops: count,
+        }
     }
 
     fn clear_child_prefix(
@@ -478,7 +493,12 @@ impl sp_core::traits::Externalities for FuzzingExternalities {
         for k in keys {
             self.set_child(child_info, k, None);
         }
-        MultiRemovalResults { maybe_cursor: None, backend: count, unique: count, loops: count }
+        MultiRemovalResults {
+            maybe_cursor: None,
+            backend: count,
+            unique: count,
+            loops: count,
+        }
     }
 
     fn storage_append(&mut self, key: StorageKey, element: StorageValue) {
@@ -526,7 +546,11 @@ impl sp_core::traits::Externalities for FuzzingExternalities {
                 parent.top.insert(k, v);
             }
             for (storage_key, child) in top.children {
-                let ChildLayer { info, killed, writes } = child;
+                let ChildLayer {
+                    info,
+                    killed,
+                    writes,
+                } = child;
                 let entry = parent
                     .children
                     .entry(storage_key)
@@ -622,12 +646,18 @@ fn merge_children_into_base(
     overlay: HashMap<StorageKey, ChildLayer>,
 ) {
     for (storage_key, child) in overlay {
-        let ChildLayer { info, killed, writes } = child;
+        let ChildLayer {
+            info,
+            killed,
+            writes,
+        } = child;
         if killed {
             base.remove(&storage_key);
         }
         if !writes.is_empty() {
-            let entry = base.entry(storage_key).or_insert_with(|| (info, BTreeMap::new()));
+            let entry = base
+                .entry(storage_key)
+                .or_insert_with(|| (info, BTreeMap::new()));
             for (k, v) in writes {
                 match v {
                     Some(val) => {
