@@ -23,13 +23,13 @@ use sp_consensus_babe::{
     digests::{PreDigest, SecondaryPlainPreDigest},
     Slot, BABE_ENGINE_ID,
 };
+use sp_fuzzing::FuzzingExternalities;
 use sp_runtime::{
     app_crypto::ByteArray as _,
     testing::H256,
     traits::{Dispatchable, Header as _},
     BuildStorage, Digest, DigestItem, Perbill, Storage,
 };
-use sp_fuzzing::FuzzingExternalities;
 use staging_xcm::opaque::latest::{Junctions::Here, Location};
 use std::{
     iter,

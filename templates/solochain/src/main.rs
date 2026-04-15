@@ -13,12 +13,12 @@ use solochain_template_runtime::{
     RuntimeOrigin, Timestamp, SLOT_DURATION,
 };
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
+use sp_fuzzing::FuzzingExternalities;
 use sp_runtime::{
     testing::H256,
     traits::{Dispatchable, Header},
     Digest, DigestItem, Storage,
 };
-use sp_fuzzing::FuzzingExternalities;
 use std::{
     iter,
     time::{Duration, Instant},

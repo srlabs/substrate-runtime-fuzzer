@@ -18,12 +18,12 @@ use sp_consensus_babe::{
     digests::{PreDigest, SecondaryPlainPreDigest},
     Slot, BABE_ENGINE_ID,
 };
+use sp_fuzzing::FuzzingExternalities;
 use sp_runtime::{
     testing::H256,
     traits::{Dispatchable, Header},
     Digest, DigestItem, FixedU64, Perbill, Storage,
 };
-use sp_fuzzing::FuzzingExternalities;
 use std::{
     iter,
     time::{Duration, Instant},
