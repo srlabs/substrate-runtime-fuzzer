@@ -21,7 +21,7 @@ use sp_runtime::{
     traits::{AccountIdConversion, Dispatchable, Header as _},
     Digest, DigestItem, Perbill, Storage,
 };
-use sp_state_machine::BasicExternalities;
+use sp_fuzzing::FuzzingExternalities;
 use std::{
     collections::HashMap,
     iter,
@@ -81,7 +81,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
     .build_storage()
     .unwrap();
 
-    BasicExternalities::execute_with_storage(&mut storage, || {
+    FuzzingExternalities::execute_with_storage(&mut storage, || {
         initialize_block(1, None);
         Broker::configure(RuntimeOrigin::root(), new_config()).unwrap();
         Broker::start_sales(RuntimeOrigin::root(), 10 * UNITS, 1).unwrap();
@@ -154,7 +154,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     let mut weight: Weight = Weight::zero();
     let mut elapsed: Duration = Duration::ZERO;
 
-    BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
+    FuzzingExternalities::execute_with_storage(&mut genesis.clone(), || {
         let initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
 
         for (advance_block, origin, extrinsic) in extrinsics {

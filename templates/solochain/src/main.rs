@@ -18,7 +18,7 @@ use sp_runtime::{
     traits::{Dispatchable, Header},
     Digest, DigestItem, Storage,
 };
-use sp_state_machine::BasicExternalities;
+use sp_fuzzing::FuzzingExternalities;
 use std::{
     iter,
     time::{Duration, Instant},
@@ -76,7 +76,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     let mut weight: Weight = 0.into();
     let mut elapsed: Duration = Duration::ZERO;
 
-    BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
+    FuzzingExternalities::execute_with_storage(&mut genesis.clone(), || {
         let initial_total_issuance = TotalIssuance::<Runtime>::get();
 
         initialize_block(block);

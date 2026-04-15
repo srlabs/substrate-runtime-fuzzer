@@ -7,6 +7,8 @@ publish = false
 [dependencies]
 ziggy = { workspace = true }
 
+sp-fuzzing = { workspace = true }
+
 solochain-template-runtime = { workspace = true }
 
 codec = { workspace = true }
@@ -15,7 +17,6 @@ frame-support = { workspace = true }
 frame-system = { workspace = true }
 
 sp-runtime = { workspace = true }
-sp-state-machine = { workspace = true }
 sp-consensus-aura = { workspace = true }
 
 pallet-timestamp = { workspace = true }

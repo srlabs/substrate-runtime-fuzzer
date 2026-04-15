@@ -20,7 +20,7 @@ use sp_runtime::{
     traits::{Dispatchable, Header as _},
     Digest, DigestItem, Storage,
 };
-use sp_state_machine::BasicExternalities;
+use sp_fuzzing::FuzzingExternalities;
 use std::{
     iter,
     time::{Duration, Instant},
@@ -152,7 +152,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     let mut weight: Weight = Weight::zero();
     let mut elapsed: Duration = Duration::ZERO;
 
-    BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
+    FuzzingExternalities::execute_with_storage(&mut genesis.clone(), || {
         // Vec<(advance_block, origin, extrinsic)>
         let extrinsics: Vec<(bool, u8, RuntimeCall)> =
             iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())

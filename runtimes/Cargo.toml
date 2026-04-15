@@ -21,6 +21,9 @@ ziggy = { version = "1.5.0", default-features = false }
 
 polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.1.1", default-features = false }
 asset-hub-polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.1.1", default-features = false }
+
+sp-fuzzing = { path = "../fuzzing-primitives/sp-fuzzing", default-features = false }
+
 # bridge-hub-polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
 collectives-polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.1.1", default-features = false }
 coretime-polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.1.1", default-features = false }
