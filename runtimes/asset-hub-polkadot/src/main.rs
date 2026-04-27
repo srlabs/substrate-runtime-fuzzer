@@ -18,7 +18,7 @@ use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_runtime::{
     testing::H256,
     traits::{Dispatchable, Header as _},
-    AccountId32, Digest, DigestItem, Perbill, Storage,
+    AccountId32, Digest, DigestItem, Storage,
 };
 use sp_state_machine::BasicExternalities;
 use std::{
@@ -91,12 +91,9 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         indices: IndicesConfig::default(),
         multi_block_election_verifier: MultiBlockElectionVerifierConfig::default(),
         nomination_pools: NominationPoolsConfig {
-            min_join_bond: 1 << 55,
-            min_create_bond: 1 << 56,
-            max_pools: None,
-            max_members_per_pool: None,
-            max_members: None,
-            global_max_commission: Some(Perbill::from_percent(10)),
+            min_create_bond: 1 << 43,
+            min_join_bond: 1 << 42,
+            ..Default::default()
         },
         staking: StakingConfig::default(),
         treasury: TreasuryConfig::default(),
