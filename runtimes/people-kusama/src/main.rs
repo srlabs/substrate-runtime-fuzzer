@@ -1,8 +1,4 @@
 #![warn(clippy::pedantic)]
-use people_kusama_runtime::{
-    AllPalletsWithSystem, Balances, Executive, ParachainSystem, Runtime, RuntimeCall,
-    RuntimeOrigin, Timestamp,
-};
 use codec::{DecodeLimit, Encode};
 use cumulus_primitives_core::relay_chain::Header;
 use frame_support::{
@@ -14,6 +10,10 @@ use frame_support::{
 use frame_system::Account;
 use pallet_balances::{Freezes, Holds, TotalIssuance};
 use parachains_common::{AccountId, Balance, SLOT_DURATION};
+use people_kusama_runtime::{
+    AllPalletsWithSystem, Balances, Executive, ParachainSystem, Runtime, RuntimeCall,
+    RuntimeOrigin, Timestamp,
+};
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_runtime::{
     testing::H256,
@@ -37,10 +37,9 @@ fn main() {
 
 fn generate_genesis(accounts: &[AccountId]) -> Storage {
     use people_kusama_runtime::{
-        AuraConfig, AuraExtConfig, BalancesConfig, CollatorSelectionConfig,
-        ParachainInfoConfig, ParachainSystemConfig, PolkadotXcmConfig,
-        RuntimeGenesisConfig, SessionConfig, SessionKeys, SystemConfig,
-        TransactionPaymentConfig,
+        AuraConfig, AuraExtConfig, BalancesConfig, CollatorSelectionConfig, ParachainInfoConfig,
+        ParachainSystemConfig, PolkadotXcmConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys,
+        SystemConfig, TransactionPaymentConfig,
     };
     use sp_consensus_aura::sr25519::AuthorityId as AuraId;
     use sp_runtime::app_crypto::ByteArray;
@@ -213,8 +212,8 @@ fn initialize_block(block: u32, prev_header: Option<&Header>) {
     #[cfg(not(feature = "fuzzing"))]
     println!("  setting parachain validation data");
     let parachain_validation_data = {
-        use cumulus_primitives_core::relay_chain::HeadData;
         use cumulus_pallet_parachain_system::parachain_inherent::BasicParachainInherentData;
+        use cumulus_primitives_core::relay_chain::HeadData;
         use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 
         let parent_head = HeadData(prev_header.unwrap_or(parent_header).encode());

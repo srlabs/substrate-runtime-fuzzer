@@ -168,7 +168,6 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                             &call,
                             RuntimeCall::Referenda(pallet_referenda::Call::submit { .. })
                         )
-                        // || matches!(call.clone(), RuntimeCall::NominationPools(_))
                     })
                 })
                 .collect();
