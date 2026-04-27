@@ -18,7 +18,7 @@ use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_runtime::{
     testing::H256,
     traits::{Dispatchable, Header as _},
-    AccountId32, Digest, DigestItem, Storage,
+    AccountId32, Digest, DigestItem, Perbill, Storage,
 };
 use sp_state_machine::BasicExternalities;
 use std::{
@@ -90,7 +90,14 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         claims: ClaimsConfig::default(),
         indices: IndicesConfig::default(),
         multi_block_election_verifier: MultiBlockElectionVerifierConfig::default(),
-        nomination_pools: NominationPoolsConfig::default(),
+        nomination_pools: NominationPoolsConfig {
+            min_join_bond: 1 << 55,
+            min_create_bond: 1 << 56,
+            max_pools: None,
+            max_members_per_pool: None,
+            max_members: None,
+            global_max_commission: Some(Perbill::from_percent(10)),
+        },
         staking: StakingConfig::default(),
         treasury: TreasuryConfig::default(),
         revive: ReviveConfig::default(),
@@ -365,7 +372,7 @@ fn check_invariants(block: u32, initial_total_issuance: Balance) {
     let counted_issuance = counted_free + counted_reserved;
     // The reason we do not simply use `!=` here is that some balance might be transfered to another chain via XCM.
     // If we find some kind of workaround for this, we could replace `<` by `!=` here and make the check stronger.
-    assert!(total_issuance <= counted_issuance,);
+    assert!(total_issuance >= counted_issuance,);
     assert!(total_issuance <= initial_total_issuance,);
     let account_42 = AccountId32::from([42; 32]);
     assert_eq!(Assets::balance(42, account_42), 42);

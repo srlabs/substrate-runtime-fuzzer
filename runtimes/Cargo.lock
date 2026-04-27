@@ -884,7 +884,7 @@ dependencies = [
 [[package]]
 name = "asset-hub-kusama-runtime"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.0#d9d6404633025023821f746c2afbc58e83a95c83"
+source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.2#9797d3c68f4381ab6424c907090a2895ba363b81"
 dependencies = [
  "assets-common",
  "bp-asset-hub-kusama",
@@ -1048,7 +1048,7 @@ dependencies = [
 [[package]]
 name = "asset-hub-polkadot-runtime"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.0#d9d6404633025023821f746c2afbc58e83a95c83"
+source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.2#9797d3c68f4381ab6424c907090a2895ba363b81"
 dependencies = [
  "assets-common",
  "bp-asset-hub-kusama",
@@ -1493,7 +1493,7 @@ dependencies = [
 [[package]]
 name = "bp-asset-hub-kusama"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.0#d9d6404633025023821f746c2afbc58e83a95c83"
+source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.2#9797d3c68f4381ab6424c907090a2895ba363b81"
 dependencies = [
  "bp-xcm-bridge-hub-router",
  "frame-support",
@@ -1507,7 +1507,7 @@ dependencies = [
 [[package]]
 name = "bp-asset-hub-polkadot"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.0#d9d6404633025023821f746c2afbc58e83a95c83"
+source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.2#9797d3c68f4381ab6424c907090a2895ba363b81"
 dependencies = [
  "bp-xcm-bridge-hub-router",
  "frame-support",
@@ -1538,7 +1538,7 @@ dependencies = [
 [[package]]
 name = "bp-bridge-hub-kusama"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.0#d9d6404633025023821f746c2afbc58e83a95c83"
+source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.2#9797d3c68f4381ab6424c907090a2895ba363b81"
 dependencies = [
  "bp-bridge-hub-cumulus",
  "bp-header-chain",
@@ -1557,7 +1557,7 @@ dependencies = [
 [[package]]
 name = "bp-bridge-hub-polkadot"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.0#d9d6404633025023821f746c2afbc58e83a95c83"
+source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.2#9797d3c68f4381ab6424c907090a2895ba363b81"
 dependencies = [
  "bp-bridge-hub-cumulus",
  "bp-header-chain",
@@ -1897,7 +1897,7 @@ dependencies = [
 [[package]]
 name = "collectives-polkadot-runtime"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.0#d9d6404633025023821f746c2afbc58e83a95c83"
+source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.2#9797d3c68f4381ab6424c907090a2895ba363b81"
 dependencies = [
  "collectives-polkadot-runtime-constants",
  "cumulus-pallet-aura-ext",
@@ -1976,7 +1976,7 @@ dependencies = [
 [[package]]
 name = "collectives-polkadot-runtime-constants"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.0#d9d6404633025023821f746c2afbc58e83a95c83"
+source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.2#9797d3c68f4381ab6424c907090a2895ba363b81"
 
 [[package]]
 name = "common-path"
@@ -2125,7 +2125,7 @@ dependencies = [
 [[package]]
 name = "coretime-kusama-runtime"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.0#d9d6404633025023821f746c2afbc58e83a95c83"
+source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.2#9797d3c68f4381ab6424c907090a2895ba363b81"
 dependencies = [
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-parachain-system",
@@ -2194,7 +2194,7 @@ dependencies = [
 [[package]]
 name = "coretime-polkadot-runtime"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.0#d9d6404633025023821f746c2afbc58e83a95c83"
+source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.2#9797d3c68f4381ab6424c907090a2895ba363b81"
 dependencies = [
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-parachain-system",
@@ -3792,7 +3792,7 @@ checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
 [[package]]
 name = "glutton-kusama-runtime"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.0#d9d6404633025023821f746c2afbc58e83a95c83"
+source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.2#9797d3c68f4381ab6424c907090a2895ba363b81"
 dependencies = [
  "cumulus-pallet-parachain-system",
  "cumulus-pallet-xcm",
@@ -4405,7 +4405,7 @@ dependencies = [
 [[package]]
 name = "kusama-runtime-constants"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.0#d9d6404633025023821f746c2afbc58e83a95c83"
+source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.2#9797d3c68f4381ab6424c907090a2895ba363b81"
 dependencies = [
  "frame-support",
  "pallet-remote-proxy",
@@ -4889,7 +4889,7 @@ dependencies = [
 [[package]]
 name = "pallet-ah-ops"
 version = "0.1.0"
-source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.0#d9d6404633025023821f746c2afbc58e83a95c83"
+source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.2#9797d3c68f4381ab6424c907090a2895ba363b81"
 dependencies = [
  "cumulus-primitives-core",
  "frame-benchmarking",
@@ -4998,9 +4998,9 @@ dependencies = [
 
 [[package]]
 name = "pallet-assets"
-version = "49.0.0"
+version = "49.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab1506f9545c241abb7ec37bb6be581a4dcad3266c0bd9ad2430d08f5dad105d"
+checksum = "1c80dd5920bbfbe4100e7d7e64265de790f1e51b47e3a2e13ffc9e7d39767169"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5839,7 +5839,7 @@ dependencies = [
 [[package]]
 name = "pallet-rc-migrator"
 version = "0.1.0"
-source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.0#d9d6404633025023821f746c2afbc58e83a95c83"
+source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.2#9797d3c68f4381ab6424c907090a2895ba363b81"
 dependencies = [
  "frame-benchmarking",
  "frame-election-provider-support",
@@ -5923,7 +5923,7 @@ dependencies = [
 [[package]]
 name = "pallet-remote-proxy"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.0#d9d6404633025023821f746c2afbc58e83a95c83"
+source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.2#9797d3c68f4381ab6424c907090a2895ba363b81"
 dependencies = [
  "cumulus-pallet-parachain-system",
  "cumulus-primitives-core",
@@ -6659,7 +6659,7 @@ dependencies = [
 [[package]]
 name = "people-kusama-runtime"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.0#d9d6404633025023821f746c2afbc58e83a95c83"
+source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.2#9797d3c68f4381ab6424c907090a2895ba363b81"
 dependencies = [
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-parachain-system",
@@ -6730,7 +6730,7 @@ dependencies = [
 [[package]]
 name = "people-polkadot-runtime"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.0#d9d6404633025023821f746c2afbc58e83a95c83"
+source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.2#9797d3c68f4381ab6424c907090a2895ba363b81"
 dependencies = [
  "assets-common",
  "cumulus-pallet-aura-ext",
@@ -7008,7 +7008,7 @@ dependencies = [
 [[package]]
 name = "polkadot-runtime"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.0#d9d6404633025023821f746c2afbc58e83a95c83"
+source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.2#9797d3c68f4381ab6424c907090a2895ba363b81"
 dependencies = [
  "binary-merkle-tree",
  "frame-benchmarking",
@@ -7161,7 +7161,7 @@ dependencies = [
 [[package]]
 name = "polkadot-runtime-constants"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.0#d9d6404633025023821f746c2afbc58e83a95c83"
+source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.2#9797d3c68f4381ab6424c907090a2895ba363b81"
 dependencies = [
  "frame-support",
  "pallet-remote-proxy",
@@ -7812,7 +7812,7 @@ checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
 [[package]]
 name = "relay-common"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.0#d9d6404633025023821f746c2afbc58e83a95c83"
+source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.2#9797d3c68f4381ab6424c907090a2895ba363b81"
 dependencies = [
  "pallet-staking-reward-fn",
  "polkadot-primitives",
@@ -9735,7 +9735,7 @@ checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
 [[package]]
 name = "staging-kusama-runtime"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.0#d9d6404633025023821f746c2afbc58e83a95c83"
+source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.2#9797d3c68f4381ab6424c907090a2895ba363b81"
 dependencies = [
  "binary-merkle-tree",
  "frame-benchmarking",
@@ -10154,7 +10154,7 @@ dependencies = [
 [[package]]
 name = "system-parachains-common"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.0#d9d6404633025023821f746c2afbc58e83a95c83"
+source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.2#9797d3c68f4381ab6424c907090a2895ba363b81"
 dependencies = [
  "cumulus-pallet-parachain-system",
  "cumulus-primitives-core",
@@ -10172,7 +10172,7 @@ dependencies = [
 [[package]]
 name = "system-parachains-constants"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.0#d9d6404633025023821f746c2afbc58e83a95c83"
+source = "git+https://github.com/polkadot-fellows/runtimes.git?tag=v2.2.2#9797d3c68f4381ab6424c907090a2895ba363b81"
 dependencies = [
  "array-bytes 9.3.0",
  "frame-support",
