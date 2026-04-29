@@ -20,6 +20,7 @@ frame-metadata = { workspace = true }
 
 sp-core = { workspace = true }
 sp-runtime = { workspace = true }
+sp-fuzzing = { workspace = true }
 sp-state-machine = { workspace = true }
 sp-consensus-babe = { workspace = true }
 sp-consensus-beefy = { workspace = true }

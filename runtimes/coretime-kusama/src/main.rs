@@ -16,12 +16,12 @@ use pallet_balances::{Freezes, Holds, TotalIssuance};
 use pallet_broker::{ConfigRecord, ConfigRecordOf, CoreIndex, CoreMask, Timeslice};
 use parachains_common::{AccountId, Balance, SLOT_DURATION};
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
+use sp_fuzzing::FuzzingExternalities;
 use sp_runtime::{
     testing::H256,
     traits::{AccountIdConversion, Dispatchable, Header as _},
     Digest, DigestItem, Perbill, Storage,
 };
-use sp_state_machine::BasicExternalities;
 use std::{
     collections::HashMap,
     iter,
@@ -81,7 +81,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
     .build_storage()
     .unwrap();
 
-    BasicExternalities::execute_with_storage(&mut storage, || {
+    FuzzingExternalities::execute_with_storage(&mut storage, || {
         initialize_block(1, None);
         Broker::configure(RuntimeOrigin::root(), new_config()).unwrap();
         Broker::start_sales(RuntimeOrigin::root(), 10 * UNITS, 1).unwrap();
@@ -157,7 +157,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     let mut weight: Weight = Weight::zero();
     let mut elapsed: Duration = Duration::ZERO;
 
-    BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
+    FuzzingExternalities::execute_with_storage(&mut genesis.clone(), || {
         let initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
 
         for (advance_block, origin, extrinsic) in extrinsics {

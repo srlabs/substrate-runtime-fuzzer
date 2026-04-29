@@ -4,6 +4,13 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
+[dependencies]
+sp-fuzzing = { workspace = true }
+
+[features]
+default = ["std"]
+std = ["sp-fuzzing/std"]
+
 [workspace]
 resolver = "2"
 members = [
@@ -17,9 +24,13 @@ ziggy = {version = "1.5.2", default-features = false}
 solochain-template-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603", default-features = false }
 kitchensink-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603", default-features = false }
 
+sp-fuzzing = { path = "../fuzzing-primitives/sp-fuzzing", default-features = false, features = ["templates"] }
+
 codec = { version = "3.7.5", features = ["derive", "max-encoded-len"], default-features = false, package = "parity-scale-codec" }
 scale-info = { default-features = false, version = "2.11.6", features = ["std"] }
 frame-metadata = { default-features = false, version = "23.0.1", features = ["current", "decode", "std"] }
+
+rand = { version = "*" }
 
 node-primitives = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603", default-features = false }
 

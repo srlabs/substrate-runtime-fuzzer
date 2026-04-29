@@ -15,12 +15,12 @@ use frame_system::Account;
 use pallet_balances::{Freezes, Holds, TotalIssuance};
 use parachains_common::{AccountId, Balance, SLOT_DURATION};
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
+use sp_fuzzing::FuzzingExternalities;
 use sp_runtime::{
     testing::H256,
     traits::{Dispatchable, Header as _},
     AccountId32, Digest, DigestItem, Storage,
 };
-use sp_state_machine::BasicExternalities;
 use std::{
     iter,
     time::{Duration, Instant},
@@ -101,7 +101,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
     }
     .build_storage()
     .unwrap();
-    BasicExternalities::execute_with_storage(&mut storage, || {
+    FuzzingExternalities::execute_with_storage(&mut storage, || {
         Assets::create(
             RuntimeOrigin::signed(accounts[0].clone()),
             0.into(),
@@ -177,7 +177,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     // We build the list of extrinsics we will execute
     let mut extrinsic_data = data;
     // Vec<(advance_block, origin, extrinsic)>
-    BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
+    FuzzingExternalities::execute_with_storage(&mut genesis.clone(), || {
         #[allow(deprecated)]
         let extrinsics: Vec<(bool, u8, RuntimeCall)> =
             iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())

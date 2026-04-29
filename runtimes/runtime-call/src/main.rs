@@ -1,5 +1,5 @@
 use codec::{Decode, Encode, Error};
-use sp_state_machine::BasicExternalities as Externalities;
+use sp_fuzzing::FuzzingExternalities as Externalities;
 
 fn fuzz_runtime<RuntimeCall>(name: &str, blocklist: &[[u8; 2]], data: &[u8])
 where
