@@ -186,6 +186,9 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                         matches!(
                             &call,
                             RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
+                        ) || matches!(
+                            &call,
+                            RuntimeCall::Revive(pallet_revive::Call::instantiate_with_code { .. })
                         )
                     })
                 })

@@ -167,6 +167,9 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
                         ) || matches!(
                             &call,
                             RuntimeCall::Referenda(pallet_referenda::Call::submit { .. })
+                        ) || matches!(
+                            &call,
+                            RuntimeCall::Revive(pallet_revive::Call::instantiate_with_code { .. })
                         )
                     })
                 })
