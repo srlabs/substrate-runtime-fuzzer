@@ -23,6 +23,8 @@ pallet-timestamp = { workspace = true }
 pallet-balances = { workspace = true }
 pallet-grandpa = { workspace = true }
 
+rand = { workspace = true }
+
 [features]
 default = ["std", "try-runtime"]
 fuzzing = []

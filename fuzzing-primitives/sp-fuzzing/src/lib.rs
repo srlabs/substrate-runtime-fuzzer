@@ -13,12 +13,29 @@
 
 use codec::{Compact, CompactLen, Decode, Encode};
 use core::any::{Any, TypeId};
+use core::hash::{BuildHasher, Hash, Hasher};
+use hashbrown::hash_map::Entry;
+use rustc_hash::FxBuildHasher;
 use sp_core::storage::{
     well_known_keys::is_child_storage_key, ChildInfo, StateVersion, Storage, StorageChild,
     TrackedStorageKey,
 };
 use sp_externalities::{Extension, Extensions, MultiRemovalResults};
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
+
+/// `hashbrown::HashMap` keyed with `FxBuildHasher`. We use `hashbrown` directly so that
+/// the read-side hot path can probe each layer with a precomputed hash (`raw_entry`),
+/// avoiding rehashing the storage key once per layer.
+type FxHashMap<K, V> = hashbrown::HashMap<K, V, FxBuildHasher>;
+
+/// Hash a storage key with the same hasher the layer maps use. Computed once per read,
+/// then reused across every layer probe.
+#[inline]
+fn hash_key(key: &[u8]) -> u64 {
+    let mut hasher = FxBuildHasher.build_hasher();
+    key.hash(&mut hasher);
+    hasher.finish()
+}
 
 /// Fixed 32-byte dummy hash returned by `storage_root`, `storage_hash`, etc.
 const DUMMY_HASH: [u8; 32] = [0u8; 32];
@@ -33,8 +50,8 @@ type StorageValue = Vec<u8>;
 /// One layer of pending changes. `Some(v)` is a write; `None` is an explicit delete.
 #[derive(Default)]
 struct Layer {
-    top: HashMap<StorageKey, Option<StorageValue>>,
-    children: HashMap<StorageKey, ChildLayer>,
+    top: FxHashMap<StorageKey, Option<StorageValue>>,
+    children: FxHashMap<StorageKey, ChildLayer>,
 }
 
 struct ChildLayer {
@@ -42,7 +59,7 @@ struct ChildLayer {
     /// `true` once `kill_child_storage` was called within this layer. Hides all state
     /// for this child below this layer; only `writes` recorded afterwards contribute.
     killed: bool,
-    writes: HashMap<StorageKey, Option<StorageValue>>,
+    writes: FxHashMap<StorageKey, Option<StorageValue>>,
 }
 
 impl ChildLayer {
@@ -50,7 +67,7 @@ impl ChildLayer {
         Self {
             info,
             killed: false,
-            writes: HashMap::new(),
+            writes: FxHashMap::default(),
         }
     }
 }
@@ -143,8 +160,16 @@ impl FuzzingExternalities {
 
     /// Return the currently visible top-level value for `key`, walking layers top-down.
     fn resolve_top(&self, key: &[u8]) -> Option<&StorageValue> {
+        if self.layers.is_empty() {
+            return self.base_top.get(key);
+        }
+        let hash = hash_key(key);
         for layer in self.layers.iter().rev() {
-            if let Some(v) = layer.top.get(key) {
+            if let Some((_, v)) = layer
+                .top
+                .raw_entry()
+                .from_hash(hash, |k| k.as_slice() == key)
+            {
                 return v.as_ref();
             }
         }
@@ -153,9 +178,25 @@ impl FuzzingExternalities {
 
     /// Same, for child storage; respects `killed`.
     fn resolve_child(&self, storage_key: &[u8], key: &[u8]) -> Option<&StorageValue> {
+        if self.layers.is_empty() {
+            return self
+                .base_children
+                .get(storage_key)
+                .and_then(|(_, m)| m.get(key));
+        }
+        let storage_hash = hash_key(storage_key);
+        let key_hash = hash_key(key);
         for layer in self.layers.iter().rev() {
-            if let Some(child) = layer.children.get(storage_key) {
-                if let Some(v) = child.writes.get(key) {
+            if let Some((_, child)) = layer
+                .children
+                .raw_entry()
+                .from_hash(storage_hash, |k| k.as_slice() == storage_key)
+            {
+                if let Some((_, v)) = child
+                    .writes
+                    .raw_entry()
+                    .from_hash(key_hash, |k| k.as_slice() == key)
+                {
                     return v.as_ref();
                 }
                 if child.killed {
@@ -212,8 +253,16 @@ impl FuzzingExternalities {
     /// Highest layer index where this child was killed, if any. Base and layers below
     /// this index contribute nothing to reads/iteration for this child.
     fn child_kill_floor(&self, storage_key: &[u8]) -> Option<usize> {
+        if self.layers.is_empty() {
+            return None;
+        }
+        let storage_hash = hash_key(storage_key);
         for (i, layer) in self.layers.iter().enumerate().rev() {
-            if let Some(child) = layer.children.get(storage_key) {
+            if let Some((_, child)) = layer
+                .children
+                .raw_entry()
+                .from_hash(storage_hash, |k| k.as_slice() == storage_key)
+            {
                 if child.killed {
                     return Some(i);
                 }
@@ -542,24 +591,35 @@ impl sp_core::traits::Externalities for FuzzingExternalities {
     fn storage_commit_transaction(&mut self) -> Result<(), ()> {
         let top = self.layers.pop().ok_or(())?;
         if let Some(parent) = self.layers.last_mut() {
-            for (k, v) in top.top {
-                parent.top.insert(k, v);
-            }
-            for (storage_key, child) in top.children {
-                let ChildLayer {
-                    info,
-                    killed,
-                    writes,
-                } = child;
-                let entry = parent
-                    .children
-                    .entry(storage_key)
-                    .or_insert_with(|| ChildLayer::new(info.clone()));
-                if killed {
-                    entry.killed = true;
-                    entry.writes.clear();
+            // Top map: if parent has nothing yet, take ownership wholesale instead of
+            // rehashing every key. Common when the parent is a freshly opened layer.
+            if parent.top.is_empty() {
+                parent.top = top.top;
+            } else {
+                for (k, v) in top.top {
+                    parent.top.insert(k, v);
                 }
-                entry.writes.extend(writes);
+            }
+            // Children: same wholesale-move shortcut, then per-child merge that avoids
+            // ChildInfo::clone()/rehashing writes when the parent has no entry yet.
+            if parent.children.is_empty() {
+                parent.children = top.children;
+            } else {
+                for (storage_key, child) in top.children {
+                    match parent.children.entry(storage_key) {
+                        Entry::Vacant(v) => {
+                            v.insert(child);
+                        }
+                        Entry::Occupied(mut o) => {
+                            let entry = o.get_mut();
+                            if child.killed {
+                                entry.killed = true;
+                                entry.writes.clear();
+                            }
+                            entry.writes.extend(child.writes);
+                        }
+                    }
+                }
             }
         } else {
             merge_top_into_base(&mut self.base_top, top.top);
@@ -627,7 +687,7 @@ impl sp_externalities::ExtensionStore for FuzzingExternalities {
 
 fn merge_top_into_base(
     base: &mut BTreeMap<StorageKey, StorageValue>,
-    overlay: HashMap<StorageKey, Option<StorageValue>>,
+    overlay: FxHashMap<StorageKey, Option<StorageValue>>,
 ) {
     for (k, v) in overlay {
         match v {
@@ -643,7 +703,7 @@ fn merge_top_into_base(
 
 fn merge_children_into_base(
     base: &mut BTreeMap<StorageKey, (ChildInfo, BTreeMap<StorageKey, StorageValue>)>,
-    overlay: HashMap<StorageKey, ChildLayer>,
+    overlay: FxHashMap<StorageKey, ChildLayer>,
 ) {
     for (storage_key, child) in overlay {
         let ChildLayer {

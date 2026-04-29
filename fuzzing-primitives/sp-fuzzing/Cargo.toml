@@ -5,9 +5,11 @@ edition = "2021"
 publish = false
 
 [dependencies]
-sp-core = { version = ">=34.0.0", default-features = false }
-sp-externalities = { version = ">=0.29.0", default-features = false }
-codec = { version = ">=3.6.0", default-features = false, package = "parity-scale-codec" }
+sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603", default-features = false }
+sp-externalities = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603", default-features = false }
+codec = { version = ">=3.7.5", default-features = false, package = "parity-scale-codec" }
+rustc-hash = { version = "2", default-features = false, features = ["std"] }
+hashbrown = { version = "0.15", default-features = false, features = ["default-hasher", "inline-more", "raw-entry"] }
 
 [features]
 default = ["std"]
