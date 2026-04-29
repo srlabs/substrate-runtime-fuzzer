@@ -24,7 +24,7 @@ ziggy = {version = "1.5.2", default-features = false}
 solochain-template-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603", default-features = false }
 kitchensink-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603", default-features = false }
 
-sp-fuzzing = { path = "../fuzzing-primitives/sp-fuzzing", default-features = false }
+sp-fuzzing = { path = "../fuzzing-primitives/sp-fuzzing", default-features = false, features = ["templates"] }
 
 codec = { version = "3.7.5", features = ["derive", "max-encoded-len"], default-features = false, package = "parity-scale-codec" }
 scale-info = { default-features = false, version = "2.11.6", features = ["std"] }

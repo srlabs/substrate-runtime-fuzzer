@@ -13,14 +13,22 @@
 
 use codec::{Compact, CompactLen, Decode, Encode};
 use core::any::{Any, TypeId};
-use core::hash::{BuildHasher, Hash, Hasher};
+use core::hash::BuildHasher;
 use hashbrown::hash_map::Entry;
 use rustc_hash::FxBuildHasher;
 use sp_core::storage::{
     well_known_keys::is_child_storage_key, ChildInfo, StateVersion, Storage, StorageChild,
     TrackedStorageKey,
 };
+#[cfg(feature = "runtimes")]
+use sp_core_runtimes as sp_core;
+#[cfg(feature = "templates")]
+use sp_core_templates as sp_core;
 use sp_externalities::{Extension, Extensions, MultiRemovalResults};
+#[cfg(feature = "runtimes")]
+use sp_externalities_runtimes as sp_externalities;
+#[cfg(feature = "templates")]
+use sp_externalities_templates as sp_externalities;
 use std::collections::{BTreeMap, BTreeSet};
 
 /// `hashbrown::HashMap` keyed with `FxBuildHasher`. We use `hashbrown` directly so that
@@ -32,9 +40,7 @@ type FxHashMap<K, V> = hashbrown::HashMap<K, V, FxBuildHasher>;
 /// then reused across every layer probe.
 #[inline]
 fn hash_key(key: &[u8]) -> u64 {
-    let mut hasher = FxBuildHasher.build_hasher();
-    key.hash(&mut hasher);
-    hasher.finish()
+    FxBuildHasher.hash_one(key)
 }
 
 /// Fixed 32-byte dummy hash returned by `storage_root`, `storage_hash`, etc.
