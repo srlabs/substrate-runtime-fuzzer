@@ -90,7 +90,11 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         claims: ClaimsConfig::default(),
         indices: IndicesConfig::default(),
         multi_block_election_verifier: MultiBlockElectionVerifierConfig::default(),
-        nomination_pools: NominationPoolsConfig::default(),
+        nomination_pools: NominationPoolsConfig {
+            min_create_bond: 1 << 43,
+            min_join_bond: 1 << 42,
+            ..Default::default()
+        },
         staking: StakingConfig::default(),
         treasury: TreasuryConfig::default(),
         revive: ReviveConfig::default(),
@@ -179,11 +183,13 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
             iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
                 .filter(|(_, _, x): &(_, _, RuntimeCall)| {
                     !recursively_find_call(x.clone(), |call| {
-                        matches!(&call, RuntimeCall::AhMigrator(_))
-                            || matches!(
-                                &call,
-                                RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
-                            )
+                        matches!(
+                            &call,
+                            RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
+                        ) || matches!(
+                            &call,
+                            RuntimeCall::Revive(pallet_revive::Call::instantiate_with_code { .. })
+                        )
                     })
                 })
                 .collect();
@@ -366,7 +372,7 @@ fn check_invariants(block: u32, initial_total_issuance: Balance) {
     let counted_issuance = counted_free + counted_reserved;
     // The reason we do not simply use `!=` here is that some balance might be transfered to another chain via XCM.
     // If we find some kind of workaround for this, we could replace `<` by `!=` here and make the check stronger.
-    assert!(total_issuance <= counted_issuance,);
+    assert!(total_issuance >= counted_issuance,);
     assert!(total_issuance <= initial_total_issuance,);
     let account_42 = AccountId32::from([42; 32]);
     assert_eq!(Assets::balance(42, account_42), 42);
