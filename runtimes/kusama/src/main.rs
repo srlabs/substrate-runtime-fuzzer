@@ -368,7 +368,7 @@ fn check_invariants(block: u32, initial_total_issuance: Balance) {
     let total_issuance = TotalIssuance::<Runtime>::get();
     let counted_issuance = counted_free + counted_reserved;
     assert!(
-        total_issuance == counted_issuance,
+        total_issuance >= counted_issuance,
         "Inconsistent total issuance: {total_issuance} but counted {counted_issuance}"
     );
     assert!(

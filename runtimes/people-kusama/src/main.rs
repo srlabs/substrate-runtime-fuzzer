@@ -1,9 +1,5 @@
 #![warn(clippy::pedantic)]
 use codec::{DecodeLimit, Encode};
-use coretime_kusama_runtime::{
-    AllPalletsWithSystem, Balances, Broker, Executive, ParachainSystem, Runtime, RuntimeCall,
-    RuntimeOrigin, Timestamp,
-};
 use cumulus_primitives_core::relay_chain::Header;
 use frame_support::{
     dispatch::GetDispatchInfo,
@@ -13,21 +9,22 @@ use frame_support::{
 };
 use frame_system::Account;
 use pallet_balances::{Freezes, Holds, TotalIssuance};
-use pallet_broker::{ConfigRecord, ConfigRecordOf, CoreIndex, CoreMask, Timeslice};
 use parachains_common::{AccountId, Balance, SLOT_DURATION};
+use people_kusama_runtime::{
+    AllPalletsWithSystem, Balances, Executive, ParachainSystem, Runtime, RuntimeCall,
+    RuntimeOrigin, Timestamp,
+};
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
-use sp_fuzzing::FuzzingExternalities;
 use sp_runtime::{
     testing::H256,
-    traits::{AccountIdConversion, Dispatchable, Header as _},
-    Digest, DigestItem, Perbill, Storage,
+    traits::{Dispatchable, Header as _},
+    Digest, DigestItem, Storage,
 };
+use sp_state_machine::BasicExternalities;
 use std::{
-    collections::HashMap,
     iter,
     time::{Duration, Instant},
 };
-use system_parachains_constants::kusama::currency::UNITS;
 
 fn main() {
     let accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
@@ -39,27 +36,25 @@ fn main() {
 }
 
 fn generate_genesis(accounts: &[AccountId]) -> Storage {
-    use coretime_kusama_runtime::BuildStorage;
-    use coretime_kusama_runtime::{
-        AuraConfig, AuraExtConfig, BalancesConfig, BrokerConfig, CollatorSelectionConfig,
-        ParachainInfoConfig, ParachainSystemConfig, PolkadotXcmConfig, RuntimeGenesisConfig,
-        SessionConfig, SessionKeys, SystemConfig, TransactionPaymentConfig,
+    use people_kusama_runtime::{
+        AuraConfig, AuraExtConfig, BalancesConfig, CollatorSelectionConfig, ParachainInfoConfig,
+        ParachainSystemConfig, PolkadotXcmConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys,
+        SystemConfig, TransactionPaymentConfig,
     };
-    use sp_application_crypto::ByteArray;
     use sp_consensus_aura::sr25519::AuthorityId as AuraId;
+    use sp_runtime::app_crypto::ByteArray;
+    use sp_runtime::BuildStorage;
 
     let initial_authorities: Vec<(AccountId, AuraId)> =
         vec![([0; 32].into(), AuraId::from_slice(&[0; 32]).unwrap())];
 
-    let mut storage = RuntimeGenesisConfig {
+    RuntimeGenesisConfig {
         system: SystemConfig::default(),
         balances: BalancesConfig {
-            // Configure endowed accounts with initial balance of 1 << 60.
             balances: accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
             dev_accounts: None,
         },
         aura: AuraConfig::default(),
-        broker: BrokerConfig::default(),
         session: SessionConfig {
             keys: initial_authorities
                 .iter()
@@ -79,30 +74,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         transaction_payment: TransactionPaymentConfig::default(),
     }
     .build_storage()
-    .unwrap();
-
-    FuzzingExternalities::execute_with_storage(&mut storage, || {
-        initialize_block(1, None);
-        Broker::configure(RuntimeOrigin::root(), new_config()).unwrap();
-        Broker::start_sales(RuntimeOrigin::root(), 10 * UNITS, 1).unwrap();
-
-        initialize_block(2, Some(&finalize_block(Duration::ZERO)));
-    });
-
-    storage
-}
-
-fn new_config() -> ConfigRecordOf<Runtime> {
-    ConfigRecord {
-        advance_notice: 1,
-        interlude_length: 1,
-        leadin_length: 2,
-        ideal_bulk_proportion: Perbill::from_percent(100),
-        limit_cores_offered: None,
-        region_length: 3,
-        renewal_bump: Perbill::from_percent(3),
-        contribution_timeout: 1,
-    }
+    .unwrap()
 }
 
 fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool) -> bool {
@@ -123,48 +95,55 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(RuntimeCall) -> bool)
     } else if let RuntimeCall::Multisig(pallet_multisig::Call::as_multi_threshold_1 {
         call, ..
     })
-    | RuntimeCall::Utility(pallet_utility::Call::as_derivative { call, .. })
-    | RuntimeCall::Proxy(pallet_proxy::Call::proxy { call, .. }) = call
+    | RuntimeCall::Utility(
+        pallet_utility::Call::as_derivative { call, .. }
+        | pallet_utility::Call::dispatch_as { call, .. }
+        | pallet_utility::Call::with_weight { call, .. }
+        | pallet_utility::Call::dispatch_as_fallible { call, .. },
+    )
+    | RuntimeCall::Proxy(
+        pallet_proxy::Call::proxy { call, .. } | pallet_proxy::Call::proxy_announced { call, .. },
+    ) = call
     {
         return recursively_find_call(*call, matches_on);
-    } else if matches_on(call) {
+    } else if matches_on(call.clone()) {
         return true;
     }
     false
 }
 
 fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
-    // We build the list of extrinsics we will execute
     let mut extrinsic_data = data;
-    // Vec<(advance_block, origin, extrinsic)>
-    let extrinsics: Vec<(bool, u8, RuntimeCall)> =
-        iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
-            .filter(|(_, _, x): &(_, _, RuntimeCall)| {
-                !recursively_find_call(x.clone(), |call| {
-                    matches!(&call, RuntimeCall::System(_))
-                        || matches!(
-                            &call,
-                            RuntimeCall::PolkadotXcm(pallet_xcm::Call::execute { .. })
-                        )
-                })
-            })
-            .collect();
-    if extrinsics.is_empty() {
-        return;
-    }
 
-    let mut block: u32 = 2;
+    let mut block: u32 = 1;
     let mut weight: Weight = Weight::zero();
     let mut elapsed: Duration = Duration::ZERO;
 
-    FuzzingExternalities::execute_with_storage(&mut genesis.clone(), || {
+    BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
+        let extrinsics: Vec<(bool, u8, RuntimeCall)> =
+            iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut extrinsic_data).ok())
+                .filter(|(_, _, x): &(_, _, RuntimeCall)| {
+                    !recursively_find_call(x.clone(), |call| {
+                        matches!(
+                            &call,
+                            RuntimeCall::PolkadotXcm(pallet_xcm::Call::execute { .. })
+                        )
+                    })
+                })
+                .collect();
+
+        if extrinsics.is_empty() {
+            return;
+        }
+
         let initial_total_issuance = pallet_balances::TotalIssuance::<Runtime>::get();
+
+        initialize_block(block, None);
 
         for (advance_block, origin, extrinsic) in extrinsics {
             if advance_block {
                 let prev_header = finalize_block(elapsed);
 
-                // We update our state variables
                 block += 1;
                 weight = Weight::zero();
                 elapsed = Duration::ZERO;
@@ -181,14 +160,14 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
             }
             weight = cumulative_weight;
 
-            let origin = accounts[usize::from(origin) % accounts.len()].clone();
+            let origin = accounts[origin as usize % accounts.len()].clone();
 
             #[cfg(not(feature = "fuzzing"))]
             println!("\n    origin:     {origin:?}");
             #[cfg(not(feature = "fuzzing"))]
             println!("    call:       {extrinsic:?}");
 
-            let now = Instant::now(); // We get the current time for timing purposes.
+            let now = Instant::now();
             let res = extrinsic.dispatch(RuntimeOrigin::signed(origin));
             elapsed += now.elapsed();
 
@@ -214,32 +193,33 @@ fn initialize_block(block: u32, prev_header: Option<&Header>) {
     let pre_digest = Digest {
         logs: vec![DigestItem::PreRuntime(
             AURA_ENGINE_ID,
-            Slot::from(u64::from(block)).encode(),
+            Slot::from(2 * u64::from(block)).encode(),
         )],
     };
-    let parent_header = Header::new(
+    let parent_header = &Header::new(
         block,
         H256::default(),
         H256::default(),
         prev_header.map(Header::hash).unwrap_or_default(),
         pre_digest,
     );
+    Executive::initialize_block(parent_header);
 
-    Executive::initialize_block(&parent_header);
+    #[cfg(not(feature = "fuzzing"))]
+    println!("  setting timestamp");
     Timestamp::set(RuntimeOrigin::none(), u64::from(block) * SLOT_DURATION).unwrap();
 
     #[cfg(not(feature = "fuzzing"))]
     println!("  setting parachain validation data");
     let parachain_validation_data = {
-        use cumulus_primitives_core::{relay_chain::HeadData, PersistedValidationData};
-        // use cumulus_primitives_parachain_inherent::BasicParachainInherentData;
         use cumulus_pallet_parachain_system::parachain_inherent::BasicParachainInherentData;
+        use cumulus_primitives_core::relay_chain::HeadData;
         use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 
-        let parent_head = HeadData(prev_header.unwrap_or(&parent_header).encode());
+        let parent_head = HeadData(prev_header.unwrap_or(parent_header).encode());
         let sproof_builder = RelayStateSproofBuilder {
             para_id: 100.into(),
-            current_slot: Slot::from(2 * u64::from(block)),
+            current_slot: cumulus_primitives_core::relay_chain::Slot::from(2 * u64::from(block)),
             included_para_head: Some(parent_head.clone()),
             ..Default::default()
         };
@@ -248,7 +228,7 @@ fn initialize_block(block: u32, prev_header: Option<&Header>) {
         let (relay_parent_storage_root, relay_chain_state, relay_parent_descendants) =
             sproof_builder.into_state_root_proof_and_descendants(relay_parent_offset);
         BasicParachainInherentData {
-            validation_data: PersistedValidationData {
+            validation_data: polkadot_primitives::PersistedValidationData {
                 parent_head,
                 relay_parent_number: block,
                 relay_parent_storage_root,
@@ -274,19 +254,6 @@ fn initialize_block(block: u32, prev_header: Option<&Header>) {
         inbound_message_data,
     )
     .unwrap();
-
-    // We have to send 1 DOT to the coretime burn address because of a defensive assertion that cannot be
-    // reached in a real-world environment.
-    let coretime_burn_account: AccountId =
-        frame_support::PalletId(*b"py/ctbrn").into_account_truncating();
-    let coretime_burn_address = coretime_burn_account.into();
-    // The transfer may result an error if there are insufficient funds in the account,
-    // but in that case, we just don't transfer to coretime burn address
-    let _ = Balances::transfer_keep_alive(
-        RuntimeOrigin::signed([0; 32].into()),
-        coretime_burn_address,
-        UNITS,
-    );
 }
 
 fn finalize_block(elapsed: Duration) -> Header {
@@ -312,7 +279,7 @@ fn check_invariants(block: u32, initial_total_issuance: Balance) {
             .iter()
             .map(|l| l.amount)
             .max()
-            .unwrap_or_default();
+            .unwrap_or(0);
         let max_freeze = Freezes::<Runtime>::get(&account)
             .iter()
             .map(|freeze| freeze.amount)
@@ -335,44 +302,8 @@ fn check_invariants(block: u32, initial_total_issuance: Balance) {
     }
     let total_issuance = TotalIssuance::<Runtime>::get();
     let counted_issuance = counted_free + counted_reserved;
-    assert!(
-        total_issuance >= counted_issuance,
-        "Inconsistent total issuance: {total_issuance} but counted {counted_issuance}"
-    );
-    assert!(
-        total_issuance <= initial_total_issuance,
-        "Total issuance {total_issuance} greater than initial issuance {initial_total_issuance}"
-    );
-    // Broker invariants
-    let status =
-        pallet_broker::Status::<Runtime>::get().expect("Broker pallet should always have a status");
-    let sale_info = pallet_broker::SaleInfo::<Runtime>::get()
-        .expect("Broker pallet should always have a sale info");
-    assert!(
-        sale_info.first_core <= status.core_count,
-        "Sale info first_core too large"
-    );
-    assert!(
-        sale_info.cores_sold <= sale_info.cores_offered,
-        "Sale info cores mismatch"
-    );
-    let regions: Vec<pallet_broker::RegionId> = pallet_broker::Regions::<Runtime>::iter()
-        .map(|n| n.0)
-        .collect();
-    let mut masks: std::collections::HashMap<(Timeslice, CoreIndex), CoreMask> = HashMap::default();
-    for region in regions {
-        let region_record = pallet_broker::Regions::<Runtime>::get(region)
-            .expect("Region id should have a region record");
-        for region_timeslice in region.begin..region_record.end {
-            let mut existing_mask = *masks
-                .get(&(region_timeslice, region.core))
-                .unwrap_or(&CoreMask::void());
-            assert_eq!(existing_mask ^ region.mask, existing_mask | region.mask);
-            existing_mask |= region.mask;
-            masks.insert((region_timeslice, region.core), existing_mask);
-        }
-    }
-    // We run all developer-defined integrity tests
+    assert!(total_issuance <= counted_issuance,);
+    assert!(total_issuance <= initial_total_issuance,);
     AllPalletsWithSystem::integrity_test();
     AllPalletsWithSystem::try_state(block, TryStateSelect::All).unwrap();
 }
