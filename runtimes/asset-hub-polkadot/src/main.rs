@@ -1,7 +1,7 @@
 #![warn(clippy::pedantic)]
 use asset_hub_polkadot_runtime::{
-    AllPalletsWithSystem, Assets, Balances, Executive, ParachainSystem, Runtime, RuntimeCall,
-    RuntimeOrigin, Timestamp,
+    AllPalletsWithSystem, Assets, Balances, Executive, Runtime, RuntimeCall, RuntimeOrigin,
+    Timestamp,
 };
 use codec::{DecodeLimit, Encode};
 use cumulus_primitives_core::relay_chain::Header;
@@ -278,50 +278,74 @@ fn initialize_block(block: u32, prev_header: Option<&Header>) {
 
     #[cfg(not(feature = "fuzzing"))]
     println!("  setting parachain validation data");
-    let parachain_validation_data = {
-        use cumulus_primitives_core::relay_chain::HeadData;
-        // use cumulus_primitives_parachain_inherent::ParachainInherentData;
-        use cumulus_pallet_parachain_system::parachain_inherent::BasicParachainInherentData;
-        use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
+    set_parachain_validation_data_bypass(block, prev_header.unwrap_or(parent_header));
+}
 
-        let parent_head = HeadData(prev_header.unwrap_or(parent_header).encode());
-        let sproof_builder = RelayStateSproofBuilder {
-            para_id: 100.into(),
-            current_slot: cumulus_primitives_core::relay_chain::Slot::from(2 * u64::from(block)),
-            included_para_head: Some(parent_head.clone()),
-            ..Default::default()
-        };
+// Naive bypass of `ParachainSystem::set_validation_data`. The real call builds
+// a relay-state sproof, signs descendant headers, then verifies all of that on
+// the runtime side — most of the per-block cost in this fuzzer comes from that
+// verification, not from extrinsic dispatch. Since the fuzzer doesn't care
+// about cryptographic validity (only about consistent runtime state), we
+// directly write the storage that downstream code reads.
+//
+// We still write:
+//   - `ValidationData`              (read by pallets and `on_finalize`)
+//   - `HostConfiguration`           (used for limit checks across xcm/messaging)
+//   - `RelevantMessagingState`      (used by ump, hrmp, xcm)
+//
+// We skip:
+//   - descendant header signatures and their verification
+//   - the relay state proof (`RelayStateProof` storage) — nothing in the
+//     parachain reads it after the inherent
+//   - `OnSystemEvent` callbacks — `()` for asset-hub-polkadot, no-op
+//   - inbound DMQ/HRMP enqueueing — we never produce inbound messages
+//   - the aura-ext `ConsensusHook` — its only effect is updating the
+//     `pub(crate) RelaySlotInfo` storage which is unread elsewhere
+fn set_parachain_validation_data_bypass(block: u32, parent_header: &Header) {
+    use cumulus_pallet_parachain_system::relay_state_snapshot::{
+        MessagingStateSnapshot, RelayDispatchQueueRemainingCapacity,
+    };
+    use cumulus_pallet_parachain_system::{
+        HostConfiguration, RelevantMessagingState, ValidationData,
+    };
+    use cumulus_primitives_core::relay_chain::HeadData;
 
-        let relay_parent_offset = 1;
-        let (relay_parent_storage_root, relay_chain_state, relay_parent_descendants) =
-            sproof_builder.into_state_root_proof_and_descendants(relay_parent_offset);
-        BasicParachainInherentData {
-            validation_data: polkadot_primitives::PersistedValidationData {
-                parent_head,
-                relay_parent_number: block,
-                relay_parent_storage_root,
-                max_pov_size: 1000,
-            },
-            relay_chain_state,
-            collator_peer_id: None,
-            relay_parent_descendants,
-        }
+    let parent_head = HeadData(parent_header.encode());
+    let vfp = polkadot_primitives::PersistedValidationData {
+        parent_head,
+        relay_parent_number: block,
+        // No proof is built, so this hash is meaningless. Code reading it
+        // (via `ValidationData::get()`) only forwards the bytes around.
+        relay_parent_storage_root: H256::default(),
+        max_pov_size: 1000,
     };
-    let inbound_message_data = {
-        use cumulus_pallet_parachain_system::parachain_inherent::{
-            AbridgedInboundMessagesCollection, InboundMessagesData,
-        };
-        InboundMessagesData::new(
-            AbridgedInboundMessagesCollection::default(),
-            AbridgedInboundMessagesCollection::default(),
-        )
-    };
-    ParachainSystem::set_validation_data(
-        RuntimeOrigin::none(),
-        parachain_validation_data,
-        inbound_message_data,
-    )
-    .unwrap();
+    ValidationData::<Runtime>::put(&vfp);
+
+    HostConfiguration::<Runtime>::put(cumulus_primitives_core::AbridgedHostConfiguration {
+        max_code_size: 2 * 1024 * 1024,
+        max_head_data_size: 1024 * 1024,
+        max_upward_queue_count: 8,
+        max_upward_queue_size: 1024,
+        max_upward_message_size: 256,
+        max_upward_message_num_per_candidate: 5,
+        hrmp_max_message_num_per_candidate: 5,
+        validation_upgrade_cooldown: 6,
+        validation_upgrade_delay: 6,
+        async_backing_params: cumulus_primitives_core::relay_chain::AsyncBackingParams {
+            allowed_ancestry_len: 0,
+            max_candidate_depth: 0,
+        },
+    });
+
+    RelevantMessagingState::<Runtime>::put(MessagingStateSnapshot {
+        dmq_mqc_head: H256::default(),
+        relay_dispatch_queue_remaining_capacity: RelayDispatchQueueRemainingCapacity {
+            remaining_count: 0,
+            remaining_size: 0,
+        },
+        ingress_channels: vec![],
+        egress_channels: vec![],
+    });
 }
 
 fn finalize_block(elapsed: Duration) -> Header {
