@@ -99,22 +99,61 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
     .unwrap()
 }
 
+fn recursively_find_call(call: RuntimeCall, matches_on: fn(&RuntimeCall) -> bool) -> bool {
+    if let RuntimeCall::Utility(
+        pallet_utility::Call::batch { calls }
+        | pallet_utility::Call::force_batch { calls }
+        | pallet_utility::Call::batch_all { calls },
+    ) = call
+    {
+        for call in calls {
+            if recursively_find_call(call.clone(), matches_on) {
+                return true;
+            }
+        }
+    } else if let RuntimeCall::Utility(pallet_utility::Call::if_else { main, fallback }) = call {
+        return recursively_find_call(*main.clone(), matches_on)
+            || recursively_find_call(*fallback.clone(), matches_on);
+    } else if let RuntimeCall::Multisig(pallet_multisig::Call::as_multi_threshold_1 {
+        call, ..
+    })
+    | RuntimeCall::Utility(
+        pallet_utility::Call::as_derivative { call, .. }
+        | pallet_utility::Call::with_weight { call, .. }
+        | pallet_utility::Call::dispatch_as_fallible { call, .. }
+        | pallet_utility::Call::dispatch_as { call, .. },
+    )
+    | RuntimeCall::Proxy(
+        pallet_proxy::Call::proxy { call, .. } | pallet_proxy::Call::proxy_announced { call, .. },
+    ) = call
+    {
+        return recursively_find_call(*call, matches_on);
+    } else if matches_on(&call) {
+        return true;
+    }
+    false
+}
+
+fn is_disallowed(call: &RuntimeCall) -> bool {
+    !matches!(
+        call,
+        RuntimeCall::System(_)
+            | RuntimeCall::Utility(_)
+            | RuntimeCall::Proxy(_)
+            | RuntimeCall::Balances(_)
+            | RuntimeCall::Vesting(_)
+            | RuntimeCall::Multisig(_)
+    )
+}
+
 fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     // We build the list of extrinsics we will execute
     let mut data = data;
     // Vec<(advance_block, origin, extrinsic)>
     let extrinsics: Vec<(bool, u8, RuntimeCall)> =
         iter::from_fn(|| DecodeLimit::decode_with_depth_limit(64, &mut data).ok())
-            .filter(|(_, _, x)| {
-                matches!(
-                    x,
-                    RuntimeCall::System(_)
-                        | RuntimeCall::Utility(_)
-                        | RuntimeCall::Proxy(_)
-                        | RuntimeCall::Balances(_)
-                        | RuntimeCall::Vesting(_)
-                        | RuntimeCall::Multisig(_)
-                )
+            .filter(|(_, _, x): &(_, _, RuntimeCall)| {
+                !recursively_find_call(x.clone(), is_disallowed)
             })
             .collect();
     if extrinsics.is_empty() {
@@ -266,7 +305,7 @@ fn check_invariants(block: u32, initial_total_issuance: Balance) {
     let total_issuance = TotalIssuance::<Runtime>::get();
     let counted_issuance = counted_free + counted_reserved;
     assert_eq!(total_issuance, counted_issuance);
-    assert!(total_issuance <= initial_total_issuance);
+    assert_eq!(total_issuance, initial_total_issuance);
     // We run all developer-defined integrity tests
     AllPalletsWithSystem::integrity_test();
     AllPalletsWithSystem::try_state(block, TryStateSelect::All).unwrap();
