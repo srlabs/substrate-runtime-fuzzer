@@ -11,6 +11,8 @@ rococo-runtime = { workspace = true }
 
 codec = { workspace = true }
 
+node-primitives = { workspace = true }
+
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 frame-metadata = { workspace = true }
@@ -24,6 +26,7 @@ sp-consensus-beefy = { workspace = true }
 sp-authority-discovery = { workspace = true }
 sp-tracing = { workspace = true }
 sp-application-crypto = { workspace = true }
+sp-core = { workspace = true }
 
 polkadot-primitives = { workspace = true }
 

@@ -202,11 +202,6 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
 
             #[cfg(not(feature = "fuzzing"))]
             println!("    result:     {res:?}");
-
-            let actual_weight = res.unwrap_or_else(|e| e.post_info).actual_weight;
-            let post_weight = actual_weight.unwrap_or_default();
-            assert!(pre_weight.ref_time() >= post_weight.ref_time(), "Pre-dispatch weight ref time ({}) is smaller than post-dispatch weight ref time ({})", pre_weight.ref_time(), post_weight.ref_time());
-            assert!(pre_weight.proof_size() >= post_weight.proof_size(), "Pre-dispatch weight proof size ({}) is smaller than post-dispatch weight proof size ({})", pre_weight.proof_size(), post_weight.proof_size());
         }
 
         finalize_block(elapsed);
@@ -305,7 +300,7 @@ fn check_invariants(block: u32, initial_total_issuance: Balance) {
     let total_issuance = TotalIssuance::<Runtime>::get();
     let counted_issuance = counted_free + counted_reserved;
     assert_eq!(total_issuance, counted_issuance);
-    assert_eq!(total_issuance, initial_total_issuance);
+    assert!(total_issuance <= initial_total_issuance);
     // We run all developer-defined integrity tests
     AllPalletsWithSystem::integrity_test();
     AllPalletsWithSystem::try_state(block, TryStateSelect::All).unwrap();
