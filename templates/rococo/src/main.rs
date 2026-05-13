@@ -44,8 +44,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
     use pallet_grandpa::AuthorityId as GrandpaId;
     use polkadot_primitives::{AssignmentId, ValidatorId};
     use rococo_runtime::{
-        BalancesConfig, GrandpaConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys,
-        SudoConfig, SystemConfig, TransactionPaymentConfig,
+        BalancesConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys, SudoConfig,
     };
     use sp_application_crypto::{ByteArray, Pair};
     use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
@@ -56,24 +55,10 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
     let balances = accounts.iter().cloned().map(|k| (k, 1 << 60)).collect();
 
     RuntimeGenesisConfig {
-        system: SystemConfig::default(),
         balances: BalancesConfig {
             balances,
             dev_accounts: None,
         },
-        assigned_slots: Default::default(),
-        beefy: Default::default(),
-        claims: Default::default(),
-        babe: Default::default(),
-        configuration: Default::default(),
-        hrmp: Default::default(),
-        nis_counterpart_balances: Default::default(),
-        paras: Default::default(),
-        registrar: Default::default(),
-        society: Default::default(),
-        vesting: Default::default(),
-        xcm_pallet: Default::default(),
-        indices: Default::default(),
         session: SessionConfig {
             keys: vec![(
                 [0; 32].into(),
@@ -91,11 +76,8 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
             )],
             non_authority_keys: vec![],
         },
-        authority_discovery: Default::default(),
-        treasury: Default::default(),
-        grandpa: GrandpaConfig::default(),
         sudo: SudoConfig { key: None }, // Assign no network admin rights.
-        transaction_payment: TransactionPaymentConfig::default(),
+        ..Default::default()
     }
     .build_storage()
     .unwrap()

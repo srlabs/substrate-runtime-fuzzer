@@ -7,7 +7,7 @@
 //! `(bool, u8, RuntimeCall)` tuples for the rococo fuzzer.
 //!
 //! ## Account mapping
-//! Test accounts are u64 (1, 2, 3, ...).  Fuzzer accounts are AccountId32 with
+//! Test accounts are u64 (1, 2, 3, ...).  Fuzzer accounts are `AccountId32` with
 //! 5 fixed addresses [0;32]..[4;32].  Mapping used here:
 //!
 //! | Test account | Fuzzer origin | Fuzzer `AccountId32` |
@@ -33,7 +33,7 @@
 //! - `as_derivative_handles_weight_refund` / `batch*_handles_weight_refund` /
 //!   `batch_weight_calculation_doesnt_overflow`: rely on test-only
 //!   `Example::foobar` / `RootTesting::fill_block` calls.
-//! - `batch_limit`: 40_000 calls would blow past block weight; the fuzzer
+//! - `batch_limit`: `40_000` calls would blow past block weight; the fuzzer
 //!   skips over-weight calls anyway.
 //! - `none_origin_does_not_work`: fuzzer never dispatches with `RawOrigin::None`.
 //! - `as_derivative_filters` / `batch_with_signed_filters`: filters on

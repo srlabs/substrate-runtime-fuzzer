@@ -9,7 +9,7 @@
 //! ## Key translation notes
 //!
 //! ### Account mapping
-//! Test accounts are u64 (1, 2, 3, ...).  Fuzzer accounts are AccountId32 with
+//! Test accounts are u64 (1, 2, 3, ...).  Fuzzer accounts are `AccountId32` with
 //! 5 fixed addresses [0;32]..[4;32].  Mapping used here:
 //!
 //! | Test account | Fuzzer origin | Fuzzer `AccountId32` |
@@ -46,8 +46,8 @@
 //!
 //! ### Pure proxy address
 //! Computed pure-proxy addresses must be derived using the same height /
-//! ext_index that will be observed at dispatch time inside the fuzzer.  For the
-//! seeds below, we always create the pure account in block 1 with ext_index 0.
+//! `ext_index` that will be observed at dispatch time inside the fuzzer.  For the
+//! seeds below, we always create the pure account in block 1 with `ext_index` 0.
 
 use codec::Encode;
 use rococo_runtime::{ProxyType, RuntimeCall};
@@ -92,7 +92,7 @@ fn inner_transfer_call() -> RuntimeCall {
 /// (matches the fuzzer's `extrinsic_index().unwrap_or_default() == 0`).
 fn pure_account(
     spawner: &AccountId,
-    proxy_type: &ProxyType,
+    proxy_type: ProxyType,
     index: u16,
     height: BlockNumber,
     ext_index: u32,
@@ -805,7 +805,7 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
         ));
 
         // Compute the deterministic pure address (block 1, ext_index 0).
-        let pure = pure_account(&account(0), &ProxyType::Any, 0, 1, 0);
+        let pure = pure_account(&account(0), ProxyType::Any, 0, 1, 0);
 
         // Fund the pure account so it can transfer.
         data.extend(enc(
