@@ -1023,6 +1023,7 @@ dependencies = [
  "pallet-balances",
  "pallet-multisig",
  "pallet-proxy",
+ "pallet-referenda",
  "pallet-revive",
  "pallet-timestamp",
  "pallet-uniques",
