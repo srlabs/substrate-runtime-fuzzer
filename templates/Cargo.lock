@@ -13610,6 +13610,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "rococo-fuzzer"
+version = "0.1.0"
+dependencies = [
+ "frame-metadata",
+ "frame-support",
+ "frame-system",
+ "node-primitives",
+ "pallet-balances",
+ "pallet-grandpa",
+ "pallet-multisig",
+ "pallet-proxy",
+ "pallet-timestamp",
+ "pallet-utility",
+ "parity-scale-codec",
+ "polkadot-primitives",
+ "rococo-runtime",
+ "scale-info",
+ "sp-application-crypto",
+ "sp-authority-discovery",
+ "sp-consensus-babe",
+ "sp-consensus-beefy",
+ "sp-core",
+ "sp-runtime",
+ "sp-state-machine",
+ "sp-tracing",
+ "ziggy",
+]
+
+[[package]]
 name = "rococo-runtime"
 version = "30.0.0"
 source = "git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603#2e4dd0bc22366a5af820492528869a493b5a5208"

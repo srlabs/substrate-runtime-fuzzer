@@ -1,0 +1,54 @@
+[package]
+name = "rococo-fuzzer"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+ziggy = { workspace = true }
+
+rococo-runtime = { workspace = true }
+
+codec = { workspace = true }
+
+node-primitives = { workspace = true }
+
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+frame-metadata = { workspace = true }
+
+scale-info = { workspace = true }
+
+sp-runtime = { workspace = true }
+sp-state-machine = { workspace = true }
+sp-consensus-babe = { workspace = true }
+sp-consensus-beefy = { workspace = true }
+sp-authority-discovery = { workspace = true }
+sp-tracing = { workspace = true }
+sp-application-crypto = { workspace = true }
+sp-core = { workspace = true }
+
+polkadot-primitives = { workspace = true }
+
+pallet-timestamp = { workspace = true }
+pallet-balances = { workspace = true }
+pallet-grandpa = { workspace = true }
+pallet-utility = { workspace = true }
+pallet-proxy = { workspace = true }
+pallet-multisig = { workspace = true }
+
+[features]
+default = ["std", "try-runtime"]
+fuzzing = []
+std = [
+    "rococo-runtime/std",
+	"sp-runtime/std",
+	"frame-support/std",
+	"pallet-timestamp/std",
+	"sp-consensus-babe/std",
+]
+try-runtime = [
+    "rococo-runtime/try-runtime",
+	"frame-support/try-runtime",
+	"pallet-timestamp/try-runtime",
+]
