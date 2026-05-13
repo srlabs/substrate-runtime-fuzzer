@@ -31,7 +31,7 @@ use std::{
 const SLOT_DURATION: u64 = 6000;
 
 fn main() {
-    sp_tracing::try_init_simple();
+    // sp_tracing::try_init_simple();
     let accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
     let genesis = generate_genesis(&accounts);
 
