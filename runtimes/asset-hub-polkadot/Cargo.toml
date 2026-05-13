@@ -38,6 +38,7 @@ pallet-multisig = { workspace = true }
 pallet-vesting = { workspace = true }
 pallet-whitelist = { workspace = true }
 pallet-revive = { workspace = true }
+pallet-referenda = { workspace = true }
 
 cumulus-primitives-core = { workspace = true }
 cumulus-primitives-parachain-inherent = { workspace = true }
