@@ -163,7 +163,11 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
         let sub_sub: AccountId = pallet_utility::derivative_account_id(sub_0_0.clone(), 1);
 
         let mut data = Vec::new();
-        data.extend(enc(false, 0, transfer_to_acc_call(sub_0_0.clone(), 10 * UNITS)));
+        data.extend(enc(
+            false,
+            0,
+            transfer_to_acc_call(sub_0_0.clone(), 10 * UNITS),
+        ));
         data.extend(enc(false, 0, transfer_to_acc_call(sub_sub, 5 * UNITS)));
 
         let inner = transfer_call(2, UNITS);
@@ -275,9 +279,8 @@ fn build_seeds() -> Vec<(String, Vec<u8>)> {
             transfer_call(1, UNITS),
             transfer_call(1, UNITS),
         ];
-        let inner_batch_all = RuntimeCall::Utility(pallet_utility::Call::batch_all {
-            calls: inner_calls,
-        });
+        let inner_batch_all =
+            RuntimeCall::Utility(pallet_utility::Call::batch_all { calls: inner_calls });
 
         let mut data = Vec::new();
         // Direct nested batch_all.

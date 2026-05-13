@@ -19,7 +19,7 @@ use sp_consensus_babe::{
 };
 use sp_runtime::{
     testing::H256,
-    traits::{Header as _, Dispatchable},
+    traits::{Dispatchable, Header as _},
     Digest, DigestItem, Storage,
 };
 use sp_state_machine::BasicExternalities;
@@ -41,16 +41,16 @@ fn main() {
 }
 
 fn generate_genesis(accounts: &[AccountId]) -> Storage {
-    use rococo_runtime::{
-        BalancesConfig, GrandpaConfig, RuntimeGenesisConfig, SudoConfig, SystemConfig,
-        TransactionPaymentConfig, SessionConfig, SessionKeys
-    };
-    use sp_runtime::BuildStorage;
-    use sp_application_crypto::{Pair, ByteArray};
     use pallet_grandpa::AuthorityId as GrandpaId;
+    use polkadot_primitives::{AssignmentId, ValidatorId};
+    use rococo_runtime::{
+        BalancesConfig, GrandpaConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys,
+        SudoConfig, SystemConfig, TransactionPaymentConfig,
+    };
+    use sp_application_crypto::{ByteArray, Pair};
     use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
     use sp_consensus_babe::AuthorityId as BabeId;
-    use polkadot_primitives::{AssignmentId, ValidatorId};
+    use sp_runtime::BuildStorage;
 
     // Configure endowed accounts with initial balance of 1 << 60.
     let balances = accounts.iter().cloned().map(|k| (k, 1 << 60)).collect();
@@ -81,7 +81,9 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
                 SessionKeys {
                     grandpa: GrandpaId::from_slice(&[0; 32]).unwrap(),
                     babe: BabeId::from_slice(&[0; 32]).unwrap(),
-                    beefy: sp_consensus_beefy::ecdsa_crypto::Pair::from_string("", None).unwrap().public(),
+                    beefy: sp_consensus_beefy::ecdsa_crypto::Pair::from_string("", None)
+                        .unwrap()
+                        .public(),
                     authority_discovery: AuthorityDiscoveryId::from_slice(&[0; 32]).unwrap(),
                     para_assignment: AssignmentId::from_slice(&[0; 32]).unwrap(),
                     para_validator: ValidatorId::from_slice(&[0; 32]).unwrap(),
