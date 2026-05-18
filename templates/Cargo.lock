@@ -6638,7 +6638,6 @@ dependencies = [
  "sp-core 40.0.0",
  "sp-fuzzing",
  "sp-runtime",
- "sp-state-machine",
  "ziggy",
 ]
 
@@ -13632,9 +13631,9 @@ dependencies = [
  "sp-authority-discovery",
  "sp-consensus-babe",
  "sp-consensus-beefy",
- "sp-core",
+ "sp-core 40.0.0",
+ "sp-fuzzing",
  "sp-runtime",
- "sp-state-machine",
  "sp-tracing",
  "ziggy",
 ]
