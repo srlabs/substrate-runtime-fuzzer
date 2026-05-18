@@ -22,7 +22,6 @@ frame-metadata = { workspace = true }
 
 sp-runtime = { workspace = true }
 sp-fuzzing = { workspace = true }
-sp-state-machine = { workspace = true }
 sp-consensus-aura = { workspace = true }
 sp-trie = { workspace = true }
 sp-core = { workspace = true }
@@ -58,7 +57,6 @@ std = [
 	"frame-support/std",
 	"frame-system/std",
 	"sp-runtime/std",
-	"sp-state-machine/std",
 	"sp-consensus-aura/std",
 	"pallet-timestamp/std",
 	"pallet-balances/std",

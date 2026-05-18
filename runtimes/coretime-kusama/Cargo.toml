@@ -21,7 +21,6 @@ frame-metadata = { workspace = true }
 
 sp-runtime = { workspace = true }
 sp-fuzzing = { workspace = true }
-sp-state-machine = { workspace = true }
 sp-consensus-aura = { workspace = true }
 sp-application-crypto = { workspace = true }
 
@@ -50,7 +49,6 @@ std = [
 	"pallet-timestamp/std",
 	"pallet-xcm/std",
 	"sp-consensus-aura/std",
-	"sp-state-machine/std",
 	"cumulus-primitives-core/std",
 	"cumulus-primitives-parachain-inherent/std",
 	"cumulus-pallet-parachain-system/std",
