@@ -228,9 +228,10 @@ fn initialize_block(block: u32, prev_header: Option<&Header>) {
         //   1002  BridgeHub  /  1005  Coretime
         let outbound_parachains: &[u32] = &[1000, 1001, 1002, 1005];
         for &para_id in outbound_parachains {
-            let ch = sproof_builder.upsert_outbound_channel(cumulus_primitives_core::ParaId::from(para_id));
+            let ch = sproof_builder
+                .upsert_outbound_channel(cumulus_primitives_core::ParaId::from(para_id));
             ch.max_capacity = 1024;
-            ch.max_total_size = 1 << 20;   // 1 MiB
+            ch.max_total_size = 1 << 20; // 1 MiB
             ch.max_message_size = 102_400; // 100 KiB, relay-chain default
         }
 
