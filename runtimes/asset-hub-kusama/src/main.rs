@@ -262,12 +262,23 @@ fn initialize_block(block: u32, prev_header: Option<&Header>) {
         use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 
         let parent_head = HeadData(prev_header.unwrap_or(parent_header).encode());
-        let sproof_builder = RelayStateSproofBuilder {
+        let mut sproof_builder = RelayStateSproofBuilder {
             para_id: 100.into(),
             current_slot: cumulus_primitives_core::relay_chain::Slot::from(2 * u64::from(block)),
             included_para_head: Some(parent_head.clone()),
             ..Default::default()
         };
+        // Sibling system parachains AssetHub-Kusama may target via XCMP.
+        //   1001  Collectives  /  1002  BridgeHub
+        //   1004  People     /  1005  Coretime
+        let outbound_parachains: &[u32] = &[1001, 1002, 1004, 1005];
+        for &para_id in outbound_parachains {
+            let ch = sproof_builder
+                .upsert_outbound_channel(cumulus_primitives_core::ParaId::from(para_id));
+            ch.max_capacity = 1024;
+            ch.max_total_size = 1 << 20; // 1 MiB
+            ch.max_message_size = 102_400; // 100 KiB, relay-chain default
+        }
 
         let relay_parent_offset = 1;
         let (relay_parent_storage_root, relay_chain_state, relay_parent_descendants) =
