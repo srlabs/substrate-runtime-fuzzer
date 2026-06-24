@@ -19,13 +19,13 @@ use sp_consensus_babe::{
     digests::{PreDigest, SecondaryPlainPreDigest},
     Slot, BABE_ENGINE_ID,
 };
+use sp_fuzzing::FuzzingExternalities;
 use sp_runtime::{
     app_crypto::ByteArray as _,
     testing::H256,
     traits::{Dispatchable, Header as _},
     BuildStorage, Digest, DigestItem, Perbill, Storage,
 };
-use sp_state_machine::BasicExternalities;
 use staging_kusama_runtime::{
     AllPalletsWithSystem, Balances, Executive, ParaInherent, Runtime, RuntimeCall, RuntimeOrigin,
     Timestamp,
@@ -119,7 +119,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
     }
     .build_storage()
     .unwrap();
-    BasicExternalities::execute_with_storage(&mut storage, || {
+    FuzzingExternalities::execute_with_storage(&mut storage, || {
         kusama::AssetRate::create(
             RuntimeOrigin::root(),
             Box::new(VersionedLocatableAsset::V5 {
@@ -205,7 +205,7 @@ fn process_input(accounts: &[AccountId], genesis: &Storage, data: &[u8]) {
     let mut weight: Weight = Weight::zero();
     let mut elapsed: Duration = Duration::ZERO;
 
-    BasicExternalities::execute_with_storage(&mut genesis.clone(), || {
+    FuzzingExternalities::execute_with_storage(&mut genesis.clone(), || {
         let initial_total_issuance = TotalIssuance::<Runtime>::get();
 
         initialize_block(block);

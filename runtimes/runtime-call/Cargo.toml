@@ -24,7 +24,7 @@ coretime-kusama-runtime = { workspace = true }
 glutton-kusama-runtime = { workspace = true }
 people-kusama-runtime = { workspace = true }
 
-sp-state-machine = { workspace = true }
+sp-fuzzing = { workspace = true }
 
 hex = { workspace = true }
 

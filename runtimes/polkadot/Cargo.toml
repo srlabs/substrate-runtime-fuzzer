@@ -25,7 +25,7 @@ frame-metadata = { workspace = true }
 
 sp-application-crypto = { workspace = true }
 sp-runtime = { workspace = true }
-sp-state-machine = { workspace = true }
+sp-fuzzing = { workspace = true }
 sp-consensus-babe = { workspace = true }
 sp-consensus-beefy = { workspace = true }
 sp-authority-discovery = { workspace = true }
@@ -63,7 +63,6 @@ std = [
 	"pallet-staking/std",
 	"pallet-society/std",
 	"sp-consensus-babe/std",
-	"sp-state-machine/std",
 	"polkadot-primitives/std",
 	"polkadot-runtime-parachains/std",
 	"sp-authority-discovery/std",

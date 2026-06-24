@@ -4,7 +4,7 @@ use frame_metadata::{RuntimeMetadata, RuntimeMetadataPrefixed};
 use frame_support::traits::GetCallMetadata;
 use rococo_runtime::{Runtime, RuntimeCall};
 use scale_info::TypeDef;
-use sp_state_machine::BasicExternalities;
+use sp_fuzzing::FuzzingExternalities;
 use std::{collections::BTreeMap, fs, path::Path};
 
 fn main() {
@@ -83,7 +83,7 @@ fn build_call_map(
 }
 
 fn load_metadata_v14() -> frame_metadata::v14::RuntimeMetadataV14 {
-    let bytes: Vec<u8> = BasicExternalities::default().execute_with(|| Runtime::metadata().into());
+    let bytes: Vec<u8> = FuzzingExternalities::default().execute_with(|| Runtime::metadata().into());
     let metadata = RuntimeMetadataPrefixed::decode(&mut &bytes[..]).expect("decode metadata");
     match metadata.1 {
         RuntimeMetadata::V14(m) => m,

@@ -22,6 +22,9 @@ ziggy = { version = "1.5.0", default-features = false }
 
 polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.2.2", default-features = false }
 asset-hub-polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.2.2", default-features = false }
+
+sp-fuzzing = { path = "../fuzzing-primitives/sp-fuzzing", default-features = false, features = ["runtimes"] }
+
 # bridge-hub-polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.0.2", default-features = false }
 collectives-polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.2.2", default-features = false }
 coretime-polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes.git", tag = "v2.2.2", default-features = false }
@@ -52,7 +55,6 @@ frame-system = { default-features = false, version = "46.0.0" }
 frame-metadata = { default-features = false, version = "23.0.1", features = ["current", "decode", "std"] }
 
 sp-runtime = { default-features = false, version = "46.0.0" }
-sp-state-machine = { version = "0.50.0", default-features = false }
 sp-consensus-aura = { default-features = false, version = "0.47.0" }
 sp-trie = { default-features = false, version = "43.0.0" }
 sp-core = { default-features = false, version = "40.0.0" }
