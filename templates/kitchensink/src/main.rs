@@ -40,14 +40,14 @@ fn main() {
 #[allow(clippy::too_many_lines)]
 fn generate_genesis(accounts: &[AccountId]) -> Storage {
     use kitchensink_runtime::{
-        AllianceConfig, AllianceMotionConfig, AssetsConfig, AuthorityDiscoveryConfig, BabeConfig,
-        BalancesConfig, BeefyConfig, BrokerConfig, CouncilConfig, DemocracyConfig, ElectionsConfig,
-        GluttonConfig, GrandpaConfig, ImOnlineConfig, IndicesConfig, MixnetConfig,
-        NominationPoolsConfig, PoolAssetsConfig, ReviveConfig, RuntimeGenesisConfig,
-        SafeModeConfig, SessionConfig, SessionKeys, SocietyConfig, StakingConfig, SudoConfig,
-        SystemConfig, TechnicalCommitteeConfig, TechnicalMembershipConfig,
-        TransactionPaymentConfig, TransactionStorageConfig, TreasuryConfig, TxPauseConfig,
-        VestingConfig, PsmConfig, AssetConversionConfig
+        AllianceConfig, AllianceMotionConfig, AssetConversionConfig, AssetsConfig,
+        AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, BeefyConfig, BrokerConfig,
+        CouncilConfig, DemocracyConfig, ElectionsConfig, GluttonConfig, GrandpaConfig,
+        ImOnlineConfig, IndicesConfig, MixnetConfig, NominationPoolsConfig, PoolAssetsConfig,
+        PsmConfig, ReviveConfig, RuntimeGenesisConfig, SafeModeConfig, SessionConfig, SessionKeys,
+        SocietyConfig, StakingConfig, SudoConfig, SystemConfig, TechnicalCommitteeConfig,
+        TechnicalMembershipConfig, TransactionPaymentConfig, TransactionStorageConfig,
+        TreasuryConfig, TxPauseConfig, VestingConfig,
     };
     use pallet_grandpa::AuthorityId as GrandpaId;
     use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
@@ -239,7 +239,10 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(&RuntimeCall) -> bool
         pallet_revive::Call::dispatch_as_fallback_account { call }
         | pallet_revive::Call::eth_substrate_call { call, .. },
     )
-    | RuntimeCall::Recovery(pallet_recovery::Call::control_inherited_account { call, .. })
+    | RuntimeCall::Recovery(pallet_recovery::Call::control_inherited_account {
+        call,
+        ..
+    })
     | RuntimeCall::Council(
         pallet_collective::Call::propose { proposal: call, .. }
         | pallet_collective::Call::execute { proposal: call, .. },
