@@ -47,7 +47,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         SafeModeConfig, SessionConfig, SessionKeys, SocietyConfig, StakingConfig, SudoConfig,
         SystemConfig, TechnicalCommitteeConfig, TechnicalMembershipConfig,
         TransactionPaymentConfig, TransactionStorageConfig, TreasuryConfig, TxPauseConfig,
-        VestingConfig,
+        VestingConfig, PsmConfig, AssetConversionConfig
     };
     use pallet_grandpa::AuthorityId as GrandpaId;
     use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
@@ -159,6 +159,8 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         mixnet: MixnetConfig::default(),
         broker: BrokerConfig::default(),
         revive: ReviveConfig::default(),
+        psm: PsmConfig::default(),
+        asset_conversion: AssetConversionConfig::default(),
     }
     .build_storage()
     .unwrap();
@@ -237,7 +239,7 @@ fn recursively_find_call(call: RuntimeCall, matches_on: fn(&RuntimeCall) -> bool
         pallet_revive::Call::dispatch_as_fallback_account { call }
         | pallet_revive::Call::eth_substrate_call { call, .. },
     )
-    | RuntimeCall::Recovery(pallet_recovery::Call::as_recovered { call, .. })
+    | RuntimeCall::Recovery(pallet_recovery::Call::control_inherited_account { call, .. })
     | RuntimeCall::Council(
         pallet_collective::Call::propose { proposal: call, .. }
         | pallet_collective::Call::execute { proposal: call, .. },
