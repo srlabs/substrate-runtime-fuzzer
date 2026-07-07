@@ -51,7 +51,8 @@
 
 use codec::Encode;
 use rococo_runtime::{ProxyType, RuntimeCall};
-use sp_core::{blake2_256, H256};
+use sp_core::H256;
+use sp_crypto_hashing::blake2_256;
 use sp_runtime::{AccountId32, MultiAddress};
 use std::{fs, path::Path};
 
