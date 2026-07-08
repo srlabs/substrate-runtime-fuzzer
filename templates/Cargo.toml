@@ -22,7 +22,7 @@ kitchensink-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", 
 codec = { version = "3.7.5", features = ["derive", "max-encoded-len"], default-features = false, package = "parity-scale-codec" }
 scale-info = { default-features = false, version = "2.11.6", features = ["std"] }
 frame-metadata = { default-features = false, version = "23.0.1", features = ["current", "decode", "std"] }
-cid = {default-features = false,  version = "0.11.2"}
+#cid = {default-features = false,  version = "0.11.2"}
 
 node-primitives = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2606", default-features = false }
 
