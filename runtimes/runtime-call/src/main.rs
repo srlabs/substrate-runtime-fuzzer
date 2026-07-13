@@ -64,7 +64,7 @@ fn main() {
                     (
                         "asset hub polkadot",
                         asset_hub_polkadot_runtime::RuntimeCall,
-                        &[[0x01, 0x00], [0x59, 0x04], [0xff, 0x07]]
+                        &[[0x01, 0x00], [0x59, 0x04], [0xff, 0x07], [0x10, 0x00]]
                     ),
                     (
                         "asset hub kusama",
