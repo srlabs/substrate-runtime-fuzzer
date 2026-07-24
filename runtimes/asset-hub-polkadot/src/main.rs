@@ -13,7 +13,7 @@ use frame_support::{
 };
 use frame_system::Account;
 use pallet_balances::{Freezes, Holds, TotalIssuance};
-use parachains_common::{AccountId, Balance, SLOT_DURATION};
+use parachains_common::{AccountId, Balance};
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_runtime::{
     testing::H256,
@@ -26,6 +26,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+const SLOT_DURATION: u64 = 24_000;
+
 fn main() {
     let accounts: Vec<AccountId> = (0..5).map(|i| [i; 32].into()).collect();
     let genesis = generate_genesis(&accounts);
@@ -37,8 +39,8 @@ fn main() {
 
 fn generate_genesis(accounts: &[AccountId]) -> Storage {
     use asset_hub_polkadot_runtime::{
-        AssetsConfig, AuraConfig, AuraExtConfig, BalancesConfig, ClaimsConfig,
-        CollatorSelectionConfig, ForeignAssetsConfig, IndicesConfig,
+        AssetConversionConfig, AssetsConfig, AuraConfig, AuraExtConfig, BalancesConfig,
+        ClaimsConfig, CollatorSelectionConfig, ForeignAssetsConfig, IndicesConfig,
         MultiBlockElectionVerifierConfig, NominationPoolsConfig, ParachainInfoConfig,
         ParachainSystemConfig, PolkadotXcmConfig, PoolAssetsConfig, ReviveConfig,
         RuntimeGenesisConfig, SessionConfig, SessionKeys, StakingConfig, SystemConfig,
@@ -98,6 +100,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         staking: StakingConfig::default(),
         treasury: TreasuryConfig::default(),
         revive: ReviveConfig::default(),
+        asset_conversion: AssetConversionConfig::default(),
     }
     .build_storage()
     .unwrap();
@@ -290,7 +293,7 @@ fn initialize_block(block: u32, prev_header: Option<&Header>) {
         let parent_head = HeadData(prev_header.unwrap_or(parent_header).encode());
         let mut sproof_builder = RelayStateSproofBuilder {
             para_id: 100.into(),
-            current_slot: cumulus_primitives_core::relay_chain::Slot::from(2 * u64::from(block)),
+            current_slot: cumulus_primitives_core::relay_chain::Slot::from(4 * u64::from(block)),
             included_para_head: Some(parent_head.clone()),
             ..Default::default()
         };
