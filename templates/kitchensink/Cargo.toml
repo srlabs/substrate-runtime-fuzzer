@@ -24,6 +24,7 @@ sp-state-machine = { workspace = true }
 sp-consensus-babe = { workspace = true }
 sp-consensus-beefy = { workspace = true }
 sp-authority-discovery = { workspace = true }
+sp-crypto-hashing = {workspace = true}
 
 pallet-timestamp = { workspace = true }
 pallet-balances = { workspace = true }

@@ -48,7 +48,7 @@ use codec::Encode;
 use frame_support::weights::Weight;
 use pallet_multisig::Timepoint;
 use rococo_runtime::RuntimeCall;
-use sp_core::hashing::blake2_256;
+use sp_crypto_hashing::blake2_256;
 use sp_runtime::MultiAddress;
 use std::{fs, path::Path};
 
