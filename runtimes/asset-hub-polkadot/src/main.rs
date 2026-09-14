@@ -44,7 +44,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         MultiBlockElectionVerifierConfig, NominationPoolsConfig, ParachainInfoConfig,
         ParachainSystemConfig, PolkadotXcmConfig, PoolAssetsConfig, ReviveConfig,
         RuntimeGenesisConfig, SessionConfig, SessionKeys, StakingConfig, SystemConfig,
-        TransactionPaymentConfig, TreasuryConfig, VestingConfig,
+        TransactionPaymentConfig, TreasuryConfig, VestingConfig, DotnsGatewayConfig, NetworkSuffixConfig,
     };
     use sp_consensus_aura::ed25519::AuthorityId as AuraId;
     use sp_runtime::app_crypto::ByteArray;
@@ -101,6 +101,8 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         treasury: TreasuryConfig::default(),
         revive: ReviveConfig::default(),
         asset_conversion: AssetConversionConfig::default(),
+        dotns_gateway: DotnsGatewayConfig::default(),
+        network_suffix: NetworkSuffixConfig::default(),
     }
     .build_storage()
     .unwrap();
