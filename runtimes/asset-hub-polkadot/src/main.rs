@@ -40,11 +40,11 @@ fn main() {
 fn generate_genesis(accounts: &[AccountId]) -> Storage {
     use asset_hub_polkadot_runtime::{
         AssetConversionConfig, AssetsConfig, AuraConfig, AuraExtConfig, BalancesConfig,
-        ClaimsConfig, CollatorSelectionConfig, ForeignAssetsConfig, IndicesConfig,
-        MultiBlockElectionVerifierConfig, NominationPoolsConfig, ParachainInfoConfig,
-        ParachainSystemConfig, PolkadotXcmConfig, PoolAssetsConfig, ReviveConfig,
-        RuntimeGenesisConfig, SessionConfig, SessionKeys, StakingConfig, SystemConfig,
-        TransactionPaymentConfig, TreasuryConfig, VestingConfig,
+        ClaimsConfig, CollatorSelectionConfig, DotnsGatewayConfig, ForeignAssetsConfig,
+        IndicesConfig, MultiBlockElectionVerifierConfig, NetworkSuffixConfig,
+        NominationPoolsConfig, ParachainInfoConfig, ParachainSystemConfig, PolkadotXcmConfig,
+        PoolAssetsConfig, ReviveConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys,
+        StakingConfig, SystemConfig, TransactionPaymentConfig, TreasuryConfig, VestingConfig,
     };
     use sp_consensus_aura::ed25519::AuthorityId as AuraId;
     use sp_runtime::app_crypto::ByteArray;
@@ -101,6 +101,8 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         treasury: TreasuryConfig::default(),
         revive: ReviveConfig::default(),
         asset_conversion: AssetConversionConfig::default(),
+        dotns_gateway: DotnsGatewayConfig::default(),
+        network_suffix: NetworkSuffixConfig::default(),
     }
     .build_storage()
     .unwrap();
