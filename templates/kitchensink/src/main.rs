@@ -44,7 +44,7 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, BeefyConfig, BrokerConfig,
         CouncilConfig, DemocracyConfig, ElectionsConfig, GluttonConfig, GrandpaConfig,
         ImOnlineConfig, IndicesConfig, MixnetConfig, NominationPoolsConfig, PoolAssetsConfig,
-        PsmConfig, ReviveConfig, RuntimeGenesisConfig, SafeModeConfig, SessionConfig, SessionKeys,
+        ReviveConfig, RuntimeGenesisConfig, SafeModeConfig, SessionConfig, SessionKeys,
         SocietyConfig, StakingConfig, SudoConfig, SystemConfig, TechnicalCommitteeConfig,
         TechnicalMembershipConfig, TransactionPaymentConfig, TransactionStorageConfig,
         TreasuryConfig, TxPauseConfig, VestingConfig,
@@ -159,7 +159,6 @@ fn generate_genesis(accounts: &[AccountId]) -> Storage {
         mixnet: MixnetConfig::default(),
         broker: BrokerConfig::default(),
         revive: ReviveConfig::default(),
-        psm: PsmConfig::default(),
         asset_conversion: AssetConversionConfig::default(),
     }
     .build_storage()

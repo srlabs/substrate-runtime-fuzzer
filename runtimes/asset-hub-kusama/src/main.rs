@@ -250,7 +250,7 @@ fn initialize_block(block: u32, prev_header: Option<&Header>) {
         block,
         H256::default(),
         H256::default(),
-        prev_header.map(Header::hash).unwrap_or_default(),
+        prev_header.map_or_default(Header::hash),
         pre_digest,
     );
     Executive::initialize_block(parent_header);

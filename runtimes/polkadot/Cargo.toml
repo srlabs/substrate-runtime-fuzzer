@@ -33,7 +33,6 @@ sp-core = { workspace = true }
 
 pallet-balances = { workspace = true }
 pallet-grandpa = { workspace = true }
-pallet-society = { workspace = true }
 pallet-utility = { workspace = true }
 pallet-multisig = { workspace = true }
 pallet-proxy = { workspace = true }
@@ -61,7 +60,6 @@ std = [
 	"pallet-grandpa/std",
 	"pallet-balances/std",
 	"pallet-staking/std",
-	"pallet-society/std",
 	"sp-consensus-babe/std",
 	"sp-state-machine/std",
 	"polkadot-primitives/std",
