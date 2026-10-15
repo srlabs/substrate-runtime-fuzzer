@@ -6939,7 +6939,6 @@ dependencies = [
  "pallet-multisig",
  "pallet-proxy",
  "pallet-referenda",
- "pallet-society",
  "pallet-staking",
  "pallet-staking-async-ah-client",
  "pallet-timestamp",
